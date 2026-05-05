@@ -152,4 +152,6 @@ export const navItems: ReadonlyArray<NavItem> = [
 /** Routes that already have a real page. Everything else shows "Coming soon". */
 export const IMPLEMENTED_ROUTES: ReadonlyArray<string> = [
   "/specialist/dashboard",
+  "/specialist/review-queue",
+  "/specialist/recert-queue",
 ];

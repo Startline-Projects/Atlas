@@ -195,3 +195,167 @@ be tightened up at the end of Session 1.)
   Clerk vs Auth.js v5 is the Week 0 decision per `TECH_STACK.md` §7.
 
 ---
+
+## Session 2 — Specialist console: review queue + recert queue
+
+**Source:** `specialist (12).html` `view-review-queue` (lines 14690–15665) and
+`view-recert-queue` (lines 15667–16595).
+**Spec:** `docs/document_pdf.pdf` Part 2 Step 3 (Review Queue) and Step 4
+(Re-Certification Review).
+**Routes shipped:** `/specialist/review-queue`, `/specialist/recert-queue`.
+Both routes leave Session 1's `Coming soon` stub behind and gain real
+implementations. `IMPLEMENTED_ROUTES` in `nav-items.ts` now lists three
+entries.
+
+### Tokens added (this session)
+
+**None.** Every hex in the queue CSS block (`specialist (12).html` lines
+~2628–4100) maps to an existing token. The two recurring arbitrary
+values — `#FFFDF7` (input/avatar surface) and `#C4BCA9` (hover border
+accent) — already appeared inline in Sessions 0 and 1; no new tokens
+warranted yet. If either crosses 5+ inline occurrences during 5.2/5.3
+they get factored to a token mid-build.
+
+### Routing — slug deviation from PDF (intentional)
+
+The spec PDF lists `/specialist/re-cert-queue` (with a hyphen between
+"re" and "cert"). Session 1 chose `/specialist/recert-queue` (no
+separator) to match the source HTML's `#recert-queue` slug. Per the
+"HTML wins" rule established in Session 1, the recert queue ships at
+`/specialist/recert-queue` and the PDF's URL is intentionally not used.
+If the spec is revised, update `nav-items.ts`, this section, and the
+folder structure together.
+
+### Business rules from the PDF (encoded as named constants)
+
+Now living in `src/lib/mock-data/specialist/review-queue.ts` and
+`recert-queue.ts`. **Migration note (carries the same one-direction
+push as Session 1's POOL_DEPLETION_THRESHOLD):** every constant below is
+a business rule, not data. When the Specialist service slice is built,
+move them to `src/lib/config/constants.ts` and re-export-or-delete from
+the mock-data modules. Services and any client code import from
+`lib/config`, not `lib/mock-data`.
+
+| Constant | Value | Source |
+|---|---|---|
+| `REVIEW_SLA_HOURS` | `24` | PDF §SLA — 24h window from candidate submission |
+| `REVIEW_WARN_THRESHOLD_HOURS` | `24` | PDF §"Time since submission color-coded" — amber at 24h |
+| `REVIEW_URGENT_THRESHOLD_HOURS` | `48` | PDF — red at >48h |
+| `REJECT_REAPPLY_LOCKOUT_MONTHS` | `6` | HTML reject-modal copy |
+| `RECERT_CYCLE_MONTHS` | `12` | PDF Step 4 + HTML stripe copy |
+| `RECERT_OFFBOARD_GRACE_DAYS` | `[0, 14, 30]` | HTML off-board modal options |
+
+> **POLICY UNDER REVIEW: `REJECT_REAPPLY_LOCKOUT_MONTHS = 6`.** The
+> 6-month reapply lockout is taken from the HTML modal copy and is **not
+> legally finalized**. Before this rule actually enforces anything in
+> production, it must be reviewed with legal/policy. The constant is in
+> mock-data only for now; when services land it moves to `lib/config`
+> and the legal review must happen in the same PR.
+
+### UX decisions (NOT spec-derived) — adjustable
+
+These shape the queue UI but come from the conversion team's UX
+judgment, not the PDF or HTML. Future sessions may revise them as the
+specialist team gives usage feedback:
+
+| Constant | Value | Why this number |
+|---|---|---|
+| `RECERT_BULK_APPROVE_MIN` | `2` | Threshold for surfacing the bulk-approve action in the recert rail. Below 2, the action adds clutter without saving meaningful clicks; above some upper bound the bulk-approve flow needs a confirmation step. 2 is the smallest useful value; revisit after first month of specialist usage. |
+
+### Sidebar nav update
+
+`IMPLEMENTED_ROUTES` bumped from 1 entry to 3. The longest-prefix-match
+sidebar from Session 1 keeps highlighting the right item without code
+changes. No sidebar component edits this session.
+
+### Mock data shapes
+
+Two new typed modules + a shared types module:
+
+- `queue-types.ts` — types shared by both queues. Notable exports:
+  `IvCardData` (the universal AI score-card shape used in Overview, both
+  Interviews, and AI assessment); `Reference`, `ReferenceStatus` (full
+  spec enum: `pending | confirmed | conflicting | unreachable`);
+  `AntiCheatBlock`; `DecisionBarConfig`; `TabDef`; `AVATAR_GRADIENTS` (a
+  named map of decorative gradient pairs reused across both views).
+- `review-queue.ts` — `ReviewQueueCandidate` plus 9 candidates that
+  collectively cover every failure mode the UI handles: clear-pass with
+  pending reference (Marie); clear-pass with all confirmed (Carmen);
+  borderline (Hana); unreachable reference (Wei); conflicting reference
+  (Tomás); anti-cheat flag raised (Linh P. Tran); clear-fail (Rajan);
+  fresh in queue (Sofia); SLA-breach >48h (David). 3 candidates carry
+  full HTML-fidelity detail; 6 are tighter but every section
+  populated.
+- `recert-queue.ts` — `RecertCandidate` plus 5 candidates covering:
+  bulk-approvable + rating climbed + tier upgrade (Anand);
+  due-in-5-days + needs action (Aaliyah); bulk-approvable clean record
+  (Linh Nguyen — different person from review-queue Linh); multiple
+  active engagements so off-board grace is visible (Marcus); profile
+  changes flagged (Priya).
+
+### `queue-shared/` — components factored as shared (committed in 5.2)
+
+The two views' chrome is character-for-character the same; only the
+content differs. The following will live under
+`src/components/specialist/queue-shared/` and be imported by both
+queues — no per-queue forks. If queue-specific behavior surfaces during
+5.2/5.3, prefer adding a discriminator prop over duplicating the file:
+
+- `queue-shell.tsx` — 3-col grid (existing sidebar + queue rail +
+  main column)
+- `queue-rail.tsx` (header + filter chips + list + empty-state)
+- `review-header.tsx` (breadcrumb + pager + identity row + progress bar)
+- `review-tabs.tsx` (sticky tab bar with `TabDef[]` + active key)
+- `iv-card.tsx` (overall + sub-bars + highlights + commentary)
+- `decision-bar.tsx` (sticky 3-button bar; button labels come from
+  `DecisionBarConfig`)
+- `review-modal.tsx` (modal shell — header, body, footer slots)
+- `reject-reason-chips.tsx` (single-select pill row)
+- `identity-grid.tsx` (anti-cheat 4-up grid + summary)
+- `ref-list.tsx` (reference cards)
+- `notes-card.tsx` (auto-save textarea placeholder)
+- `approved-flash.tsx` (full-screen success overlay)
+
+Page-specific section components will live under
+`src/components/specialist/review-queue/sections/` and
+`src/components/specialist/recert-queue/sections/`.
+
+### Conventions established (Session 2 additions)
+
+1. **No `e.preventDefault()`-only forms beyond what the prior sessions
+   already establish.** Multi-select for batch actions (if any) and the
+   filter chips use local `useState`; submit handlers stay no-op until
+   services land.
+2. **The selected candidate is local Client state.** No URL search
+   params yet (`?candidate=...`) — adding URL state is a future-session
+   change once real data lands and the back button needs to roundtrip.
+3. **Mock data shapes mirror the future API.** When real candidate data
+   arrives via `apiClient.specialist.reviewQueue.list()`, call sites
+   change one import. The same applies to recert.
+4. **Review tabs render in body font, sentence case.** Per source CSS
+   line 3022–3035 (`.review-tab` has `font-family: var(--font-body);
+   font-size: 12.5px; font-weight: 500;` — no `text-transform`, no
+   `letter-spacing`). An earlier review (Session 2 / 5.2 fix pass)
+   flagged them as needing uppercase; that was a misread of the
+   breadcrumb above the tab strip. Source-as-truth upheld. Not a
+   deviation. **Future sessions should not "fix" this.**
+
+### Session 2 — what Session 3 needs to know
+
+- **Candidate profile detail page is referenced but not built.** The
+  review-queue list and many cross-links inside the detail pane assume
+  a `/specialist/candidates/[id]` (or similar) profile page exists.
+  Session 3 (per the conversion plan) builds candidate management
+  including that profile page; until it lands, profile links route to
+  the existing `/specialist/my-candidates` "Coming soon" placeholder.
+- **`queue-shared/` is real shared code.** Don't fork it for new queues
+  unless behavior diverges; prefer adding a discriminator prop.
+- **`POLICY UNDER REVIEW`: `REJECT_REAPPLY_LOCKOUT_MONTHS`.** Don't
+  enforce this rule in any service or guard until legal/policy review
+  is complete. Update this log when that review happens.
+- **Constants migration target.** All Session 2 constants move from
+  mock-data to `lib/config/constants.ts` when the Specialist service
+  slice is built. Same migration path Session 1 set for
+  `POOL_DEPLETION_THRESHOLD` and `DISPUTE_SLA_HOURS`.
+
+---
