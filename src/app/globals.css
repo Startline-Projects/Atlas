@@ -26,6 +26,13 @@
   --color-ink-deep: #1a1a17;
   --color-ink-line: #2a2a24;
   --color-paper-mute: #b5b1a7;
+  /* Specialist console additions (Session 1) — see docs/CONVERSION_LOG.md. */
+  --color-success: #2e7d54;
+  --color-success-bg: #e7f2ec;
+  --color-danger-bg: #fbeae6;
+  /* Legible companion to lime/lime-deep backgrounds. Used by the
+     yellow-priority urgent-card type label and lime-tinted badges. */
+  --color-lime-text: #5a6b14;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -37,6 +44,10 @@
     0 2px 4px rgba(14, 14, 12, 0.06), 0 8px 24px rgba(14, 14, 12, 0.08);
   --shadow-lg:
     0 4px 8px rgba(14, 14, 12, 0.06), 0 24px 48px rgba(14, 14, 12, 0.12);
+  /* Three-layer card lift used by specialist console cards. */
+  --shadow-card:
+    0 1px 0 rgba(14, 14, 12, 0.03), 0 2px 6px rgba(14, 14, 12, 0.04),
+    0 24px 60px rgba(14, 14, 12, 0.09);
 }
 
 /* Inline theme: keeps the reference to next/font's runtime CSS vars. */

@@ -1,0 +1,14 @@
+/**
+ * Barrel export for specialist mock data. Future sessions:
+ *
+ *   import { currentUser, navItems, snapshot } from "@/lib/mock-data/specialist";
+ *
+ * When real data wires up, replace each named export with a typed
+ * fetcher (Server Component) or hook (Client) — the public shape stays
+ * the same so call sites don't change.
+ */
+
+export * from "./current-user";
+export * from "./nav-items";
+export * from "./dashboard-kpis";
+export * from "./dashboard-cards";
