@@ -6,24 +6,24 @@ type PreviewState =
   | 'default'
   | '2fa'
   | 'session-confirm'
+  | 'lockout'
   | 'routing'
   | 'wrong-password-1'
   | 'wrong-password-2'
   | 'no-account'
   | '2fa-wrong'
-  | 'locked'
   | 'ip-blocked'
   | 'anomaly'
   | 'suspended'
-  | 'password-expired'
-  | 'session-timeout';
+  | 'password-expired';
 
 interface PreviewPanelProps {
   onStateChange: (state: PreviewState) => void;
   currentState: PreviewState;
+  onShowTimeoutModal: () => void;
 }
 
-export function SignInPreviewPanel({ onStateChange, currentState }: PreviewPanelProps) {
+export function SignInPreviewPanel({ onStateChange, currentState, onShowTimeoutModal }: PreviewPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   const states: { label: string; value: PreviewState; group: string }[] = [
@@ -37,13 +37,11 @@ export function SignInPreviewPanel({ onStateChange, currentState }: PreviewPanel
     { label: 'No admin account', value: 'no-account', group: 'ERRORS' },
     { label: '2FA wrong code', value: '2fa-wrong', group: 'ERRORS' },
 
-    { label: 'Locked (3 attempts)', value: 'locked', group: 'SECURITY STATES' },
+    { label: 'Locked (3 attempts)', value: 'lockout', group: 'SECURITY STATES' },
     { label: 'IP not allowed', value: 'ip-blocked', group: 'SECURITY STATES' },
     { label: 'Anomaly login', value: 'anomaly', group: 'SECURITY STATES' },
     { label: 'Account suspended', value: 'suspended', group: 'SECURITY STATES' },
     { label: 'Password expired', value: 'password-expired', group: 'SECURITY STATES' },
-
-    { label: 'Session timeout warning', value: 'session-timeout', group: 'MODALS' },
   ];
 
   const groups = Array.from(new Set(states.map(s => s.group)));
@@ -101,6 +99,19 @@ export function SignInPreviewPanel({ onStateChange, currentState }: PreviewPanel
             </div>
           </div>
         ))}
+
+      {/* Modal trigger */}
+      <div>
+        <div className="px-4 py-3 text-xs font-mono tracking-[0.08em] uppercase text-[#888] font-semibold border-t border-[#222]">
+          MODALS
+        </div>
+        <button
+          onClick={onShowTimeoutModal}
+          className="w-full px-4 py-2.5 text-xs text-left font-mono tracking-[0.01em] transition-colors border-l-2 border-l-transparent text-[#ccc] hover:bg-[#111] hover:text-white"
+        >
+          + Session timeout warning
+        </button>
+      </div>
       </div>
 
       {/* Footer info */}

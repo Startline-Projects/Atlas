@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircleIcon, AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon, CheckShieldIcon, LockIcon, MailIcon, ShieldIcon } from '@/components/ui/icons';
 import { OTPInput } from './otp-input';
+import { TimeoutModal } from './timeout-modal';
+import { SignInPreviewPanel } from './signin-preview-panel';
 
 type SignInState =
   | 'default'
@@ -15,12 +17,10 @@ type SignInState =
   | 'wrong-password-2'
   | 'no-account'
   | '2fa-wrong'
-  | 'locked'
   | 'ip-blocked'
   | 'anomaly'
   | 'suspended'
-  | 'password-expired'
-  | 'session-timeout';
+  | 'password-expired';
 
 export function SignInForm() {
   const router = useRouter();
@@ -34,27 +34,8 @@ export function SignInForm() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [captchaVerifying, setCaptchaVerifying] = useState(false);
-  const [timeoutSeconds, setTimeoutSeconds] = useState(298);
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
 
-  useEffect(() => {
-    if (currentState !== 'session-timeout') return;
-
-    const interval = setInterval(() => {
-      setTimeoutSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [currentState]);
-
-  const timeoutMinutes = Math.floor(timeoutSeconds / 60);
-  const timeoutSecondsDisplay = timeoutSeconds % 60;
-  const timeoutDisplay = `${timeoutMinutes}:${timeoutSecondsDisplay.toString().padStart(2, '0')}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,13 +72,6 @@ export function SignInForm() {
     router.push('/admin/dashboard');
   };
 
-  const handleLockAccount = () => {
-    setCurrentState('default');
-    setEmail('');
-    setPassword('');
-    setCaptchaChecked(false);
-    setAttempts(0);
-  };
 
   const handleBackTo2FA = () => {
     setCurrentState('default');
@@ -419,7 +393,7 @@ export function SignInForm() {
                   {/* Action buttons */}
                   <div className="flex gap-2.5 mt-5.5">
                     <button
-                      onClick={handleLockAccount}
+                      onClick={() => setCurrentState('lockout')}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border border-[var(--color-danger)] text-[13.5px] font-medium text-[var(--color-danger)] rounded-full transition-all hover:bg-[var(--color-danger)] hover:text-[var(--color-paper)]"
                     >
                       <LockIcon className="w-3.5 h-3.5" />
@@ -658,8 +632,8 @@ export function SignInForm() {
                 </div>
               )}
 
-              {/* SECURITY STATE: LOCKED (3 ATTEMPTS) */}
-              {(currentState === 'locked' || currentState === 'lockout') && (
+              {/* SECURITY STATE: LOCKOUT (3 ATTEMPTS) */}
+              {currentState === 'lockout' && (
                 <div className="text-center flex-1 flex flex-col">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[rgba(194,65,43,0.18)] to-[rgba(139,26,26,0.18)] flex items-center justify-center mx-auto mb-5.5 flex-shrink-0">
                     <ShieldIcon className="w-7 h-7 text-[var(--color-restricted)]" />
@@ -812,37 +786,6 @@ export function SignInForm() {
                 </div>
               )}
 
-              {/* MODAL: SESSION TIMEOUT */}
-              {currentState === 'session-timeout' && (
-                <div className="text-center flex-1 flex items-center justify-center flex-col">
-                  <div className="w-10 h-10 rounded-full bg-[var(--color-amber-bg)] flex items-center justify-center mx-auto mb-3.5 flex-shrink-0">
-                    <AlertTriangleIcon className="w-5 h-5 text-[var(--color-amber)]" />
-                  </div>
-                  <h2 className="font-display text-[21px] font-medium tracking-[-0.01em] mb-2">
-                    Session expiring
-                  </h2>
-                  <p className="text-[14px] text-[var(--color-ink-soft)] leading-[1.55] mb-6">
-                    Your session will expire in <strong>5 minutes</strong> due to inactivity.
-                  </p>
-
-                  <div className="bg-[var(--color-cream-deep)] rounded-[var(--radius-md)] px-4 py-3 mb-6">
-                    <div className="font-display text-[32px] font-medium text-[var(--color-ink)]">{timeoutDisplay}</div>
-                    <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-[var(--color-ink-mute)]">Time remaining</p>
-                  </div>
-
-                  <div className="flex gap-2.5 w-full">
-                    <button
-                      onClick={() => setCurrentState('session-confirm')}
-                      className="flex-1 px-4 py-3 bg-[var(--color-ink)] text-[13.5px] font-medium text-[var(--color-paper)] rounded-full hover:bg-black"
-                    >
-                      Stay signed in
-                    </button>
-                    <button className="flex-1 px-4 py-3 border border-[var(--color-ink)] text-[13.5px] font-medium text-[var(--color-ink)] rounded-full hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]">
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Card footer */}
@@ -864,6 +807,19 @@ export function SignInForm() {
           </p>
         </div>
       </div>
+
+      {/* Session timeout modal */}
+      <TimeoutModal
+        isOpen={showTimeoutModal}
+        onClose={() => setShowTimeoutModal(false)}
+      />
+
+      {/* Design preview panel */}
+      <SignInPreviewPanel
+        onStateChange={handlePreviewStateChange}
+        currentState={currentState}
+        onShowTimeoutModal={() => setShowTimeoutModal(true)}
+      />
     </>
   );
 }
