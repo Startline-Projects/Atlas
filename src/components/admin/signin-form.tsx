@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircleIcon, AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon, CheckShieldIcon, LockIcon, MailIcon, ShieldIcon } from '@/components/ui/icons';
 import { OTPInput } from './otp-input';
-import { TimeoutModal } from './timeout-modal';
+import { useSignInState } from '@/lib/admin/signin-state-context';
 
 type SignInState =
   | 'default'
@@ -23,7 +23,7 @@ type SignInState =
 
 export function SignInForm() {
   const router = useRouter();
-  const [currentState, setCurrentState] = useState<SignInState>('default');
+  const { currentState, setCurrentState } = useSignInState();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,8 +33,6 @@ export function SignInForm() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [captchaVerifying, setCaptchaVerifying] = useState(false);
-  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -806,12 +804,6 @@ export function SignInForm() {
           </p>
         </div>
       </div>
-
-      {/* Session timeout modal */}
-      <TimeoutModal
-        isOpen={showTimeoutModal}
-        onClose={() => setShowTimeoutModal(false)}
-      />
     </>
   );
 }

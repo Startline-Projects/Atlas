@@ -195,3 +195,4 @@ be tightened up at the end of Session 1.)
   Clerk vs Auth.js v5 is the Week 0 decision per `TECH_STACK.md` §7.
 
 ---
+

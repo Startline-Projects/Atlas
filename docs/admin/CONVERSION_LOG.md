@@ -46,7 +46,7 @@ Build in this sequence, one step at a time:
 
 | Step | Title | Status | Files | Notes |
 |---|---|---|---|---|
-| 1 | Admin Sign In | ✅ done | src/components/admin/signin-form.tsx, src/components/admin/signin-preview-panel.tsx, src/components/admin/timeout-modal.tsx, src/components/ui/icons.tsx | 2FA, CAPTCHA, lockout, anomaly detection states |
+| 1 | Admin Sign In | ✅ done | src/components/admin/signin-form.tsx, src/components/admin/timeout-modal.tsx, src/lib/admin/signin-state-context.tsx, src/components/admin/admin-preview-panel.tsx, src/app/admin/layout.tsx, src/components/ui/icons.tsx | 2FA, CAPTCHA, lockout, anomaly detection states; preview panel refactored to layout level with React Context for state sharing |
 | 2 | Admin Dashboard | ❌ not started | — | Critical alerts, platform health, financial snapshot, activity feed |
 | 3 | Admin Profile & Permissions | ❌ not started | — | Permissions matrix, activity timeline, account settings |
 | 4 | Users Overview | ❌ not started | — | Tabs (Candidates, Clients, Specialists, Manager, Admins), bulk actions |
@@ -61,13 +61,25 @@ Build in this sequence, one step at a time:
 
 ### Current session status
 
-- **Current step:** 1 (Sign In) — DONE (visual fidelity verified)
-- **Last finished:** 1 (Admin Sign In)
+- **Current step:** 1 (Sign In) — DONE (all 8 browser tests verified)
+- **Last finished:** 1 (Admin Sign In) + 1.5 (preview panel refactor with Context)
 - **Next step:** 2 (Admin Dashboard) — pending approval to begin
 
-### Step 1 — Fixes applied
+### Step 1 — Fixes and refactors applied
 
-- **Preview panel positioning** (committed 2 commits after initial Step 1): Fixed floating position to match admin.html (`bottom-5 right-5`, `max-h-[70vh] overflow-y-auto`). Panel now floats in bottom-right corner without pushing page content. This pattern is reused for Steps 2–12.
+- **Preview panel positioning** (commit bb33f8a): Fixed floating position to match admin.html (`bottom-5 right-5`, `max-h-[70vh] overflow-y-auto`). Panel now floats in bottom-right corner without pushing page content.
+
+- **Preview panel refactor to shared component + Context fix** (Phase 1 commit): 
+  - Renamed `SignInPreviewPanel` → `AdminPreviewPanel`
+  - Added 15-tab view switcher (Signin, Dash, Profile, Users, Cand, Clnt, Spec, Mgr, Adm, Eng·List, Eng·Detail, Job·List, Job·Detail, Disp·List, Disp·Detail, + locked Rev tab)
+  - Moved panel from `/src/components/admin/signin-form.tsx` to `/src/app/admin/layout.tsx` so it wraps all admin routes
+  - Created React Context (`SignInStateContext`) at `/src/lib/admin/signin-state-context.tsx` to share sign-in state between panel and form without prop drilling
+  - Panel state buttons now update the form in real-time
+  - TimeoutModal moved from signin-form to layout level
+  - Used design tokens for colors instead of raw hex values
+  - Tab clicks toggle internal state (no route navigation in Phase 1)
+  - All 8 browser tests verified (state buttons trigger form changes, tabs switch panel content, timeout modal opens)
+  - This pattern is reused for Steps 2–12
 
 ### In scope (Session 2)
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSignInState } from '@/lib/admin/signin-state-context';
 
 type SignInState =
   | 'default'
@@ -20,8 +21,6 @@ type SignInState =
 type ViewTab = 'signin' | 'dashboard' | 'profile' | 'users' | 'candidate' | 'client' | 'specialist' | 'manager' | 'admins' | 'engagements' | 'engagement' | 'jobs' | 'job' | 'disputes' | 'dispute' | 'review';
 
 interface AdminPreviewPanelProps {
-  onStateChange?: (state: SignInState) => void;
-  currentState?: SignInState;
   onShowTimeoutModal?: () => void;
 }
 
@@ -82,12 +81,11 @@ const signinStates: { label: string; value: SignInState; group: string }[] = [
 ];
 
 export function AdminPreviewPanel({
-  onStateChange,
-  currentState = 'default',
   onShowTimeoutModal,
 }: AdminPreviewPanelProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<ViewTab>('signin');
+  const { currentState, setCurrentState } = useSignInState();
 
   const signinGroups = Array.from(new Set(signinStates.map((s) => s.group)));
 
@@ -155,7 +153,7 @@ export function AdminPreviewPanel({
                       <button
                         key={state.value}
                         type="button"
-                        onClick={() => onStateChange?.(state.value)}
+                        onClick={() => setCurrentState(state.value)}
                         className={`w-full px-3 py-2 text-xs text-left font-mono tracking-[0.01em] transition-colors border-l-2 ${
                           currentState === state.value
                             ? 'bg-[rgba(251,248,242,0.12)] border-l-[var(--color-lime)] text-[var(--color-lime)]'
