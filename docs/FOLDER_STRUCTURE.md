@@ -385,6 +385,110 @@ atlas/
 └── README.md
 ```
 
+---
+
+## Per-Role Surface Structure (Template)
+
+Every new role surface (specialist, admin, candidate, client, manager, etc.) follows this **canonical pattern exactly**. Specialist and admin are the reference implementations. No exceptions without an ADR.
+
+### Routes
+
+```
+src/app/
+├── (role)/                          ← route group for main surface
+│   ├── layout.tsx
+│   └── role/                        ← inner folder (same name as role)
+│       ├── [feature]/
+│       │   └── page.tsx             → /role/[feature]
+│       └── dashboard/page.tsx       → /role/dashboard
+│
+└── (role-auth)/                     ← separate route group for auth
+    ├── layout.tsx                   (own layout, own state provider)
+    └── role/
+        ├── signin/page.tsx          → /role/signin
+        ├── forgot/page.tsx          → /role/forgot
+        └── signup/page.tsx          → /role/signup (if applicable)
+```
+
+**Pattern examples:**
+
+- **Specialist:** `(specialist)/specialist/dashboard`, `(specialist-auth)/specialist/signin`
+- **Admin:** `(admin)/admin/dashboard`, `(admin-auth)/admin/signin`
+- **Future candidate:** `(candidate)/candidate/profile`, `(candidate-auth)/candidate/signin`
+- **Future client:** `(client)/client/jobs`, `(client-auth)/client/signin`
+
+### Components
+
+```
+src/components/role/
+├── shell/
+│   ├── layout-shell.tsx             ← main layout wrapper
+│   ├── topbar.tsx                   (navigation bar)
+│   ├── sidebar.tsx                  (if applicable)
+│   └── [feature]-panel.tsx          (optional feature-specific shells)
+│
+├── auth/
+│   ├── signin-form.tsx
+│   ├── signup-form.tsx              (if applicable)
+│   ├── forgot-form.tsx              (if applicable)
+│   ├── otp-input.tsx                (if applicable)
+│   └── timeout-modal.tsx            (if applicable)
+│
+├── dashboard/
+│   ├── dashboard-shell.tsx
+│   ├── dashboard-header.tsx
+│   ├── section-a.tsx
+│   └── section-b.tsx
+│
+└── [feature]/
+    └── [feature-component].tsx      (for Steps 3+)
+```
+
+**Invariants:**
+
+- **NO `.ts` data files under `src/components/`.** Data files belong in `src/lib/mock-data/<role>/` exclusively.
+- **NO components under `src/lib/`.** UI code lives in `src/components/` only. `src/lib/` is for business logic, state, and hooks.
+
+### Mock Data
+
+```
+src/lib/mock-data/role/
+├── index.ts                         ← barrel re-exports (like specialist)
+├── [feature]-data.ts
+├── sidebar-nav-data.ts
+└── topbar-data.ts
+```
+
+**Barrel pattern (following specialist):**
+
+```ts
+// src/lib/mock-data/role/index.ts
+export * from "./dashboard-data";
+export * from "./sidebar-nav-data";
+export * from "./topbar-data";
+```
+
+Component imports use **direct file paths** (not the barrel), matching specialist's current practice:
+
+```ts
+// Correct — direct file import
+import { ALERTS } from "@/lib/mock-data/admin/dashboard-data";
+
+// Also correct (barrel available for future refactoring)
+import { ALERTS } from "@/lib/mock-data/admin";
+```
+
+### Client State & Contexts
+
+```
+src/lib/role/
+├── signin-state-context.tsx         ← Auth state (shared by both route groups)
+├── dashboard-state-context.tsx      (if applicable)
+└── [feature]-context.tsx            (for complex state)
+```
+
+---
+
 ## Key invariants
 
 - **`src/lib/` is framework-free.** No `next/*`, no `react`, no `app/*` imports.
