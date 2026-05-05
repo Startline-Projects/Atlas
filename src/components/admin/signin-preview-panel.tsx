@@ -58,7 +58,7 @@ export function SignInPreviewPanel({ onStateChange, currentState, onShowTimeoutM
   }
 
   return (
-    <div className="fixed bottom-0 right-0 w-64 h-screen bg-[#1a1a1a] border-l border-[#333] text-white overflow-y-auto z-40 shadow-lg">
+    <div className="fixed bottom-5 right-5 w-64 bg-[#1a1a1a] border border-[#333] text-white z-40 shadow-lg rounded-lg">
       {/* Header */}
       <div className="sticky top-0 bg-[#000] px-4 py-3 border-b border-[#333] flex items-center justify-between">
         <span className="font-mono text-xs tracking-[0.08em] uppercase font-semibold">Design Preview</span>
@@ -71,7 +71,7 @@ export function SignInPreviewPanel({ onStateChange, currentState, onShowTimeoutM
       </div>
 
       {/* State groups */}
-      <div className="p-0">
+      <div className="p-0 max-h-[70vh] overflow-y-auto">
         {groups.map((group) => (
           <div key={group}>
             {/* Group label */}
