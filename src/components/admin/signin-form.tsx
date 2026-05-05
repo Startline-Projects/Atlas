@@ -508,7 +508,7 @@ export function SignInForm() {
 
                   <div className={`mt-1 mb-5.5 flex items-center justify-between gap-3 px-4 py-3.5 border rounded-[var(--radius-md)] bg-[#FCFAF2] border-[var(--color-line)]`}>
                     <label className="flex items-center gap-3 cursor-pointer user-select-none">
-                      <input type="checkbox" checked={false} className="sr-only" />
+                      <input type="checkbox" className="sr-only" />
                       <div className="w-5.5 h-5.5 border-[1.5px] border-[var(--color-line-strong)] bg-white rounded flex items-center justify-center flex-shrink-0"></div>
                       <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you're human</span>
                     </label>
@@ -585,13 +585,13 @@ export function SignInForm() {
 
                   <div className={`mt-1 mb-5.5 flex items-center justify-between gap-3 px-4 py-3.5 border rounded-[var(--radius-md)] bg-[#FCFAF2] border-[var(--color-line)]`}>
                     <label className="flex items-center gap-3 cursor-pointer user-select-none">
-                      <input type="checkbox" checked={false} className="sr-only" />
-                      <div className="w-5.5 h-5.5 border-[1.5px] border-[var(--color-line-strong)] bg-white rounded"></div>
+                      <input type="checkbox" className="sr-only" />
+                      <div className="w-5.5 h-5.5 border-[1.5px] border-[var(--color-line-strong)] bg-white rounded flex items-center justify-center flex-shrink-0"></div>
                       <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you're human</span>
                     </label>
                     <div className="flex items-center gap-2.25 flex-shrink-0">
-                      <div className="w-7 h-7 rounded-sm bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-ink-soft)] flex items-center justify-center text-[var(--color-lime)] font-display text-sm">A</div>
-                      <div className="flex flex-col font-mono text-[9px] uppercase text-[var(--color-ink-mute)] leading-[1.4]">
+                      <div className="w-7 h-7 rounded-sm bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-ink-soft)] flex items-center justify-center text-[var(--color-lime)] font-display text-sm font-medium">A</div>
+                      <div className="flex flex-col font-mono text-[9px] tracking-[0.08em] uppercase text-[var(--color-ink-mute)] leading-[1.4]">
                         <strong className="text-[var(--color-ink-soft)] font-semibold">Atlas Verify</strong>
                         <span>Privacy · Terms</span>
                       </div>
