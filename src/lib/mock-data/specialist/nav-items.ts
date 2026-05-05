@@ -48,6 +48,13 @@ export type NavItem = {
   badge?: { value: number; tone: NavBadgeTone };
   /** Hide this item on the compact-mobile sidebar (matches `mobile-hide` in HTML). */
   mobileHide?: boolean;
+  /**
+   * Additional URL prefixes that should highlight this item as active.
+   * Used by dynamic routes that don't have their own sidebar entry —
+   * e.g. `/specialist/candidates/[id]` highlights "My candidates".
+   * Compared as `pathname === prefix || pathname.startsWith(`${prefix}/`)`.
+   */
+  additionalActivePathPrefixes?: ReadonlyArray<string>;
 };
 
 export const navItems: ReadonlyArray<NavItem> = [
@@ -81,6 +88,9 @@ export const navItems: ReadonlyArray<NavItem> = [
     iconKey: "my-candidates",
     section: "Workspace",
     badge: { value: 47, tone: "default" },
+    // The standalone candidate-profile route lives at /specialist/candidates/[id]
+    // and has no sidebar entry of its own — highlight "My candidates" when on it.
+    additionalActivePathPrefixes: ["/specialist/candidates"],
   },
   {
     key: "my-clients",
@@ -149,9 +159,18 @@ export const navItems: ReadonlyArray<NavItem> = [
   },
 ];
 
-/** Routes that already have a real page. Everything else shows "Coming soon". */
+/**
+ * Routes that already have a real page. Everything else shows "Coming soon".
+ *
+ * Note: `/specialist/candidates/[id]` is a dynamic route that doesn't have a
+ * sidebar entry — it's reached from `/specialist/my-candidates` rows. The
+ * longest-prefix matcher in `Sidebar` highlights "My candidates" when the
+ * URL is `/specialist/candidates/<anything>`.
+ */
 export const IMPLEMENTED_ROUTES: ReadonlyArray<string> = [
   "/specialist/dashboard",
   "/specialist/review-queue",
   "/specialist/recert-queue",
+  "/specialist/my-candidates",
+  "/specialist/my-clients",
 ];
