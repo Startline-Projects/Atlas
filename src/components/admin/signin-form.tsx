@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { AlertCircleIcon, AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon, CheckShieldIcon, LockIcon, MailIcon, ShieldIcon } from '@/components/ui/icons';
 import { OTPInput } from './otp-input';
 import { TimeoutModal } from './timeout-modal';
-import { SignInPreviewPanel } from './signin-preview-panel';
 
 type SignInState =
   | 'default'
@@ -812,13 +811,6 @@ export function SignInForm() {
       <TimeoutModal
         isOpen={showTimeoutModal}
         onClose={() => setShowTimeoutModal(false)}
-      />
-
-      {/* Design preview panel */}
-      <SignInPreviewPanel
-        onStateChange={handlePreviewStateChange}
-        currentState={currentState}
-        onShowTimeoutModal={() => setShowTimeoutModal(true)}
       />
     </>
   );
