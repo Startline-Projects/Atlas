@@ -61,9 +61,13 @@ Build in this sequence, one step at a time:
 
 ### Current session status
 
-- **Current step:** 1 (Sign In) — DONE
+- **Current step:** 1 (Sign In) — DONE (visual fidelity verified)
 - **Last finished:** 1 (Admin Sign In)
 - **Next step:** 2 (Admin Dashboard) — pending approval to begin
+
+### Step 1 — Fixes applied
+
+- **Preview panel positioning** (committed 2 commits after initial Step 1): Fixed floating position to match admin.html (`bottom-5 right-5`, `max-h-[70vh] overflow-y-auto`). Panel now floats in bottom-right corner without pushing page content. This pattern is reused for Steps 2–12.
 
 ### In scope (Session 2)
 
