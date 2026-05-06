@@ -583,3 +583,342 @@ extension is the bar; refactors of existing logic are not.
   follow the same migration path to `lib/config/constants.ts`.
 
 ---
+
+## Session 4 — `/specialist/candidate-chat` + `/specialist/client-chat`
+
+**Status:** complete · 6.1–6.4 all signed off.
+
+**Build summary at close-out:** `pnpm typecheck` clean · `pnpm lint`
+clean · `pnpm build` succeeds for 33 routes (down from 34 — the
+`/specialist/messages` stub deleted in 6.4). Marketing landing page
+(`/`) byte-identical to Session 0 baseline `790b101` (`git diff
+790b101 HEAD -- src/app/page.tsx src/app/layout.tsx
+src/components/marketing` returns empty).
+
+### Routing — intentional deviation from PDF (Option A)
+
+PDF describes a single `/specialist/messages?type=candidate&id=<x>` /
+`?type=client&id=<x>` route. **Session 4 splits this into two
+sibling routes:** `/specialist/candidate-chat` and
+`/specialist/client-chat`, each with its own conversation-list rail
+and detail pane. Active conversation is tracked by
+`?id=<conversationId>`.
+
+**Why deviate.** Two reasons. (1) The header/meta line, context strip,
+filter set, templates, and AI-suggestion content all differ between
+the candidate and client surface — collapsing them into a single
+route means a runtime `if (type === 'candidate')` switch on every
+field. With two routes we keep two type-discriminated mock files
+(`candidate-chats.ts`, `client-chats.ts`) and the page just renders
+its half. (2) Sidebar active-state is cleaner: candidate-chat
+highlights "My candidates", client-chat highlights "My clients" —
+both via `additionalActivePathPrefixes` (the same matcher Session 3
+introduced). A merged `/specialist/messages` would need bespoke
+logic to swap which item lights up based on the `type` query param.
+
+The 11 chat-surface UI components are still character-for-character
+shared between the two routes — they live under
+`src/components/specialist/chat-shared/` and consume the
+discriminated-union `ChatThread = CandidateChatThread |
+ClientChatThread`. The split is at the **route + data** layer; the
+**component** layer is still shared.
+
+This is a routing-shape deviation, not a data-shape deviation. If
+product wants to revisit, the change is local: collapse both pages
+into one + add a `?type=` param. The mock data, types, and shared
+components don't move.
+
+### Outgoing-link migration audit
+
+Session 2/3 list pages link to a single canonical URL pattern:
+`/specialist/messages?candidate=<id>` and
+`/specialist/messages?client=<id>`. Session 4 must update those to
+the new routes. **The 5 files identified by grep at 6.1
+(`grep -r '/specialist/messages' src/`):**
+
+1. `src/components/specialist/candidate-profile/profile-hero.tsx`
+   — "Message" CTA on the candidate-profile hero
+2. `src/components/specialist/my-candidates/candidate-row.tsx`
+   — "Message" action on the candidate roster row
+3. `src/components/specialist/my-candidates/candidate-sheet-content.tsx`
+   — "Message" action inside the candidate slide-over sheet
+4. `src/components/specialist/my-clients/client-row.tsx`
+   — "Message" action on the client roster row
+5. `src/components/specialist/my-clients/client-sheet-content.tsx`
+   — "Message" action inside the client slide-over sheet
+
+Plus the legacy stub itself
+(`src/app/(specialist)/specialist/messages/page.tsx`) which is
+deleted in 6.4. Notably the queue-shared / recert pages don't
+currently link to messages — review/recert flows lead to candidate
+profile, not chat — so the migration is bounded to these 5 callers.
+
+Updates: candidate-side links →
+`/specialist/candidate-chat?id=<cand-id>`, client-side links →
+`/specialist/client-chat?id=<client-id>`. Old `?candidate=` /
+`?client=` query params disappear; the new param is `?id=` and
+matches the conversation id (which IS the candidate or client id
+directly).
+
+### Session 3 stub deletion
+
+Session 3 left `src/app/(specialist)/specialist/messages/page.tsx` as
+a "Coming soon" stub. **Deleted in 6.4** once the two real chat
+routes ship. No links should reach that route after the link
+migration above.
+
+### `chat-shared/` — extraction list (committed in 6.2)
+
+11 components, all character-for-character shared between
+candidate-chat and client-chat. Per the standing
+`queue-shared/`/`people-shared/` rule: actually shared by both
+pages, no per-view forks, discriminator prop preferred to forking
+until 3+ boolean flags accumulate. Live under
+`src/components/specialist/chat-shared/`:
+
+1. `chat-shell.tsx` — 3-column wrapper (rail · main · context)
+2. `conv-rail.tsx` — left rail: title + filters + scrollable list
+3. `conv-row.tsx` — single conversation row (avatar + meta + preview + time + unread badge)
+4. `conv-filters.tsx` — filter chip row above the list (driven by `*_CHAT_FILTERS`)
+5. `chat-header.tsx` — main pane header (avatar + title + meta line + actions)
+6. `context-strip.tsx` — 4-cell context strip below the header
+7. `message-list.tsx` — scrollable thread; renders incoming / outgoing / system / internal-note kinds
+8. `message-bubble.tsx` — single bubble (kind-discriminated styling, includes the amber + 🔒 internal-note variant)
+9. `attachment-card.tsx` — file placeholder card (icon · filename · size)
+10. `composer.tsx` — bottom textarea + send button + templates trigger + attach trigger
+11. `ai-suggest-panel.tsx` — collapsible "AI suggests" panel above the composer with "Use this" / "Dismiss"
+
+Page-specific content (which conversations to render, which
+filters/templates apply, what the headers and meta lines look like)
+is supplied by `candidate-chat-app.tsx` and `client-chat-app.tsx`,
+which read from the corresponding mock-data files and hand
+`ChatThread` shapes into the chat-shared components.
+
+### Business rules from the PDF (encoded as type fields + comments)
+
+Same migration pattern as prior sessions: encoded as type fields and
+code comments now, lifted to `lib/config/constants.ts` and enforced
+by services later.
+
+| Rule | Where it lives |
+|---|---|
+| Internal notes are specialist-only · never delivered to candidate/client | `MessageKind = "internal-note"` + render variant: amber bg + 🔒 icon + "Internal note · only you and ops can see this" caption |
+| All client messages are logged to the client's record · audit-tracked | Static caption under the client-chat composer: **"Logged to client record · audit-tracked"** (verbatim wording) |
+| Messages encrypted at rest + in transit | Lighter caption under the candidate-chat composer: **"Encrypted in transit"** (per PDF Step 6 — softer-touch than the client-side audit caption) |
+| Conversation tagging (sourcing/support/dispute/training/vacation/performance for candidates; shortlist/dispute/rates/strategy/replacement/renewal for clients) | `CandidateChatThread.conversationTags` / `ClientChatThread.conversationTags` — carried, not surfaced in UI this session |
+| Attachments use the platform file service (not direct send) | Attachments are placeholders only this session: `ChatAttachment` carries `filename` / `size` / `kind`, no upload pipeline |
+| Composer send appends to local conversation state | `useState<ChatMessage[]>` initialized from the thread; send appends. **Page reload resets state** — there's no persistence layer until services land. Surface this in the UI prose (no "draft saved") so user expectations match. |
+
+### Filter sets — candidate vs client (HTML differs)
+
+The two routes have *different* filter chips per the HTML — not a
+copy-paste:
+
+- **Candidate-chat**: All / Unread / Flagged · because flagged is a
+  candidate-internal state (specialist's mental flag on a person)
+- **Client-chat**: All / Unread / With briefs · because brief
+  activity is the right slice for clients; "flagged" doesn't
+  semantically apply on the client side
+
+Lives in `CANDIDATE_CHAT_FILTERS` and `CLIENT_CHAT_FILTERS`. Filter
+matching is the same `tags.includes(filterKey)` pattern as the queue
+rail.
+
+### Cross-session ID consistency
+
+Every conversation id matches an existing canonical id:
+
+- Candidate-chat: 10 conversations · 10 ManagedStatus states ·
+  `cand-marie-okonkwo` · `cand-anand-patel` · `cand-marcus-bauer` ·
+  `cand-carmen-lopez` · `cand-carlos-mendoza` · `cand-jomari-dc` ·
+  `cand-aaliyah-kone` · `cand-mei-chen` · `cand-tomas-silva` ·
+  `cand-sofia-reyes`
+- Client-chat: 12 conversations · 12 managed clients · IDs match
+  `my-clients.ts` exactly (acme · techflow · vertex · lumio · mercer ·
+  bengaluru · quill · sahara · helios · saunders · bridgepoint ·
+  northwind)
+
+`getCandidateChatThread(id)` / `getClientChatThread(id)` lookups
+return `undefined` for unknown ids; the page falls back to the
+conversation rail's first row (no `notFound()` — the rail is
+always there).
+
+### Forward-looking notes
+
+- **Client profile route doesn't exist yet.** Session 4 may surface
+  "View client" links inside the client-chat header. Until a real
+  `/specialist/clients/[id]` route ships (Session 5+ candidate),
+  those route to `/specialist/my-clients`. Document the breadcrumb
+  in the link itself so future sessions can find them.
+- **No notification/unread-sync.** The unread counts on conversation
+  rows are static initial values. Reading a conversation does NOT
+  zero its unread count this session. Adding that requires a small
+  bit of page state and is non-trivial to do correctly; deferred.
+- **No typing indicator / no "user is online" presence.** Online
+  status is a static field on the conversation, set by mock data.
+  Future sessions that wire presence will replace the static field
+  with a subscription.
+
+### Conventions established (Session 4 additions)
+
+1. **Lite-vs-full data pattern is the standing convention.** Same as
+   `ManagedCandidate` / `CandidateProfile` from Session 3:
+   `ChatConversationLite` is the row shape; `CandidateChatThread` and
+   `ClientChatThread` extend it with detail. The list rail iterates
+   over the array; the detail pane reads the active thread by id.
+2. **Routing-shape deviations from the PDF are documented in
+   CONVERSION_LOG with the rollback path.** Two-route split for chat
+   is the first such deviation. The pattern: *(a) state the
+   deviation, (b) say why, (c) describe what would have to change
+   to revert*.
+3. **Captions under the composer are migration-note carriers.** The
+   "Logged to client record · audit-tracked" caption (client side)
+   and "Encrypted in transit" caption (candidate side) come straight
+   from the PDF rules. They render as small-caption text and exist
+   precisely so the rule is visible to the specialist without
+   surfacing it as a heavy banner.
+
+### Process notes (Session 4)
+
+This session takes the Session 3 process gap to heart: **no shell /
+sidebar / topbar / ribbon modifications without explicit Step 1
+sign-off.** The sidebar matcher extended in Session 3
+(`additionalActivePathPrefixes`) is reused for both new chat
+routes; that's a data-only change to the existing
+`additionalActivePathPrefixes` arrays on `my-candidates` and
+`my-clients` nav items, NOT a code change to the sidebar component.
+No new shell modifications were proposed or made in 6.1.
+
+### Session 4 — what Session 5+ needs to know
+
+- **Two chat routes exist** (`/specialist/candidate-chat`,
+  `/specialist/client-chat`) and the legacy `/specialist/messages`
+  stub is **deleted**. Don't link to it; it's gone.
+- **Cross-session id pattern still holds.** Conversation id ===
+  candidate id (or client id). Linking from any future surface to a
+  chat conversation just appends `?id=<cand-or-client-id>`.
+- **chat-shared/ is fully shared.** If a future surface adds a
+  third chat-style view (e.g. specialist-to-specialist DM), reuse
+  `chat-shared/`; the discriminator-prop pattern can absorb a third
+  thread variant in `ChatThread`.
+- **Internal-note variant exists.** Don't render it as a normal
+  outgoing message in any analytics/timeline component. It's
+  specialist-only and the render variant is distinct (amber + 🔒).
+- **Composer state is local-only.** Until a backend lands, sent
+  messages live in `useState` and are lost on refresh. Sessions
+  building real-time features should plan around this.
+
+### Session 4 close-out (6.4)
+
+**Stub deletion.**
+`src/app/(specialist)/specialist/messages/page.tsx` and its containing
+folder were deleted in 6.4. Pre-deletion grep showed exactly 1 hit
+(the stub's own self-referential doc comment); post-deletion grep is
+empty. Route count went from 34 → 33.
+
+**Outgoing-link migration audit (final state).** All 5 caller sites
+identified at 6.1 are migrated. The grep
+`grep -rn "/specialist/messages" src/` returns ZERO matches across
+the whole tree.
+
+| # | File | Was | Now | Migrated in |
+|---|---|---|---|---|
+| 1 | `candidate-profile/profile-hero.tsx:110` | `/specialist/messages?candidate=${p.id}` | `/specialist/candidate-chat?id=${p.id}` | 6.2 |
+| 2 | `my-candidates/candidate-row.tsx:148` | `/specialist/messages` (no id) | `/specialist/candidate-chat?id=${c.id}` | 6.2 |
+| 3 | `my-candidates/candidate-sheet-content.tsx:150` | `/specialist/messages?candidate=${c.id}` | `/specialist/candidate-chat?id=${c.id}` | 6.2 |
+| 4 | `my-clients/client-row.tsx:108` | `/specialist/messages` (no id) | `/specialist/client-chat?id=${c.id}` | 6.3 |
+| 5 | `my-clients/client-sheet-content.tsx:169` | `/specialist/messages?client=${c.id}` | `/specialist/client-chat?id=${c.id}` | 6.3 |
+
+Side-effect improvement: the two roster-row link sites (#2 and #4)
+were previously bare `/specialist/messages` URLs with no id — they
+now carry the candidate/client id and open the right thread on
+click, where before they would have landed on the generic stub.
+
+**chat-shared/ extraction validated.** The 11-component extraction
+list in the 6.1 plan is consumed by both route apps:
+- `candidate-chat-app.tsx` consumes 11/11 components
+- `client-chat-app.tsx` consumes 11/11 components
+- Zero per-view forks. The two views differ only in 6 constants (mock
+  data import, filter set, template set, composer status caption,
+  router target string, empty-state italic noun) and an inline
+  discriminator on `thread.kind` inside `ChatHeader` (action set) and
+  `ChatAvatar` (gradient circle vs flat-color square).
+
+ChatHeader + ChatAvatar dispatch on `thread.kind` was extended in 6.3
+(action set differs: candidate = Voice call · Schedule · View profile;
+client = Schedule · Send brief · View client). The dispatch fits in
+two ~10-line component branches inside `chat-header.tsx`; no new
+shared component needed.
+
+**Visual fidelity audit (6.4).**
+
+CSS-level walkthrough of `view-candidate-chat` and `view-client-chat`
+against the built routes. The first sweep surfaced 6 gaps; after
+your sign-off, FA-1 and FA-2 were fixed before commit; FA-3, FA-4,
+FA-6 are deferred as known follow-ups; FA-5 stays out of scope.
+
+| # | Surface | Source CSS expects | Built impl | Resolution |
+|---|---|---|---|---|
+| FA-1 | Client chat-header logo (`AC`, `QC`, `VH`, …) | `font-display` opsz 36 · 13px · weight 500 · letter-spacing 0 | now matches: `font-display` + inline `fontVariationSettings: '"opsz" 36'` + `text-[13px]` + `font-medium` (no tracking) | **Fixed in 6.4 close-out** (`chat-avatar.tsx`) |
+| FA-2 | Client conv-row avatars (left rail) | `font-display` opsz 36 · 12px · weight 500 · letter-spacing 0 | now matches: same path, `text-[12px]` at "sm" size | **Fixed in 6.4 close-out** (`chat-avatar.tsx`) |
+| FA-3 | Client conv-rows | `.cc-conv-sub` industry+size sub-line under the company name (e.g. "B2B SAAS · 200") | not rendered — `ChatConversationLite` doesn't carry industry/size | **Deferred** — data shape extension. Logged as a Session 5+ polish item or absorbed by a future client-profile session. Functional impact is minimal: the same info is in the chat-header meta line once a thread is selected. |
+| FA-4 | Conv-row padding | `padding: 12px 16px 12px 13px` (asymmetric: 13L, 16R) | `px-3 py-3` (symmetric 12px) | **Deferred** — below user-noticeable threshold (~3-4px shift, only visible at high zoom). Polish session candidate. |
+| FA-5 | Compose button (rail) | Opens a new-conversation modal | Decorative; `title="New conversation — coming soon"`, no-op on click | **Out of scope** — explicitly scoped out at 6.2; the new-conversation flow involves modal + recipient picker + first-message composer state and is its own work item. |
+| FA-6 | Send-button send icon | Inline SVG arrow path (mirrors `cc-send-btn` chevron) | lucide `Send` icon | **Deferred** — cosmetic; same semantic meaning, different glyph. Polish session candidate. |
+
+**Items NOT in the discrepancy list (verified to match):**
+- 3-column shell grid (`232px sidebar | 320px rail | 1fr main` at ≥1180; `... | 280px | 1fr` at 880-1180; `... | 1fr` <880)
+- Sticky offsets (`top-[calc(36px+57px)]` rail and main; `h-[calc(100vh-36px-57px)]`)
+- Filter chip styling (transparent/inactive → ink/paper active)
+- Search input styling (cream bg, focus → paper bg + ink-mute border)
+- Message bubbles: 70% max-width, 16px outer / 5px tail-corner radius, ink/paper for outgoing, paper/line-bordered for incoming
+- System pill: cream-deep pill, mono small, centered
+- Internal-note variant: amber-tinted with lock + caption (design freedom — not in source HTML)
+- AI suggest panel: lime-tinted (`bg-lime/10`), italic display-font text
+- Composer frame: `rounded-2xl` border, focus-within → `border-ink-mute`, send-button `bg-cream-deep` → `bg-ink` on input
+- Context strip: 4 cells, label (mono uppercase 9.5px) + value with tone classes
+- Empty state: 64×64 cream-deep circle + serif h3 with italic noun + body copy
+
+**Follow-up status (post-fix).**
+
+FA-1 + FA-2 were fixed in the 6.4 close-out by restructuring the
+size-class table in `chat-avatar.tsx` into a kind-keyed record
+(`candidate` keeps mono / weight 600 / 0.02em tracking; `client`
+gets display / weight 500 / no tracking) plus an inline
+`fontVariationSettings: '"opsz" 36'` on the client variant. Total
+change: ~14 lines edited in one file. Verified clean across
+typecheck, lint, build (33/33 routes). Marketing baseline preserved
+(`git diff 790b101 HEAD -- src/app/page.tsx src/app/layout.tsx
+src/components/marketing` returns 0 lines).
+
+FA-3 is the most user-visible deferred item — recommend a Session 5+
+"client roster polish" or "client-profile" session captures it
+alongside the data-shape work it implies (industry+size on the lite
+shape, or a denormalized join from `ManagedClient`). FA-4 / FA-6 are
+small enough to fold into any future polish pass.
+
+FA-5 (compose modal) remains explicit scope, not regression.
+
+### Process notes (Session 4 final)
+
+The session ran clean against the discipline:
+
+- **No shell modifications.** Sidebar / topbar / ribbon untouched.
+  The `additionalActivePathPrefixes` arrays on `my-candidates` and
+  `my-clients` nav items were extended (data-only); the matcher
+  itself from Session 3 is untouched.
+- **Source-as-truth honored on filter sets.** Candidate-chat has
+  All / Unread / Flagged · client-chat has All / Unread / With briefs.
+  The HTML differs and the build matches the HTML.
+- **Lite-vs-full data pattern reused.** Same pattern as Session 3
+  (`ManagedCandidate` / `CandidateProfile`) — no new mental model.
+- **Routing-shape deviation documented.** The two-route split
+  (vs PDF's single `/specialist/messages?type=`) is captured with
+  rationale and rollback path. Future sessions linking to chat
+  surfaces use the new pattern (`?id=<conversation-id>`).
+- **Scope adherence.** Composer is local-state, no compose-modal
+  wiring, no "View brief" expansion in messages, no notification
+  sync. All explicitly listed in the close-out so Session 5+ knows
+  what's intentional vs. what's a missed item.
+
+---

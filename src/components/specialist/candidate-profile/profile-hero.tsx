@@ -107,7 +107,7 @@ export function ProfileHero({ p }: { p: CandidateProfile }) {
 
         <div className="flex flex-shrink-0 flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
           <ActionButton
-            href={`/specialist/messages?candidate=${p.id}`}
+            href={`/specialist/candidate-chat?id=${p.id}`}
             variant="primary"
             icon={<MessageSquare className="h-3 w-3" strokeWidth={1.5} />}
           >

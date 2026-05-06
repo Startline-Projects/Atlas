@@ -147,7 +147,7 @@ export function CandidateSheetContent({ c }: { c: ManagedCandidate }) {
             label: "Send message",
             icon: <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />,
             variant: "primary",
-            href: `/specialist/messages?candidate=${c.id}`,
+            href: `/specialist/candidate-chat?id=${c.id}`,
           },
           {
             key: "profile",

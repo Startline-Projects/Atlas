@@ -166,7 +166,7 @@ export function ClientSheetContent({ c }: { c: ManagedClient }) {
             label: "Message client",
             icon: <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />,
             variant: "primary",
-            href: `/specialist/messages?client=${c.id}`,
+            href: `/specialist/client-chat?id=${c.id}`,
           },
           {
             key: "contracts",

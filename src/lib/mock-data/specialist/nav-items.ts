@@ -89,8 +89,12 @@ export const navItems: ReadonlyArray<NavItem> = [
     section: "Workspace",
     badge: { value: 47, tone: "default" },
     // The standalone candidate-profile route lives at /specialist/candidates/[id]
-    // and has no sidebar entry of its own — highlight "My candidates" when on it.
-    additionalActivePathPrefixes: ["/specialist/candidates"],
+    // and the candidate-chat route at /specialist/candidate-chat — neither has a
+    // sidebar entry of its own. Highlight "My candidates" while on either.
+    additionalActivePathPrefixes: [
+      "/specialist/candidates",
+      "/specialist/candidate-chat",
+    ],
   },
   {
     key: "my-clients",
@@ -99,6 +103,9 @@ export const navItems: ReadonlyArray<NavItem> = [
     iconKey: "my-clients",
     section: "Workspace",
     badge: { value: 12, tone: "default" },
+    // The client-chat route at /specialist/client-chat has no sidebar entry
+    // of its own — highlight "My clients" while on it.
+    additionalActivePathPrefixes: ["/specialist/client-chat"],
   },
   {
     key: "sourcing",
@@ -173,4 +180,6 @@ export const IMPLEMENTED_ROUTES: ReadonlyArray<string> = [
   "/specialist/recert-queue",
   "/specialist/my-candidates",
   "/specialist/my-clients",
+  "/specialist/candidate-chat",
+  "/specialist/client-chat",
 ];

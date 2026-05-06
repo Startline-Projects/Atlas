@@ -145,7 +145,7 @@ export function CandidateRow({ c }: { c: ManagedCandidate }) {
       <td className="w-[92px] text-right align-middle">
         <div className="inline-flex gap-0.5 opacity-40 group-hover:opacity-100">
           <Link
-            href="/specialist/messages"
+            href={`/specialist/candidate-chat?id=${c.id}`}
             onClick={(e) => e.stopPropagation()}
             aria-label={`Message ${c.fullName}`}
             className="text-ink-mute hover:bg-paper hover:border-line hover:text-ink grid h-7 w-7 cursor-pointer place-items-center rounded-md border border-transparent transition-colors"

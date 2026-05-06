@@ -18,3 +18,6 @@ export * from "./recert-queue";
 export * from "./my-candidates";
 export * from "./my-clients";
 export * from "./candidate-profile";
+export * from "./chat-types";
+export * from "./candidate-chats";
+export * from "./client-chats";
