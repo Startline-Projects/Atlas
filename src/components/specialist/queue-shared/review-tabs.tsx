@@ -29,7 +29,7 @@ export function ReviewTabs({
   return (
     <nav
       aria-label={ariaLabel}
-      className="bg-paper/95 border-line-soft sticky top-[calc(36px+57px+147px)] z-[4] border-b backdrop-blur-md"
+      className="bg-cream/95 border-line-soft sticky top-[calc(36px+57px+147px)] z-[5] border-b backdrop-blur-md backdrop-saturate-150"
     >
       <div
         ref={containerRef}

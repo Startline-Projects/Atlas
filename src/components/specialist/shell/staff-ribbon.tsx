@@ -2,13 +2,24 @@
  * The dark "Atlas Internal · Restricted access · All sign-ins logged"
  * ribbon that sits above every Specialist surface (auth + console).
  * Mirrored from `specialist (12).html` lines 13186–13195.
+ *
+ * Sticky to top:0 so it pins with the topbar as a unit when scrolling
+ * — they form the shell-chrome stack: ribbon (top:0, ~36px) sits flush
+ * above the topbar (top-9 = 36px). Without this, the topbar sticks but
+ * the ribbon scrolls away, opening a gap above the topbar.
+ *
+ * z-[20] is above the entire page-chrome sticky stack:
+ *   ribbon z-[20] > profile-tabs z-[8] > roster-cohorts z-[7] >
+ *   topbar z-[6] > review-header z-[5] > review-tabs z-[5] >
+ *   queue-rail-inner z-[2]
+ * and below modals (z-[89]+) and approved-flash (z-[300]).
  */
 export function StaffRibbon() {
   return (
     <div
       role="banner"
       aria-label="Internal access notice"
-      className="bg-ink relative z-[5] flex items-center justify-center gap-3.5 px-6 py-2.5 text-center font-mono text-[10.5px] tracking-[0.14em] uppercase text-paper/80 max-sm:gap-2.5 max-sm:px-4 max-sm:py-2 max-sm:text-[9.5px]"
+      className="bg-ink sticky top-0 z-[20] flex items-center justify-center gap-3.5 px-6 py-2.5 text-center font-mono text-[10.5px] tracking-[0.14em] uppercase text-paper/80 max-sm:gap-2.5 max-sm:px-4 max-sm:py-2 max-sm:text-[9.5px]"
     >
       <span
         aria-hidden="true"
