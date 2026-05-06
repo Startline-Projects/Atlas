@@ -15,8 +15,15 @@
 
 import type { PoolStatus } from "./current-user";
 
-export const POOL_DEPLETION_THRESHOLD = 15;
-export const DISPUTE_SLA_HOURS = 72;
+/*
+ * `POOL_DEPLETION_THRESHOLD` and `DISPUTE_SLA_HOURS` used to live here.
+ * Session 5 moved them to their domain homes (`pool-health.ts` and
+ * `disputes.ts` respectively). Importers now go to the domain files
+ * directly OR through the `@/lib/mock-data/specialist` barrel.
+ *
+ * Migration target unchanged: both constants move to
+ * `lib/config/constants.ts` when the Specialist service slice lands.
+ */
 
 export type DailySubmissionStatus = "Submitted" | "Pending";
 

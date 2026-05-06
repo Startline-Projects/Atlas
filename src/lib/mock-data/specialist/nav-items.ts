@@ -182,4 +182,8 @@ export const IMPLEMENTED_ROUTES: ReadonlyArray<string> = [
   "/specialist/my-clients",
   "/specialist/candidate-chat",
   "/specialist/client-chat",
+  "/specialist/sourcing",
+  "/specialist/pool-health",
+  "/specialist/disputes",
+  "/specialist/daily-activity",
 ];

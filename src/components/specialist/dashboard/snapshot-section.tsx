@@ -1,7 +1,5 @@
-import {
-  POOL_DEPLETION_THRESHOLD,
-  snapshot,
-} from "@/lib/mock-data/specialist/dashboard-kpis";
+import { snapshot } from "@/lib/mock-data/specialist/dashboard-kpis";
+import { POOL_DEPLETION_THRESHOLD } from "@/lib/mock-data/specialist/pool-health";
 import { SectionHeader } from "./section-header";
 
 const POOL_PILL: Record<typeof snapshot.poolHealth, string> = {

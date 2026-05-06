@@ -922,3 +922,459 @@ The session ran clean against the discipline:
   what's intentional vs. what's a missed item.
 
 ---
+
+## Session 5 — Operations surface (sourcing · pool-health · disputes · daily-activity)
+
+**Status:** in progress · 5.1 (mock data + types + IMPLEMENTED_ROUTES) complete.
+
+**Source:** `specialist (12).html` `view-sourcing` (lines 17757–18119),
+`view-pool-health` (18120–18607), `view-disputes` (18608–19008),
+`view-daily-activity` (19009–19223).
+**Spec:** PDF Part 5 (Sourcing & Pool Health), Part 6 (Dispute
+Resolution), Part 7 (Daily Activity & Performance).
+**Routes shipping this session:** `/specialist/sourcing`,
+`/specialist/pool-health`, `/specialist/disputes`,
+`/specialist/daily-activity`. `IMPLEMENTED_ROUTES` goes from 7
+entries to **11** at end of 5.1.
+
+### Tokens added (this session)
+
+**Zero.** Hex inventory of `.sp-*`, `.ph-*`, `.dsp-*`, `.act-*`
+CSS in `specialist (12).html` resolves entirely to existing tokens
+(cream / cream-deep / ink / ink-soft / ink-mute / paper / line /
+line-soft / lime / lime-deep / lime-text / amber / danger / danger-bg
+/ success / success-bg / navy / ink-deep / ink-line / paper-mute) plus
+two known decorative literals reused from prior sessions:
+`#0A66C2` (LinkedIn brand glyph on `.sp-card-source.linkedin`)
+and `#5C4A6E` (purple — already in Session 3's `.mcl-logo.lg-5`,
+reused on `.act-item-icon.recert`). Both stay inline as known
+decorative values.
+
+### Charting decision — pure CSS/SVG, no recharts
+
+**Recommendation: do not add a chart library.** All four views' visual
+data renders entirely via inline static SVG and CSS. Specifically:
+
+- **Sourcing** has no charts — only a CSS conversion-bar with `--w`.
+- **Pool-health** uses inline SVG sparklines (`<path>` with static
+  d-strings), an SVG donut (two `<circle>` elements with
+  `stroke-dasharray` / `stroke-dashoffset`), CSS `flex: N` ratios
+  for the tier-composition bar, CSS `--w` barlist for geography,
+  and a CSS-grid heatmap for the skill×tier matrix.
+- **Disputes** has no charts.
+- **Daily-activity** uses a CSS-grid 30-day heatmap (5 density classes
+  `.h0` … `.h4`) and the same stat-card pattern as sourcing.
+
+`recharts` would add ~80 KB to the client bundle for visualizations
+that are static and tied to specific d-strings already in the source
+HTML. A future polish session that adds interactive zoom / tooltips /
+legend toggles is the right moment to revisit. Per `AI_RULES.md` B14
+(no new dependency without an ADR), the recommendation is: **stay
+pure CSS/SVG this session.**
+
+### HTML-vs-PDF deviation: daily-activity (formal divergence)
+
+**The HTML's `view-daily-activity` is a read-only audit log feed.**
+4-card stat strip + filter chips + 30-day heatmap + chronological
+feed of completed actions (auto-tracked by Atlas).
+
+**The PDF's Step 12 describes a different surface:** an Activity
+submission form (LinkedIn message counts, email counts, signups
+generated, today's wins / blockers / tomorrow's priorities), with
+manager-required submission and post-submission lock.
+
+Per the standing **HTML wins** rule, Session 5 builds the read-only
+audit log as the visible UI for `/specialist/daily-activity`. The
+PDF's submission form is captured on the type layer via
+`DailyActivitySubmission` (in `daily-activity.ts`), not rendered.
+
+**Migration target (specific, not vague):**
+
+> Daily-activity in production needs both surfaces: the read-only
+> audit log (this session's UI) AND a daily submission form with
+> manager-required enforcement. Recommended path: a separate route
+> `/specialist/daily-activity/submit` launched from a "Submit
+> today's report" CTA at the top of the audit log, OR a modal
+> triggered from the same CTA. Manager-required enforcement is
+> service-layer (block sign-out / surface dashboard alert if previous
+> day not submitted). When services land, this becomes a real
+> migration item.
+
+The submission-form fields are typed verbatim in
+`DailyActivitySubmission` (`outreachCounts` / `conversationsResults` /
+`profileWorkAutoCalc` / `notesWins` / `notesBlockers` /
+`tomorrowsPriorities`). `todaysSubmissionDraft` exports a sample
+in `status: "not-submitted"` so a future session can wire the form
+without rewriting the shape.
+
+### HTML-vs-PDF deviation: sourcing (kanban only, no affiliate panel)
+
+The HTML's `view-sourcing` is a 4-stage kanban (Sourced → Contacted
+→ Engaged → Applied) plus stat strip / filter chips / slide-over
+detail / add-prospect modal. The PDF's Step 9 also describes:
+
+- An **Active Sourcing Requests panel** (client-originated brief
+  requests for shortlists)
+- An **Affiliate link + QR code generator**
+- An **Outbound activity tracker** (LinkedIn / FB / Reddit / direct
+  counts — overlap with daily-activity's stat strip)
+- A **Recruitment sprint mode** that auto-activates when pool drops
+  below `POOL_DEPLETION_THRESHOLD = 15` (defined in Session 1; this
+  session re-homes it in `pool-health.ts` as the canonical domain)
+
+**None of these are in the HTML.** Session 5 ships the kanban only.
+The other panels are a future-session addition; the
+`POOL_DEPLETION_THRESHOLD` constant is in place for whichever
+session wires recruitment-sprint mode.
+
+### Reuse audit table (verbatim from Step 1)
+
+| | sourcing | pool-health | disputes | daily-activity |
+|---|---|---|---|---|
+| `people-shared/RosterHeader` | ✅ | ✅ | — (uses queue's review-header) | ✅ |
+| `queue-shared/QueueShell` | — | — | ✅ | — |
+| `queue-shared/QueueRail` | — | — | ✅ (with disputes-row content) | — |
+| `queue-shared/ReviewHeader` | — | — | 🔄 (breadcrumb + parties identity row) | — |
+| `queue-shared/ReviewTabs` | — | — | ✅ (Overview/Timeline/Evidence/Decision/Audit log) | — |
+| `queue-shared/SectionFrame` | — | — | ✅ (the Section 01/02/03/04 pattern) | — |
+| `queue-shared/DecisionBar` | — | — | 🔄 (sticky bar; Save draft + Open decision form + Escalate) | — |
+| `queue-shared/NotesCard` | — | — | ✅ (Specialist's investigation workspace if rendered) | — |
+| `queue-types.AVATAR_GRADIENTS` | ✅ | ✅ | ✅ | ✅ |
+| `mock-data/my-clients.ManagedClient` | — (cross-session via clientId) | — | ✅ (respondent client refs) | — |
+| `mock-data/my-candidates.ManagedCandidate` | — | 🔄 (lighter `PoolCandidateRef`) | ✅ (claimant candidate refs) | — |
+
+Disputes inherits ~6 queue-shared/ components; pool-health reuses
+RosterHeader + AVATAR_GRADIENTS but every visualization is bespoke.
+Sourcing's kanban shape is novel; daily-activity is small.
+
+### `RosterHeader` reused under its existing name
+
+The `RosterHeader` component lives in `people-shared/` from Session 3,
+where it served `my-candidates` and `my-clients`. Its API
+(`eyebrow + title.lead + title.italic + subtitle + actions`) is
+**generic** — sourcing, pool-health, and daily-activity all consume it
+with no API changes. Per the discriminator-prop-over-forking discipline,
+**RosterHeader is in fact the standard view-header; reused from
+people-shared/ across operations views.** A future polish session may
+rename or relocate it; that's not Session 5's problem.
+
+### `operations-shared/` — extraction list (committed in 5.2-5.5 builds)
+
+Three components, each genuinely imported by ≥2 of the 4 operations
+views. Same discipline as `queue-shared/` / `people-shared/` /
+`chat-shared/`: extract only when ≥2 views share the same shape; no
+per-view forks; discriminator prop preferred.
+
+| Component | Imported by | Justification |
+|---|---|---|
+| `period-toggle.tsx` | pool-health (7d/30d/90d/All) · daily-activity (Today/7 days/30 days) | Pill-row toggle with active state. Different label sets per view, same shape. |
+| `stat-card.tsx` | sourcing (4-card strip) · daily-activity (4-card strip) | Label + bignum (with optional `<em>`) + trend line. Source CSS for `.sp-stat-card` and `.act-stat-card` is character-for-character identical. |
+| `heat-cell.tsx` | pool-health (skill×tier matrix density) · daily-activity (30-day heatmap) | Density swatch with 5 levels (`.h0` … `.h4`) + amber accent. Same CSS class pattern in both views. **Standing rule: if heat-cell ends up needing a one-off variant during 5.4 (pool-health), surface it before forking — discriminator prop preferred.** |
+
+**Components NOT promoted to operations-shared:**
+
+- Filter-chip rows differ enough across the 3 views that ship them
+  (sourcing has `source`-tinted dot prefix; daily-activity has
+  category-color dot prefix + count chip; disputes uses bare label +
+  count). Each gets its own minimal chip-row component within the view
+  folder per the "if it fits awkwardly, build a parallel one" rule.
+
+### Cross-session ID inventory
+
+**Sourcing** (low cross-session — prospects are pre-pool):
+- 9 prospects with new `prospect-*` IDs (Diya, Aarav, Anika, Hannah,
+  Marcus Lee, Wei Tan, Priya Reddy, Tomás Reyes, Liam).
+- **One cross-session conversion**: `prospect-tomas-reyes` (Applied
+  stage) carries `convertedTo: "cand-marie-okonkwo"` — the prospect
+  who landed on Marie's slot in the pool. All other prospects have no
+  back-references (pre-pool or freshly applied).
+
+**Pool-health** (medium — churn list + recommended actions reference
+existing IDs):
+- Churn risk list: `cand-sofia-reyes`, `cand-mei-chen`,
+  `cand-aaliyah-kone` (3 of 5 cross-ref); `pool-kofi-mensah`,
+  `pool-vikram-mehta` (2 of 5 pool-only synthetic IDs — the pool has
+  47 talents but Session 3 modeled 13). `PoolCandidateRef.isCrossRef`
+  flags the side cleanly.
+- Recommended actions reference `cand-anand-patel` and
+  `cand-kanya-suksawat` by name in the body (no ID linkage in the
+  detail strings; the CTAs route to roster pages).
+- Skill × tier matrix is purely numeric.
+
+**Disputes** (high cross-session integration — every dispute references
+real candidates and clients):
+- DSP-2026-04-12 — Sofia Reyes (`cand-sofia-reyes`) vs Quill & Co (`client-quill-co`) — primary HTML case
+- DSP-2026-04-08 — Marcus Bauer (`cand-marcus-bauer`) vs Vertex Health (`client-vertex-health`)
+- DSP-2026-04-04 — Anand Patel (`cand-anand-patel`) vs TechFlow Inc (`client-techflow-inc`)
+- DSP-2026-03-25 — Carmen Lopez (`cand-carmen-lopez`) vs Acme Co (`client-acme-co`)
+- DSP-2026-03-18 — Mei Chen (`cand-mei-chen`) vs Northwind Solutions (`client-northwind`)
+- DSP-2026-03-12 — Lumio Health (`client-lumio-health`) vs Aaliyah Koné (`cand-aaliyah-kone`) — client-initiated
+- DSP-2026-04-15 — Bridgepoint LLC (`client-bridgepoint-llc`) vs Tomás Silva-Mendes (`cand-tomas-silva`) — escalated to admin
+
+7 disputes total · all 8 `DisputeState` values represented across the
+set (open / in-progress / under-review / resolved-favor-claimant /
+resolved-favor-respondent / resolved-partial / resolved-dismissed via
+the Carmen case routing to side-with-client / escalated).
+
+**Daily-activity** (high — the feed IS cross-references):
+- ~38 feed items spanning May 6 (today) back through Apr 8.
+- Cross-references include: cand-marie-okonkwo, cand-anand-patel,
+  cand-aaliyah-kone, cand-mei-chen, cand-sofia-reyes,
+  cand-tomas-silva, cand-carmen-lopez, cand-linh-nguyen,
+  cand-linh-tran, cand-hana-reza, cand-rajan-kumar, cand-wei-tan,
+  cand-kanya-suksawat. Plus client-quill-co, client-acme-co,
+  client-techflow-inc, client-mercer-capital, client-saunders-saas,
+  client-vertex-health, client-bengaluru-bio, client-helios-robotics,
+  client-northwind, client-lumio-health, client-bridgepoint-llc.
+- DSP-2026-04-12, DSP-2026-04-15, DSP-2026-04-04 dispute-id refs.
+
+### Business constants (this session)
+
+Two constants re-homed to their canonical domain files (no new business
+rules):
+
+| Constant | Value | Was | Now | Migration target |
+|---|---|---|---|---|
+| `POOL_DEPLETION_THRESHOLD` | `15` | `dashboard-kpis.ts` (S1) | `pool-health.ts` (canonical domain) | `lib/config/constants.ts` when services land |
+| `DISPUTE_SLA_HOURS` | `72` | `dashboard-kpis.ts` (S1) | `disputes.ts` (canonical domain) | `lib/config/constants.ts` when services land |
+
+`dashboard-kpis.ts` no longer declares either constant; the dashboard
+component (`snapshot-section.tsx`) was updated to import
+`POOL_DEPLETION_THRESHOLD` from the new home in `pool-health.ts`.
+A doc-block in `dashboard-kpis.ts` records where the constants moved
+so anyone grepping for them lands in the right place. When services
+land, both constants move together to `lib/config/constants.ts`.
+
+### Conventions established (Session 5 additions)
+
+1. **`PoolCandidateRef.isCrossRef` boolean** is the canonical way to
+   distinguish cross-session candidate references from pool-only synthetic
+   refs. Set true for `cand-*`, false for `pool-*`. Future sessions
+   that surface candidates the specialist sees but doesn't manage in
+   detail (e.g., performance benchmarks vs. anonymous peer averages)
+   can use the same pattern.
+2. **Synthetic `pool-*` IDs** for candidates the specialist manages
+   without a full Session 3 mock. These render avatar + name without
+   a profile link. If a future session needs to model the full 47-talent
+   pool, promote them to `cand-*` ids in my-candidates.ts.
+3. **Dispute IDs are case identifiers, not URL slugs.** `DSP-2026-04-12`
+   reads like a real ticket number; the rail row uses it as the displayed
+   case ID and the URL pattern (when 5.2 wires it) will be
+   `/specialist/disputes?id=DSP-2026-04-12` (matches the chat-routes
+   pattern from Session 4).
+4. **Type-only PDF capture** is the standard handling for HTML-vs-PDF
+   divergences where the PDF surface is real but not yet built. The
+   `DailyActivitySubmission` shape is the canonical example. Future
+   sessions follow the same pattern for any spec rules whose UI is
+   deferred.
+5. **Disputes decision-bar is 2-button (Save draft / Open decision
+   form) per source HTML, not the 3-button shape used by review-queue
+   / recert-queue.** Escalate lives in the header (next to Audit log +
+   Export PDF) as a case-level meta-action. The directive sent at
+   start of 5.2 assumed the 3-button pattern would apply; HTML
+   overrode. The disputes-view-specific `DisputeDecisionBar` component
+   sits in `disputes/` rather than `queue-shared/` because the metric
+   block ("evidence reviewed: N of M · SLA remaining") and the
+   resolved-state copy ("Decision recorded · case closed") differ
+   structurally from the queue's "sections reviewed · avg specialist N min".
+6. **Sourcing kanban — no drag-and-drop this session.** The HTML
+   kanban suggests DnD via the `.sp-card.dragging` opacity rule and
+   the per-stage column targets, but no DnD library is installed and
+   none is added per `AI_RULES.md` B14 (no new dependency without an
+   ADR). Stage transitions are exposed via the per-card "Advance"
+   hover action (visual `e.preventDefault()` only — no real stage
+   change) and via the slide-over's "Advance to next stage" primary
+   button (also visual). When services land, the move is twofold:
+   (a) wire the buttons to a `prospectService.advanceStage` call,
+   (b) add a DnD library — `@dnd-kit/core` is the recommended choice
+   given the small surface (4 columns, ~30 cards typical) and its
+   tree-shakeable footprint.
+7. **Pool-health deliberate fidelity decisions (not deferred fixes).**
+   Three items where the build deviates from source CSS by design:
+   - **FA-pool-1**: sparkline stroke uses success / lime-deep tones
+     instead of source's ink. Visually nicer (the metric type tints
+     the line). Deliberate.
+   - **FA-pool-2**: shared `HeatCell` uses an averaged 5-level
+     density ramp (0.20 / 0.45 / 0.70 / full) rather than the slightly
+     different per-view alpha steps (pool-health 0.12/0.28/full;
+     daily-activity 0.25/0.50/0.75/full). Sub-perceptual at typical
+     render sizes, single component shape across both views.
+   - **FA-pool-3**: pool-only churn-risk rows render as plain divs
+     (no hover, no link) while cross-ref rows are interactive
+     `<Link>`s. Affordance honesty: a hover state on a non-link is
+     misleading. Deliberate.
+8. **Avatar primitive extraction — known polish-session item, NOT
+   Session 5 scope.** 5 sites use similar avatar logic
+   (`chat-shared/ChatAvatar`, `queue-types/AVATAR_GRADIENTS`,
+   `disputes/parties-card`, `sourcing/prospect-card`,
+   `pool-health/churn-risk-list`). Polish-session candidate: extract
+   a unified `Avatar` primitive that reads from a discriminated
+   `AvatarSubject` union (`{kind: 'candidate', gradient, ...} |
+   {kind: 'client', logoVariant, ...}`). Expected size: ~80 lines +
+   5-file refactor. Not Session 5 scope.
+9. **No `dangerouslySetInnerHTML` anywhere in the codebase.** Mock
+   data carries `<strong>...</strong>` and `<em>...</em>` markers
+   inside string fields (chat threads, sourcing prospect bios,
+   activity feed item titles/details). These are parsed into typed
+   `TitleNode` arrays and rendered as React elements. The parser is
+   regex-based, doesn't support nested markup, and lives at the
+   call site (no shared utility yet — extract when a 3rd consumer
+   appears). Session 4's chat-shared title-aware components were
+   the first pattern; Session 5's sourcing prospect bio +
+   daily-activity feed items continue it. Locked-in convention.
+10. **`operations-shared/` extraction validated end of 5.5** — all 3
+    components (`StatCard`, `PeriodToggle`, `HeatCell`) consumed by
+    2+ views with zero forks and zero discriminator-prop additions
+    since extraction. Same validation pattern as `queue-shared/`
+    (Session 2) and `people-shared/` (Session 3). Discipline holds.
+
+### Session 5 — what 5.2-5.5 needs to know
+
+- **All 4 mock-data files complete.** `sourcing.ts`, `pool-health.ts`,
+  `disputes.ts`, `daily-activity.ts`. Barrel updated.
+  `IMPLEMENTED_ROUTES` already lists the 4 new routes (so the sidebar
+  Coming-Soon stub is bypassed before the page files land — make sure
+  page files are in place before pushing).
+- **Pages still need building.** 4 page.tsx files + per-view component
+  folders + `operations-shared/` (3 components).
+- **Build order: 5.2 disputes (highest reuse) → 5.3 sourcing → 5.4
+  pool-health (most new) → 5.5 daily-activity (smallest).**
+- **HTML wins on visible UI** for the daily-activity divergence and
+  the sourcing kanban-only scope. Don't expand scope without sign-off.
+
+### Session 5 close-out (5.6)
+
+**Status:** complete · 5.1–5.5 all signed off.
+
+**Build summary at close-out:** `pnpm typecheck` clean · `pnpm lint`
+clean · `pnpm build` succeeds for **33 routes** (unchanged — 4 new
+implementations replaced 4 stubs net-zero). Marketing landing page
+(`/`) byte-identical to Session 0 baseline `790b101`
+(`git diff 790b101 HEAD -- src/app/page.tsx src/app/layout.tsx
+src/components/marketing` returns 0 lines). All 13 candidate profile
+dynamic routes still pre-render (`generateStaticParams` honored).
+
+### Reuse audit summary across the 4 Session 5 views
+
+The 4 ops views consumed shared components from 5 libraries:
+
+| Library | Components used (count of imports) | Notes |
+|---|---|---|
+| `queue-shared/` (12 components) | QueueShell · QueueRail · ReviewTabs · SectionFrame · ReviewModal · ApprovedFlash · `AVATAR_GRADIENTS` from queue-types — **6 of 13** | All consumed by disputes; AVATAR_GRADIENTS also by sourcing/pool-health |
+| `people-shared/` (10 components) | RosterHeader · RosterActionButton · RosterSheet — **3 of 10** | RosterHeader on sourcing/pool-health/daily-activity (the standard view-header convention); RosterSheet shell on sourcing |
+| `chat-shared/` (16 components) | None | Not consumed by ops views — feed items are simpler than chat bubbles, render inline |
+| `operations-shared/` (3 NEW) | StatCard · PeriodToggle · HeatCell — **3 of 3** | First and second consumers per primitive validated mid-session |
+| Mock-data cross-refs | `cand-*` IDs (Sessions 2/3) · `client-*` IDs (Session 3) · DSP-* (Session 5) | 7 disputes + 5 churn-risk + ~38 daily-activity feed items reference real cross-session ids |
+
+`chat-shared/` was deliberately excluded — feed items are simpler
+than chat bubbles, the disputes timeline has its own structured
+shape, and the activity-feed-item is its own primitive. **No
+forced fits.**
+
+### `operations-shared/` — extraction validation (Session 5 deliverable)
+
+Three components extracted with pre-validated 2nd consumers:
+
+| Primitive | First consumer | Second consumer | Forks added | Discriminator props added |
+|---|---|---|---|---|
+| `StatCard` | sourcing/SourcingStatStrip (5.3) | daily-activity/ActivityStatStrip (5.5) | 0 | 0 |
+| `PeriodToggle` | pool-health/PoolHealthHeader (5.4) | daily-activity/DailyActivityHeader (5.5) | 0 | 0 |
+| `HeatCell` | pool-health/SkillTierMatrix (5.4) | daily-activity/ActivityHeatmap (5.5) | 0 | 0 |
+
+Same validation pattern as `queue-shared/` (Session 2) and
+`people-shared/` (Session 3). Discipline holds.
+
+### Judgment calls log (Session 5)
+
+| # | Call | Rationale | Approval status |
+|---|---|---|---|
+| 1 | Disputes decision-bar 2-button (HTML) vs 3-button (directive) — built `DisputeDecisionBar` parallel; Escalate moved to header | HTML wins on visible UI; metric block + button count differ from queue-shared/DecisionBar | Approved |
+| 2 | Avatar inlined in `disputes/parties-card` (parallel to `chat-shared/ChatAvatar`) | Different type shape (`partyType` vs `kind`); fits-awkwardly rule | Approved + flagged for polish-session extraction |
+| 3 | Sourcing — no drag-and-drop | No new dependency without ADR; per-card "Advance" hover button covers semantic | Approved |
+| 4 | Sourcing — LinkedIn replaced by colored dot | lucide-react has no Linkedin export; brand icons out of scope | Approved + flagged for 5.6 audit |
+| 5 | Sourcing — RosterSheet reused for prospect detail | Shape fits as a generic shell with `children` composition | Approved |
+| 6 | Pool-health `PhCard` chrome stayed page-specific (not promoted) | Only consumed by 8 cards on one page | Approved |
+| 7 | Pool-health `SparklineSVG` uses computed paths from numeric series | Cleaner than character-for-character d-string copy from source | Approved |
+| 8 | Pool-health recommended-action CTAs as real Next.js Links | Destinations exist (review-queue / sourcing / my-candidates) | Approved — pool-health becomes nav gateway |
+| 9 | Pool-health sparkline tone (success/lime-deep) ≠ source's ink (FA-pool-1) | Visually nicer; metric type tints the line | Approved as deliberate |
+| 10 | Pool-health unified HeatCell density ramp (FA-pool-2) | Sub-perceptual at typical sizes; single component shape | Approved as deliberate |
+| 11 | Pool-only churn-risk rows have no hover/link (FA-pool-3) | Affordance honesty over visual consistency | Approved as deliberate |
+| 12 | Daily-activity title parser — typed nodes, no `dangerouslySetInnerHTML` | Locked-in convention #9 above | Approved |
+| 13 | Daily-activity filter+feed lifted into single Client island | Shared filter state across chips + feed | Approved |
+| 14 | Daily-activity `note` kind in CSS, absent from type — left as gap | Future polish session adds note-kind feed items + extends both | Approved |
+| 15 | Daily-activity heatmap shrinks (no horizontal scroll) on narrow widths | Matches source CSS behavior | Approved |
+
+### Migration constants (Session 5)
+
+Two domain constants now live in their canonical files. Migration
+target unchanged for both: `lib/config/constants.ts` when the
+Specialist service slice is built.
+
+| Constant | Value | Domain home | Source PDF rule |
+|---|---|---|---|
+| `POOL_DEPLETION_THRESHOLD` | `15` | `lib/mock-data/specialist/pool-health.ts` | PDF Step 9 §"Recruitment sprint mode (when pool depletion alert fires)" + Step 10 §"Active Candidates: [X] (threshold 15)" |
+| `DISPUTE_SLA_HOURS` | `72` | `lib/mock-data/specialist/disputes.ts` | PDF Part 6 §"SLA management — Each dispute has a 72-hour SLA" |
+
+`dashboard-kpis.ts` no longer declares either constant (only a doc-block
+pointing at the new homes). Dashboard import paths updated in 5.1.
+
+### Daily-activity HTML-vs-PDF deviation (final)
+
+Confirmed at 5.6 — the build ships the **HTML's read-only audit log**
+as the visible UI. The PDF's submission-form fields are typed in
+`DailyActivitySubmission` (in `daily-activity.ts`) but not rendered.
+
+**Final migration note (verbatim):**
+
+> Daily-activity in production needs both surfaces: the read-only
+> audit log (this session's UI) AND a daily submission form with
+> manager-required enforcement. Recommended path: a separate route
+> `/specialist/daily-activity/submit` launched from a "Submit
+> today's report" CTA at the top of the audit log, OR a modal
+> triggered from the same CTA. Manager-required enforcement is
+> service-layer (block sign-out / surface dashboard alert if
+> previous day not submitted). When services land, this becomes
+> a real migration item.
+
+### Process notes (Session 5 final)
+
+- **No shell modifications.** Sidebar / topbar / ribbon untouched.
+  `IMPLEMENTED_ROUTES` extended by 4 entries (sourcing / pool-health /
+  disputes / daily-activity); `additionalActivePathPrefixes` not
+  needed for any of them (all 4 are static paths).
+- **Disk-full warning during 5.5.** `.next/` cache reached 733MB
+  during the 5.5 build, producing an empty file write that I had to
+  delete and recreate. Resolution: `rm -rf .next/` before long sessions
+  and `pnpm build` to regenerate. Future sessions: monitor `df` /
+  `pnpm store status` before long execution stretches.
+- **`getCandidateChatThread` lookups not surfaced as cross-links from
+  pool-health.** The churn-risk list links to `/specialist/candidates/[id]`
+  rather than to chat threads; the recommended actions link to roster
+  routes rather than to specific candidates. This is intentional —
+  pool-health is strategic, not operational. Specific-candidate paths
+  belong on review-queue / my-candidates / candidate-chat.
+
+### Session 5 — what Session 6 needs to know
+
+- **All 4 ops views ship.** `IMPLEMENTED_ROUTES` is now 11 entries.
+  Route count holds at 33 (4 new implementations replaced 4 stubs).
+- **`operations-shared/` is real shared code.** 3 components, 6 cross-
+  view consumptions, 0 forks. Pattern proven; reuse it for any 2nd-
+  consumer extraction in S6.
+- **Avatar primitive extraction is the single biggest deferred polish
+  item.** 5 sites + ~80 lines of refactor. Recommend Session 6 polish
+  sprint or a dedicated post-S6 cleanup.
+- **No `dangerouslySetInnerHTML` anywhere.** The structured-title-parser
+  pattern is the standard. If S6 needs another consumer, extract a
+  shared utility.
+- **Migration constants live in domain files.** When services land,
+  both `POOL_DEPLETION_THRESHOLD` and `DISPUTE_SLA_HOURS` move to
+  `lib/config/constants.ts` together.
+- **Daily-activity needs a 2nd surface — the submission form.** Specific
+  migration path documented above. Session 6 isn't building this; the
+  service-layer session is.
+- **3 specialist views still stubbed:** `/specialist/performance`
+  (PDF Step 13) · `/specialist/reviews` (PDF Step 14) · `/specialist/help`
+  (general). Session 6 candidate scope.
+
+---
