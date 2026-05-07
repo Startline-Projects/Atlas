@@ -50,7 +50,7 @@ Build in this sequence, one step at a time:
 | 2 | Admin Dashboard | ❌ not started | — | Critical alerts, platform health, financial snapshot, activity feed |
 | 3 | Admin Profile & Permissions | ❌ not started | — | Permissions matrix, activity timeline, account settings |
 | 4 | Users Overview | ❌ not started | — | Tabs (Candidates, Clients, Specialists, Manager, Admins), bulk actions |
-| 5 | Candidate Detail | ✅ done | ProfileSectionIdentity, ProfileSectionPipeline, ProfileSectionSnapshot, ProfileSectionEngagements, ProfileSectionFinancial, ProfileRail, ProfileSectionTrust, ProfileSectionPrivacy, CandidateProfileShell, ProfileSectionCommunications, CommunicationFilterTabs, ProfileSectionAudit | 11 sub-steps (5a–5k): identity verification, vetting pipeline, profile snapshot, engagements, financial, quick facts, trust signals, privacy, shell/nav, communications (filter tabs + threads), audit log (day-grouped timeline, pseudo-line/dot, outcome labels, avatar initials). All 4 audit passes completed. 13 visual-fidelity drifts fixed. 6 conversion patterns documented. |
+| 5 | Candidate Detail | ✅ done | ProfileSectionIdentity, ProfileSectionPipeline, ProfileSectionSnapshot, ProfileSectionEngagements, ProfileSectionFinancial, ProfileSectionCommunications, ProfileSectionAudit, ProfileSectionSignals, ProfileSectionPrivacy, CandidateProfileShell, ProfileBackRow, ProfileHero, ProfileHeroBanner, ProfileRail, ProfileRailToc, ProfileRailQuickFacts | 14 sub-steps (5a–5n): hero + 9 numbered sections + rail with scroll-spy. All sections implemented with type-safe interfaces. 14 visual-fidelity drifts fixed. 7 conversion patterns documented. Zero changes to globals.css. |
 | 6 | Client Detail | ❌ not started | — | Similar structure to Step 5, client-specific sections |
 | 7 | Specialist Detail | ❌ not started | — | Performance summary, caseload, audit-level visibility |
 | 8 | Manager Detail | ❌ not started | — | Manager-specific metrics and actions. Singleton route /admin/users/manager — Atlas currently has one Manager of Talent Specialists (Mateo Vargas, mgr-001-v8b2c4). If future product decisions add other manager roles, this route will need to migrate to /admin/users/managers/[id]. Flag for review at that point. |
@@ -61,9 +61,9 @@ Build in this sequence, one step at a time:
 
 ### Current session status
 
-- **Current step:** 5 (Candidate Detail) — DONE (all 11 sub-steps: 5a–5k completed and verified)
-- **Last finished:** 5k (Communications & Audit Log) — day-grouped timeline, outcome labels, avatar initials, status pills
-- **Next step:** 6 (Client Detail) — pending approval to begin
+- **Current step:** 5 (Candidate Detail) — ✅ FULLY COMPLETE (all 14 sub-steps: 5a–5n completed and verified)
+- **Last finished:** 5n (Right Rail Scroll-Spy) — IntersectionObserver, smooth-scroll, observer cleanup, LONG→SHORT token conversion complete
+- **Next step:** 6 (Client Detail) — ready for planning
 
 ### Step 1 — Fixes and refactors applied
 
@@ -158,21 +158,24 @@ Hard invariants:
 
 6. **Day-grouped lists (Pattern X: single card, inline header dividers):** When admin.html shows grouped content (audit days, threads by date, engagement history by year), the structure is ONE card with header dividers inside, not MULTIPLE cards per group. Headers use a different background color (paper-deep/cream) and border lines to create visual separation. Store a `dayGroup?: { label, count }` field on the FIRST entry of each group; render emits a divider when the field is present. Labels are bespoke ("Today · April 30, 2026", "Mar 12, 2024 — Mar 8, 2024 · earlier") and must be stored as data, not computed from timestamps.
 
-Step 5 sub-step breakdown (Candidate Detail)
-Step 5 is large (HTML lines 15915–17093, ~1,178 lines, 9 sections + header + action toolbar). Split into 11 sub-steps. Ship one sub-step per commit. Update the row's status here when each sub-step closes.
+7. **Right rail scroll-spy with smooth-scroll:** Implement as Client Component with `useState(activeKey)` tracking the currently visible section. Use `useEffect` with `IntersectionObserver` to auto-detect which section is in viewport (rootMargin: '-80px 0px -60% 0px', threshold: 0). Return cleanup function to disconnect observer on unmount. On TOC click, prevent default, scroll target into view with { behavior: 'smooth', block: 'start' }, then manually set activeKey. Use `truncate` Tailwind class for overflow labels (not text-overflow-ellipsis). Convert all tokens to SHORT-form (var(--ink) not var(--color-ink)).
 
-| Phase | Section(s) | HTML lines | Status | Files | Notes |
-|---|---|---|---|---|---|
-| 5a | Identity Verification | 16015–16186 | ✅ | ProfileSectionIdentity, IdentityVerificationContext | Type-safe interfaces for IdentityCheckResult antifraudChecks array |
-| 5b | Vetting Pipeline | 16188–16322 | ✅ | ProfileSectionPipeline, VettingPipelineContext | Pipeline step timeline with color-coded status badges |
-| 5c | Profile Snapshot | 16324–16464 | ✅ | ProfileSectionSnapshot, ProfileSnapshotContext | Skills grid, work history, portfolio, ratings |
-| 5d | Engagement History | 16466–16521 | ✅ | ProfileSectionEngagements, EngagementsContext | Active vs. past engagements, hourly rates, date ranges |
-| 5e | Financial Activity | 16523–16626 | ✅ | ProfileSectionFinancial, FinancialContext | Total earned, pending payout, transaction history |
-| 5f | Right Rail (Quick Facts) | 16628–16720 | ✅ | ProfileRail | Joined date, timezone, languages, status indicators |
-| 5g | Trust & Safety Signals | 16882–16968 | ✅ | ProfileSectionTrust, TrustSignalsContext | Anti-cheat flags, multi-account detection, pattern analysis |
-| 5h | Privacy & Legal | 16970–17018 | ✅ | ProfileSectionPrivacy, PrivacyContext | GDPR/CCPA requests, data exports, deletion requests, legal holds |
-| 5i | Navigation & Shell | phase-5-overview | ✅ | CandidateProfileShell, ProfileBackRow, ProfileHero, ProfileHeroBanner | Top-level page layout with sidebar navigation, status banners |
-| 5j | Search & Filtering | tbd | ❌ | tbd | Candidate search, filter by status, sort by metrics (deferred) |
-| 5k | Communications & Audit Log | 16628–16880 | ✅ | ProfileSectionCommunications, CommunicationFilterTabs, ProfileSectionAudit, AVATAR_GRADIENTS lookup map | Section 6 & 7: Filter tabs (All/Specialist/Clients/Admin), thread list with avatar gradients, timeline pseudoelements (pseudo-line and pseudo-dot via semantic divs), day headers, category-based tag colors, outcome badges, responsive mobile layout (max-[540px] variants) |
-| 5l | Trust & Safety Signals | 16882–16968 | ✅ | ProfileSectionSignals, SignalGroup, TrustSignalsSection | Section 08: 4 signal card types (anti-cheat/reports-against/reports-by/pattern-flags), severity badges (low/medium/high/critical), resolved/open status variants, metadata (filed date, resolved by, reference ID), empty state fallback, helper functions for border/icon/severity/status colors, explicit cardVariant discriminator |
-| 5m | Data Privacy & Legal | 16970–17018 | ✅ | ProfileSectionPrivacy, PrivacyItem, PrivacySection | Section 09: 4 privacy item cards (DSAR/exports/deletion/legal-holds), valueVariant color mapping (success/warn/danger), statusPill with independent variant, responsive 2-column grid (collapsible to 1 col below 880px), priv-value uses opsz 48 (distinct from h2 opsz 96), all 8 candidates populated (cand-001/002/003/005/007/008 all-clear default; cand-004 DSAR pending warn; cand-006 legal hold danger) |
+Step 5 sub-step breakdown (Candidate Detail)
+Step 5 is large (HTML lines 15915–17093, ~1,178 lines, 9 sections + header + action toolbar + rail). Split into 14 sub-steps (5a–5n). Ship one per commit. All complete.
+
+| # | Title | Status | HTML lines | Notes |
+|---|---|---|---|---|
+| 5a | Profile card (hero block) | ✅ | 15936–15967 | Photo with status-conditional gradient, name, cohort badge, tags, status row, ID-mono |
+| 5b | Section 01 — Identity verification | ✅ | 16017–16190 | Section frame, anti-fraud signals, Re-verify/Override/Flag actions |
+| 5c | ID — Front (zoom card) | ✅ | 16060–16080 | Front ID image with zoom |
+| 5d | ID — Back (zoom card) | ✅ | 16081–16100 | Back ID image with zoom |
+| 5e | "On this page" TOC list (static) | ✅ | 17027–17060 | Static markup only — scroll-spy added in 5n |
+| 5f | Quick Facts panel | ✅ | 17061–17091 | Static facts list |
+| 5g | Liveness recording — 5-point check | ✅ | 16101–16140 | Liveness video + biometric match |
+| 5h | Section 02 — Vetting pipeline | ✅ | 16191–16326 | 10-step vertical timeline |
+| 5i | Section 03 — Profile snapshot | ✅ | 16327–16468 | Bio, rate, skills, tools, work history, portfolio |
+| 5j | Section 04 + 05 — Engagements + Financial | ✅ | 16469–16630 | Engagement history (tabs) + financial summary |
+| 5k | Section 06 + 07 — Communications + Audit log | ✅ | 16631–16884 | Comm threads + day-grouped audit timeline; 13 visual fidelity drifts fixed across 4 audit passes |
+| 5l | Section 08 — Trust & safety signals | ✅ | 16885–16972 | Anti-cheat flags, reports, pattern flags; SignalGroup + TrustSignalsSection interfaces |
+| 5m | Section 09 — Data privacy & legal | ✅ | 16973–17023 | DSAR, exports, deletions, legal holds; PrivacyItem extended with valueVariant + PrivacySection |
+| 5n | Right rail FULLY WORKING — scroll-spy + smooth-scroll | ✅ | JS 26959–26999, CSS 5501–5543 | Client Component, IntersectionObserver, observer cleanup, token conversion complete |

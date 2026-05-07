@@ -126,14 +126,6 @@ export interface TrustSignalsSection {
   groups: SignalGroup[];
 }
 
-export interface TrustSignal {
-  title: string;
-  severity?: 'low' | 'high' | 'none';
-  detail: string;
-  status: 'resolved' | 'clear' | 'flagged';
-  meta?: string;
-}
-
 export interface PrivacyItem {
   label: string;
   value: string;
