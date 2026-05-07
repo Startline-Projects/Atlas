@@ -75,6 +75,9 @@
      yellow-priority urgent-card type label and lime-tinted badges. */
   --color-lime-text: #5a6b14;
 
+  --restricted: #8B1A1A;
+  --restricted-bg: #F5E2DD;
+
   --logged: #6b6860;
   --logged-bg: rgba(14, 14, 12, 0.06);
 

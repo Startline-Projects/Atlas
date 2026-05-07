@@ -146,7 +146,7 @@ Hard invariants:
 
 ### Conversion patterns (documented in Phase 5 commits)
 
-1. **Design token naming in arbitrary brackets:** Always use SHORT aliases from `:root` block (e.g., `var(--line)` not `var(--color-line)`) when using arbitrary bracket notation like `border-[var(...)]`. SHORT aliases resolve correctly; LONG form from `@theme` silently falls back.
+1. **Design token naming in arbitrary brackets:** Always use SHORT aliases from `:root` block (e.g., `var(--line)` not `var(--color-line)`) when using arbitrary bracket notation like `border-[var(--TOKENNAME)]`. SHORT aliases resolve correctly; LONG form from `@theme` silently falls back.
 
 2. **Fraunces font optical sizing:** Use `font-display` utility for font-family PLUS separate `[font-variation-settings:'opsz'_96]` arbitrary class for optical sizing. The `font-display` utility alone sets only the font-family; optical sizing requires the variation-settings override.
 
