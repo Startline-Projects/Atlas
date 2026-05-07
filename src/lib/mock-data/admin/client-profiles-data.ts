@@ -16,6 +16,51 @@ import {
 // TYPES
 // ============================================================
 
+// KYB Field with optional badge
+interface KYBFieldDetail {
+  label: string;
+  value: string;
+  badge?: {
+    label: 'Active' | 'Match' | 'Valid' | 'Verified';
+    variant: 'success' | 'warn' | 'neutral';
+  };
+}
+
+// Business KYB tile data (Phase 6d)
+interface KYBTile {
+  status: 'verified' | 'pending' | 'failed';
+  tileName: string;
+  verifiedDate: string;
+  verifiedBy: string;
+  fields: KYBFieldDetail[];
+}
+
+// Signatory KYC tile data (Phase 6e)
+interface KYCFieldDetail {
+  label: string;
+  value: string;
+  badge?: {
+    label: 'Match' | 'Verified' | 'Valid' | 'Active';
+    variant: 'success' | 'warn' | 'neutral';
+  };
+}
+
+interface KYCBiometricField {
+  label: string;
+  score: number;
+  barLabel: string;
+  confidence?: string;
+}
+
+interface SignatoryKYC {
+  status: 'verified' | 'pending' | 'failed';
+  tileName: string;
+  verifiedDate: string;
+  verifiedBy: string;
+  fields: KYCFieldDetail[];
+  biometric?: KYCBiometricField;
+}
+
 export interface ClientProfile {
   // Basic info
   id: string;
@@ -52,23 +97,12 @@ export interface ClientProfile {
 
   // Identity Verification (Section 01, Phases 6d–6f)
   identity?: {
-    kyb?: {
-      status: 'verified' | 'pending' | 'failed';
-      legal_entity?: string;
-      registry?: string;
-      vat_id?: string;
-      founded?: string;
-      standing?: string;
-      verified_date?: string;
+    sectionStatus: {
+      label: string;
+      variant: 'verified' | 'pending' | 'failed' | 'warn';
     };
-    signatory_kyc?: {
-      status: 'verified' | 'pending' | 'failed';
-      name?: string;
-      role?: string;
-      id_type?: string;
-      liveness?: string;
-      biometric_match?: number;
-    };
+    kyb?: KYBTile;
+    signatory_kyc?: SignatoryKYC;
     sanctions_screening?: {
       status: 'passed' | 'review' | 'failed';
       screened_date?: string;
@@ -194,6 +228,87 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '100–500 employees',
     industry: 'Tech',
     specialist: null,
+    statusBanner: {
+      title: 'Account Suspended',
+      detail: 'Suspension active · pending review',
+    },
+    identity: {
+      sectionStatus: {
+        label: 'KYB verified · account suspended',
+        variant: 'warn',
+      },
+      kyb: {
+        status: 'verified',
+        tileName: 'Business KYB verified',
+        verifiedDate: 'Aug 14, 2022',
+        verifiedBy: 'Persona Inc. (Business KYB)',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'Acme Holdings, Inc.',
+            badge: { label: 'Active', variant: 'success' },
+          },
+          {
+            label: 'Registry',
+            value: 'Delaware C-Corp · 87234561',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'EIN 47-2891034',
+            badge: { label: 'Valid', variant: 'success' },
+          },
+          {
+            label: 'Founded',
+            value: 'February 1998 (28 years)',
+          },
+          {
+            label: 'Registered address',
+            value: '1209 Orange Street, Wilmington, DE 19801',
+          },
+          {
+            label: 'Standing',
+            value: 'Account suspended — pending compliance review',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'verified',
+        tileName: 'Authorized signatory verified',
+        verifiedDate: 'Aug 14, 2022',
+        verifiedBy: 'Persona KYC + liveness',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Richard Acme',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Chief Executive Officer',
+          },
+          {
+            label: 'ID type',
+            value: 'US Passport',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Matched',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Authority proof',
+            value: 'Articles of Incorporation · Board Resolution',
+          },
+        ],
+        biometric: {
+          label: 'Biometric match',
+          score: 98.1,
+          barLabel: '98.1%',
+        },
+      },
+    },
   },
 
   'cl-002-7e1b3f': {
@@ -211,6 +326,83 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '12–50 employees',
     industry: 'Design',
     specialist: 'Daniel Kovács',
+    identity: {
+      sectionStatus: {
+        label: 'KYB + Signatory verified',
+        variant: 'verified',
+      },
+      kyb: {
+        status: 'verified',
+        tileName: 'Business KYB verified',
+        verifiedDate: 'Jan 18, 2024',
+        verifiedBy: 'Persona Inc. (Business KYB)',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'Studio Berlin GmbH',
+            badge: { label: 'Active', variant: 'success' },
+          },
+          {
+            label: 'Registry',
+            value: 'HRB 178432 · Berlin Charlottenburg',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'DE318472918',
+            badge: { label: 'Valid', variant: 'success' },
+          },
+          {
+            label: 'Founded',
+            value: 'March 2018 (8 years)',
+          },
+          {
+            label: 'Registered address',
+            value: 'Torstraße 109, 10119 Berlin, DE',
+          },
+          {
+            label: 'Standing',
+            value: 'Good standing · last filing Apr 2026',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'verified',
+        tileName: 'Authorized signatory verified',
+        verifiedDate: 'Jan 18, 2024',
+        verifiedBy: 'Persona KYC + liveness',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Lukas Hoffmann',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Geschäftsführer (Managing Director)',
+          },
+          {
+            label: 'ID type',
+            value: 'German Personalausweis',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Matched',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Authority proof',
+            value: 'Articles of Incorporation · Power of Attorney',
+          },
+        ],
+        biometric: {
+          label: 'Biometric match',
+          score: 97.8,
+          barLabel: '97.8%',
+        },
+      },
+    },
   },
 
   'cl-003-quantum': {
@@ -228,6 +420,83 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '50–100 employees',
     industry: 'Robotics',
     specialist: null,
+    identity: {
+      sectionStatus: {
+        label: 'KYB + Signatory verified',
+        variant: 'verified',
+      },
+      kyb: {
+        status: 'verified',
+        tileName: 'Business KYB verified',
+        verifiedDate: 'Sep 03, 2023',
+        verifiedBy: 'Persona Inc. (Business KYB)',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'Quantum Robotics Pte. Ltd.',
+            badge: { label: 'Active', variant: 'success' },
+          },
+          {
+            label: 'Registry',
+            value: 'UEN 202312847N · ACRA Singapore',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'GST M2-0019283-X',
+            badge: { label: 'Valid', variant: 'success' },
+          },
+          {
+            label: 'Founded',
+            value: 'May 2019 (7 years)',
+          },
+          {
+            label: 'Registered address',
+            value: '8 Cross Street, #11-00, Manulife Tower, Singapore 048424',
+          },
+          {
+            label: 'Standing',
+            value: 'Good standing · last filing Mar 2026',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'verified',
+        tileName: 'Authorized signatory verified',
+        verifiedDate: 'Sep 03, 2023',
+        verifiedBy: 'Persona KYC + liveness',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Dr. Rajesh Patel',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Founder & Managing Director',
+          },
+          {
+            label: 'ID type',
+            value: 'Singapore NRIC',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Matched',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Authority proof',
+            value: 'Articles of Association · Director Resolution',
+          },
+        ],
+        biometric: {
+          label: 'Biometric match',
+          score: 96.8,
+          barLabel: '96.8%',
+        },
+      },
+    },
   },
 
   'cl-004-medco': {
@@ -245,6 +514,83 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '50–100 employees',
     industry: 'Healthcare',
     specialist: 'Sarah Reyes',
+    identity: {
+      sectionStatus: {
+        label: 'KYB + Signatory verified',
+        variant: 'verified',
+      },
+      kyb: {
+        status: 'verified',
+        tileName: 'Business KYB verified',
+        verifiedDate: 'Mar 12, 2023',
+        verifiedBy: 'Persona Inc. (Business KYB)',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'Lighthouse Medical Co. Ltd.',
+            badge: { label: 'Active', variant: 'success' },
+          },
+          {
+            label: 'Registry',
+            value: 'BC Corp 1287456 · British Columbia',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'GST/HST 832947561 RC0001',
+            badge: { label: 'Valid', variant: 'success' },
+          },
+          {
+            label: 'Founded',
+            value: 'November 2011 (15 years)',
+          },
+          {
+            label: 'Registered address',
+            value: '885 W Georgia Street, Vancouver, BC V6C 3E8',
+          },
+          {
+            label: 'Standing',
+            value: 'Good standing · last filing Feb 2026',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'verified',
+        tileName: 'Authorized signatory verified',
+        verifiedDate: 'Mar 12, 2023',
+        verifiedBy: 'Persona KYC + liveness',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Dr. Sarah Chen MD',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Medical Director',
+          },
+          {
+            label: 'ID type',
+            value: 'Canadian Passport',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Matched',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Authority proof',
+            value: 'Articles of Incorporation · Board Minutes',
+          },
+        ],
+        biometric: {
+          label: 'Biometric match',
+          score: 97.2,
+          barLabel: '97.2%',
+        },
+      },
+    },
   },
 
   'cl-005-tundra': {
@@ -262,6 +608,76 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '10–50 employees',
     industry: 'Sustainability',
     specialist: null,
+    identity: {
+      sectionStatus: {
+        label: 'KYB pending review',
+        variant: 'warn',
+      },
+      kyb: {
+        status: 'pending',
+        tileName: 'Business KYB pending',
+        verifiedDate: 'Apr 22, 2026 (submitted)',
+        verifiedBy: 'Persona Inc. — review in progress',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'Open Tundra Ltd.',
+          },
+          {
+            label: 'Registry',
+            value: 'Iceland Companies Reg 6204812490',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'IS 144782',
+          },
+          {
+            label: 'Founded',
+            value: 'August 2024 (1 year)',
+          },
+          {
+            label: 'Registered address',
+            value: 'Laugavegur 174, 105 Reykjavík, Iceland',
+          },
+          {
+            label: 'Standing',
+            value: 'New entity — verification in progress',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'pending',
+        tileName: 'Authorized signatory pending',
+        verifiedDate: 'Apr 22, 2026 (submitted)',
+        verifiedBy: 'Persona KYC — under review',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Jón Einarsson',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Founder',
+          },
+          {
+            label: 'ID type',
+            value: 'Icelandic Passport',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Submitted — pending liveness check',
+          },
+          {
+            label: 'Authority proof',
+            value: 'Power of Attorney only',
+          },
+        ],
+        // NOTE: biometric field OMITTED for pending state (Correction 2)
+      },
+    },
   },
 
   'cl-006-lagos': {
@@ -279,5 +695,82 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
     companySize: '20–50 employees',
     industry: 'Manufacturing',
     specialist: 'Kofi Asante',
+    identity: {
+      sectionStatus: {
+        label: 'KYB + Signatory verified',
+        variant: 'verified',
+      },
+      kyb: {
+        status: 'verified',
+        tileName: 'Business KYB verified',
+        verifiedDate: 'Jan 28, 2024',
+        verifiedBy: 'Persona Inc. (Business KYB)',
+        fields: [
+          {
+            label: 'Legal entity',
+            value: 'The Lagos Loom Limited',
+            badge: { label: 'Active', variant: 'success' },
+          },
+          {
+            label: 'Registry',
+            value: 'RC 1487293 · CAC Nigeria',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'VAT ID',
+            value: 'TIN 28473918-0001',
+            badge: { label: 'Valid', variant: 'success' },
+          },
+          {
+            label: 'Founded',
+            value: 'July 2017 (8 years)',
+          },
+          {
+            label: 'Registered address',
+            value: '14 Adeola Odeku Street, Victoria Island, Lagos',
+          },
+          {
+            label: 'Standing',
+            value: 'Good standing · last filing Jan 2026',
+          },
+        ],
+      },
+      signatory_kyc: {
+        status: 'verified',
+        tileName: 'Authorized signatory verified',
+        verifiedDate: 'Jan 28, 2024',
+        verifiedBy: 'Persona KYC + liveness',
+        fields: [
+          {
+            label: 'Signatory',
+            value: 'Chukwuma Adeyemi',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Role',
+            value: 'Managing Director',
+          },
+          {
+            label: 'ID type',
+            value: 'Nigerian National ID',
+            badge: { label: 'Verified', variant: 'success' },
+          },
+          {
+            label: 'Liveness',
+            value: 'Matched',
+            badge: { label: 'Match', variant: 'success' },
+          },
+          {
+            label: 'Authority proof',
+            value: 'Articles of Incorporation · Power of Attorney',
+          },
+        ],
+        biometric: {
+          label: 'Biometric match',
+          score: 95.4,
+          barLabel: '95.4%',
+        },
+      },
+    },
   },
 };

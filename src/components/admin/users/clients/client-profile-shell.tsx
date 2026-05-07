@@ -1,4 +1,7 @@
 import type { ClientProfile } from '@/lib/mock-data/admin/client-profiles-data';
+import { ClientBackRow } from './client-back-row';
+import { ClientHero } from './client-hero';
+import { ClientSectionIdentity } from './sections/client-section-identity';
 
 interface ClientProfileShellProps {
   profile: ClientProfile;
@@ -7,28 +10,16 @@ interface ClientProfileShellProps {
 export function ClientProfileShell({ profile }: ClientProfileShellProps) {
   return (
     <main className="w-full max-w-[1600px] mx-auto min-w-0 pt-6 pr-8 pb-20 pl-8">
-      {/* Back row — placeholder */}
-      <div className="mb-[20px] text-[13px] text-[var(--ink-mute)]">
-        Back to clients (placeholder — 6c will implement)
-      </div>
+      {/* Back row — Phase 6c */}
+      <ClientBackRow profile={profile} />
 
-      {/* Hero — placeholder */}
-      <div className="mb-[32px] p-[28px] bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)]">
-        <h1 className="text-[28px] font-bold text-[var(--ink)] mb-[8px]">{profile.name}</h1>
-        <div className="text-[14px] text-[var(--ink-soft)]">
-          Status: {profile.status} | ID: {profile.id}
-        </div>
-      </div>
+      {/* Hero — Phase 6c */}
+      <ClientHero profile={profile} />
 
       {/* Sections container — all placeholders */}
       <div className="space-y-[32px]">
-        {/* Section 01 — Identity Verification (6d–6f placeholder) */}
-        <section className="border-t border-[var(--line)] pt-[28px] first:border-t-0 first:pt-0">
-          <h2 className="text-[20px] font-bold text-[var(--ink)] mb-[12px]">01 · 08 Identity verification</h2>
-          <p className="text-[13px] text-[var(--ink-soft)]">
-            [Sections 6d–6f will build: Business KYB tile, Signatory KYC tile, Sanctions + Documents]
-          </p>
-        </section>
+        {/* Section 01 — Identity Verification (Phase 6d: Business KYB tile + Tile B placeholder) */}
+        <ClientSectionIdentity profile={profile} />
 
         {/* Section 02 — Onboarding Status (6g placeholder) */}
         <section className="border-t border-[var(--line)] pt-[28px]">
