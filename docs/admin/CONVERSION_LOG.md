@@ -108,3 +108,41 @@ Every time a step is completed:
 This ensures future sessions can read `/docs/admin/CONVERSION_LOG.md` and immediately know which step we're on and what work remains.
 
 ---
+
+Structure Claude Code follows (read before every step)
+Before implementing any step, Claude Code MUST verify the following layout exists and respect it. This is enforced by AI_RULES.md §3.6 and FOLDER_STRUCTURE.md. No exceptions.
+Routes:
+
+Main admin views → src/app/(admin)/admin/<feature>/page.tsx
+Admin auth views → src/app/(admin-auth)/admin/<auth-route>/page.tsx
+Detail routes use dynamic segments → src/app/(admin)/admin/users/candidates/[id]/page.tsx
+
+Components (admin-only UI):
+
+src/components/admin/shell/ — layout, topbar, sidebar, preview panel
+src/components/admin/auth/ — signin form, OTP, timeout modal
+src/components/admin/<feature>/ — feature-specific components (one folder per step's view)
+
+Mock data:
+
+ALL .ts data files → src/lib/mock-data/admin/
+Barrel re-exports in src/lib/mock-data/admin/index.ts
+Components import via @/lib/mock-data/admin/<file> (direct path, not barrel)
+
+Client state / context:
+
+src/lib/admin/<feature>-state-context.tsx
+Never under src/components/
+
+Hard invariants:
+
+❌ NO .ts data files under src/components/
+❌ NO components or JSX under src/lib/
+❌ NO Tailwind utility classes for raw hex colors — use design tokens (bg-restricted, bg-restricted-bg, bg-super, etc.) defined in src/app/globals.css @theme
+❌ NO inline style={{ color: '#8B1A1A' }} — always Tailwind classes
+✅ Always Tailwind. No CSS modules, no styled-components.
+✅ Server Components by default. "use client" only where needed (state, scroll listeners, modals).
+✅ Reuse AdminPreviewPanel from layout — never re-import or duplicate it inside a step's page.
+
+Step 5 sub-step breakdown (Candidate Detail)
+Step 5 is large (HTML lines 15915–17093, ~1,178 lines, 9 sections + header + action toolbar). Split into 11 sub-steps. Ship one sub-step per commit. Update the row's status here when each sub-step closes.
