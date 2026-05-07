@@ -1,4 +1,4 @@
-import { SignInForm } from '@/components/admin/signin-form';
+import { SignInForm } from '@/components/admin/auth/signin-form';
 
 export const metadata = {
   title: 'Admin Sign In - Atlas',

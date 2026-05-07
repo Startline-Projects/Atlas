@@ -1,32 +1,69 @@
 @import "tailwindcss";
+:root {
+  /* Color aliases */
+  --cream: var(--color-cream);
+  --cream-deep: var(--color-cream-deep);
+  --cream-hover: var(--color-cream-hover);
+  --ink: var(--color-ink);
+  --ink-soft: var(--color-ink-soft);
+  --ink-mute: var(--color-ink-mute);
+  --ink-deep: var(--color-ink-deep);
+  --paper: var(--color-paper);
+  --paper-deep: var(--color-paper-deep);
+  --paper-mute: var(--color-paper-mute);
+  --line: var(--color-line);
+  --line-soft: var(--color-line-soft);
+  --line-strong: var(--color-line-strong);
+  --lime: var(--color-lime);
+  --lime-deep: var(--color-lime-deep);
+  --lime-text: var(--color-lime-text);
+  --amber: var(--color-amber);
+  --amber-bg: var(--color-amber-bg);
+  --navy: var(--color-navy);
+  --navy-bg: var(--color-navy-bg);
+  --danger: var(--color-danger);
+  --danger-bg: var(--color-danger-bg);
+  --success: var(--color-success);
+  --success-bg: var(--color-success-bg);
+  --super: var(--color-super);
+  --super-bg: var(--color-super-bg);
 
-/* ============================================================
-   Design tokens — single source of truth.
-   Mirrored from homepage__10_.html :root.
-   Tailwind v4 generates utilities from these tokens automatically:
-     --color-cream    -> bg-cream, text-cream, border-cream
-     --font-display   -> font-display
-     --radius-md      -> rounded-md
-     --shadow-md      -> shadow-md
-   ============================================================ */
+  /* Radius aliases */
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-md);
+  --r-lg: var(--radius-lg);
+  --r-xl: var(--radius-xl);
+
+  /* Shadow aliases */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-card: var(--shadow-card);
+}
 @theme {
   --color-cream: #f3eee3;
   --color-cream-deep: #eae3d4;
+  --color-cream-hover: #fcf9f1;
+  --color-super: #6e3fe0;
+  --color-super-bg: rgba(110, 63, 224, 0.15);
   --color-ink: #0e0e0c;
   --color-ink-soft: #2b2a26;
   --color-ink-mute: #6b6860;
   --color-paper: #fbf8f2;
+  --color-paper-deep: #f7f2e5;
   --color-line: #d9d2c3;
   --color-line-soft: #e4ddce;
+  --color-line-strong: #c4bca9;
   --color-lime: #d6f24d;
   --color-lime-deep: #b9d92f;
   --color-amber: #e8763a;
+  --color-amber-bg: #fcefe3;
   --color-navy: #16213e;
+  --color-navy-bg: #e8ebf1;
   --color-danger: #c2412b;
-  --color-danger-bg: #f3e8e3;
-  --color-success: #2E7D54;
-  --color-success-bg: #E7F2EC;
-  --color-amber-bg: #fef3e2;
+  --color-danger-bg: #fbeae6;
+  --color-success: #2e7d54;
+  --color-success-bg: #e7f2ec;
   --color-ink-deep: #1a1a17;
   --color-ink-line: #2a2a24;
   --color-paper-mute: #b5b1a7;
@@ -37,6 +74,9 @@
   /* Legible companion to lime/lime-deep backgrounds. Used by the
      yellow-priority urgent-card type label and lime-tinted badges. */
   --color-lime-text: #5a6b14;
+
+  --logged: #6b6860;
+  --logged-bg: rgba(14, 14, 12, 0.06);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -53,18 +93,12 @@
     0 1px 0 rgba(14, 14, 12, 0.03), 0 2px 6px rgba(14, 14, 12, 0.04),
     0 24px 60px rgba(14, 14, 12, 0.09);
 }
-
-/* Inline theme: keeps the reference to next/font's runtime CSS vars. */
 @theme inline {
   --font-display: var(--font-display-family), "Times New Roman", serif;
   --font-body:
     var(--font-body-family), -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: var(--font-mono-family), ui-monospace, monospace;
 }
-
-/* ============================================================
-   Base
-   ============================================================ */
 @layer base {
   *,
   *::before,
@@ -148,11 +182,6 @@
     }
   }
 }
-
-/* ============================================================
-   Reusable component classes — referenced by name from
-   components so the conversion stays 1:1 with the source HTML.
-   ============================================================ */
 @layer components {
   .container-page {
     max-width: 1340px;
@@ -200,6 +229,109 @@
     background: var(--color-lime);
     z-index: -1;
     transform: skewX(-6deg);
+  }
+
+  /* Dashboard sections */
+  .dash-section {
+    margin-bottom: 36px;
+  }
+  .dash-section:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Activity feed scrollbar hiding on filter row */
+  .activity-filter-row {
+    scrollbar-width: none;
+  }
+  .activity-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Users tabs scrollbar hiding */
+  .users-tabs {
+    scrollbar-width: none;
+  }
+  .users-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Users table scrollbar styling (thin with visible track) */
+  .users-table-wrap {
+    scrollbar-width: thin;
+  }
+  .users-table-wrap::-webkit-scrollbar {
+    height: 8px;
+  }
+  .users-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border-radius: 999px;
+  }
+  @media (max-width: 880px) {
+    .users-table-wrap {
+      overflow-x: auto;
+    }
+    .table-head,
+    .table-row {
+      min-width: 980px;
+    }
+  }
+
+  /* Avatar gradient colors (12 unique) — quoted verbatim from admin.html lines 4688–4699 */
+  .row-avatar.av-1 {
+    background: linear-gradient(135deg, #d9a77f, #8b5a3c);
+  }
+  .row-avatar.av-2 {
+    background: linear-gradient(135deg, #7ba8d9, #3f6ca1);
+  }
+  .row-avatar.av-3 {
+    background: linear-gradient(135deg, #b89bd6, #6e3fe0);
+  }
+  .row-avatar.av-4 {
+    background: linear-gradient(135deg, #c7cfa8, #6b8e23);
+  }
+  .row-avatar.av-5 {
+    background: linear-gradient(135deg, #e8b4b8, #8b5a6f);
+  }
+  .row-avatar.av-6 {
+    background: linear-gradient(135deg, #f0cc4f, #b8911e);
+  }
+  .row-avatar.av-7 {
+    background: linear-gradient(135deg, #9cc9c2, #4d8a82);
+  }
+  .row-avatar.av-8 {
+    background: linear-gradient(135deg, #dca294, #8b4f47);
+  }
+  .row-avatar.av-9 {
+    background: linear-gradient(135deg, #a4b5d8, #4d6699);
+  }
+  .row-avatar.av-10 {
+    background: linear-gradient(135deg, #c9b8a4, #7a6b57);
+  }
+  .row-avatar.av-11 {
+    background: linear-gradient(135deg, #dd9f70, #8b5c3c);
+  }
+  .row-avatar.av-12 {
+    background: linear-gradient(135deg, #b5c7a8, #5c7a4d);
+  }
+
+  /* System status pill (dashboard header) */
+  .system-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px 9px 12px;
+    background: var(--color-paper);
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    font-size: 12.5px;
+    flex-shrink: 0;
+  }
+  .system-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse-status 2s ease-in-out infinite;
   }
 
   /* Button system. */
@@ -258,6 +390,17 @@
     font-size: 15px;
   }
 
+  .dash-rail::-webkit-scrollbar {
+    width: 6px;
+  }
+  .dash-rail::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+  }
+  .dash-rail:hover::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+  }
+
   /* Lime-thumb range slider used by the fees calculator. */
   .atlas-range {
     -webkit-appearance: none;
@@ -287,4 +430,112 @@
     border: 3px solid var(--color-ink);
     box-shadow: 0 0 0 1px var(--color-lime);
   }
+
+  /* Dashboard system status animations (admin.html lines 2212–2227) */
+  .system-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse-status 2s ease-in-out infinite;
+  }
+
+  .system-status[data-status="ok"] .system-status-dot {
+    background: #2e7d54;
+    box-shadow: 0 0 0 3px rgba(46, 125, 84, 0.16);
+    animation-name: pulse-status;
+  }
+
+  .system-status[data-status="warn"] .system-status-dot {
+    background: var(--color-amber);
+    box-shadow: 0 0 0 3px rgba(232, 118, 58, 0.18);
+    animation-name: pulse-status-warn;
+  }
+
+  .system-status[data-status="down"] .system-status-dot {
+    background: var(--color-danger);
+    box-shadow: 0 0 0 3px rgba(194, 65, 43, 0.22);
+    animation-name: pulse-status-down;
+  }
+}
+@keyframes pulse-status {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(46, 125, 84, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(46, 125, 84, 0.04);
+  }
+}
+@keyframes pulse-status-warn {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(232, 118, 58, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(232, 118, 58, 0.04);
+  }
+}
+@keyframes pulse-status-down {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(194, 65, 43, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(194, 65, 43, 0.06);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes bulk-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Vetting Pipeline pulse animation */
+@keyframes pulse-amber {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 118, 58, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(232, 118, 58, 0);
+  }
+}
+.dash-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+.dash-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dash-sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 3px;
+}
+.dash-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line-strong);
+}
+.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-lime-deep);
+}
+.animate-pulse-amber {
+  animation: pulse-amber 2s ease-in-out infinite;
 }
