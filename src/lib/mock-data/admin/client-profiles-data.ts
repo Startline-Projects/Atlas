@@ -61,6 +61,35 @@ interface SignatoryKYC {
   biometric?: KYCBiometricField;
 }
 
+// Sanctions & PEP screening (Phase 6f)
+interface SanctionsResult {
+  listLabel: string; // "OFAC SDN list" | "EU consolidated list" | "UN sanctions" | "Politically Exposed Person check"
+  status: {
+    label: 'Clear' | 'Hit' | 'Review' | 'Pending';
+    variant: 'success' | 'warn' | 'danger';
+  };
+}
+
+interface SanctionsScreening {
+  summary: string;
+  summaryVariant: 'success' | 'warn' | 'danger';
+  rows: SanctionsResult[];
+}
+
+// Documents on file (Phase 6f)
+interface ClientDocument {
+  name: string;
+  filename: string;
+  fileSize: string;
+  uploadedDate: string;
+}
+
+interface DocumentsBlock {
+  summary: string;
+  summaryVariant: 'success' | 'warn';
+  documents: ClientDocument[];
+}
+
 export interface ClientProfile {
   // Basic info
   id: string;
@@ -103,16 +132,8 @@ export interface ClientProfile {
     };
     kyb?: KYBTile;
     signatory_kyc?: SignatoryKYC;
-    sanctions_screening?: {
-      status: 'passed' | 'review' | 'failed';
-      screened_date?: string;
-    };
-    documents?: Array<{
-      name: string;
-      type: string;
-      uploaded_date: string;
-      status: 'valid' | 'expired' | 'pending';
-    }>;
+    sanctions?: SanctionsScreening;
+    documents?: DocumentsBlock;
   };
 
   // Onboarding Status (Section 02, Phase 6g)
@@ -308,6 +329,26 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           barLabel: '98.1%',
         },
       },
+      sanctions: {
+        summary: 'All clear · screened Aug 14, 2022',
+        summaryVariant: 'success',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'UN sanctions', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '4 documents · all valid',
+        summaryVariant: 'success',
+        documents: [
+          { name: 'Articles of Incorporation', filename: 'Acme_Holdings_AoI.pdf', fileSize: '2.1 MB', uploadedDate: 'uploaded Aug 12, 2022' },
+          { name: 'Board Resolution (CEO authority)', filename: 'Acme_Board_Resolution.pdf', fileSize: '0.8 MB', uploadedDate: 'uploaded Aug 12, 2022' },
+          { name: 'IRS EIN letter', filename: 'Acme_EIN_letter.pdf', fileSize: '0.4 MB', uploadedDate: 'uploaded Aug 13, 2022' },
+          { name: 'Annual filing — 2023', filename: 'Acme_Annual_2023.pdf', fileSize: '1.7 MB', uploadedDate: 'uploaded Mar 2024' },
+        ],
+      },
     },
   },
 
@@ -401,6 +442,27 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           score: 97.8,
           barLabel: '97.8%',
         },
+      },
+      sanctions: {
+        summary: 'All clear · screened Jan 18, 2024',
+        summaryVariant: 'success',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'UN sanctions', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '5 documents · all valid',
+        summaryVariant: 'success',
+        documents: [
+          { name: 'Articles of Incorporation', filename: 'Studio_Berlin_GmbH_AoI.pdf', fileSize: '1.4 MB', uploadedDate: 'uploaded Jan 16, 2024' },
+          { name: 'Handelsregister Auszug (HRB)', filename: 'HRB_178432_Auszug.pdf', fileSize: '320 KB', uploadedDate: 'refreshed Apr 12, 2026' },
+          { name: 'Power of Attorney (Lukas Hoffmann)', filename: 'PoA_LHoffmann.pdf', fileSize: '240 KB', uploadedDate: 'uploaded Jan 18, 2024' },
+          { name: 'VAT Registration Certificate', filename: 'DE318472918_certificate.pdf', fileSize: '180 KB', uploadedDate: 'uploaded Jan 16, 2024' },
+          { name: 'Annual filing 2025', filename: 'Bundesanzeiger_2025.pdf', fileSize: '480 KB', uploadedDate: 'auto-refreshed Apr 1, 2026' },
+        ],
       },
     },
   },
@@ -496,6 +558,27 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           barLabel: '96.8%',
         },
       },
+      sanctions: {
+        summary: 'All clear · screened Sep 03, 2023',
+        summaryVariant: 'success',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'UN sanctions', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '5 documents · all valid',
+        summaryVariant: 'success',
+        documents: [
+          { name: 'Articles of Association', filename: 'Quantum_Robotics_AoA.pdf', fileSize: '1.6 MB', uploadedDate: 'uploaded Sep 01, 2023' },
+          { name: 'Director Resolution', filename: 'Quantum_Director_Resolution.pdf', fileSize: '0.6 MB', uploadedDate: 'uploaded Sep 01, 2023' },
+          { name: 'ACRA Bizfile', filename: 'Quantum_ACRA_Bizfile.pdf', fileSize: '0.9 MB', uploadedDate: 'uploaded Sep 02, 2023' },
+          { name: 'GST registration certificate', filename: 'Quantum_GST_Cert.pdf', fileSize: '0.3 MB', uploadedDate: 'uploaded Sep 02, 2023' },
+          { name: 'Audited financials FY2023', filename: 'Quantum_Audited_FY2023.pdf', fileSize: '2.4 MB', uploadedDate: 'uploaded Mar 2024' },
+        ],
+      },
     },
   },
 
@@ -590,6 +673,27 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           barLabel: '97.2%',
         },
       },
+      sanctions: {
+        summary: 'All clear · screened Mar 12, 2023',
+        summaryVariant: 'success',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'UN sanctions', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '5 documents · all valid',
+        summaryVariant: 'success',
+        documents: [
+          { name: 'Articles of Incorporation', filename: 'Lighthouse_AoI.pdf', fileSize: '1.3 MB', uploadedDate: 'uploaded Mar 09, 2023' },
+          { name: 'Board Minutes', filename: 'Lighthouse_Board_Minutes.pdf', fileSize: '0.7 MB', uploadedDate: 'uploaded Mar 09, 2023' },
+          { name: 'BC Corp Registration', filename: 'Lighthouse_BC_Reg.pdf', fileSize: '0.5 MB', uploadedDate: 'uploaded Mar 10, 2023' },
+          { name: 'GST/HST registration', filename: 'Lighthouse_GST_Cert.pdf', fileSize: '0.2 MB', uploadedDate: 'uploaded Mar 10, 2023' },
+          { name: 'Healthcare licensing certificate', filename: 'Lighthouse_Health_Cert.pdf', fileSize: '1.1 MB', uploadedDate: 'uploaded Mar 11, 2023' },
+        ],
+      },
     },
   },
 
@@ -676,6 +780,24 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           },
         ],
         // NOTE: biometric field OMITTED for pending state (Correction 2)
+      },
+      sanctions: {
+        summary: 'Screening in progress · 2 of 4 lists checked',
+        summaryVariant: 'warn',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Pending', variant: 'warn' } },
+          { listLabel: 'UN sanctions', status: { label: 'Pending', variant: 'warn' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '2 documents uploaded · 3 missing',
+        summaryVariant: 'warn',
+        documents: [
+          { name: 'Iceland Companies Reg certificate', filename: 'OpenTundra_Reg_Cert.pdf', fileSize: '0.8 MB', uploadedDate: 'uploaded Apr 22, 2026' },
+          { name: 'Power of Attorney', filename: 'OpenTundra_PoA.pdf', fileSize: '0.3 MB', uploadedDate: 'uploaded Apr 22, 2026' },
+        ],
       },
     },
   },
@@ -770,6 +892,27 @@ export const CLIENT_PROFILES: Record<string, ClientProfile> = {
           score: 95.4,
           barLabel: '95.4%',
         },
+      },
+      sanctions: {
+        summary: 'All clear · screened Jan 28, 2024',
+        summaryVariant: 'success',
+        rows: [
+          { listLabel: 'OFAC SDN list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'EU consolidated list', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'UN sanctions', status: { label: 'Clear', variant: 'success' } },
+          { listLabel: 'Politically Exposed Person check', status: { label: 'Clear', variant: 'success' } },
+        ],
+      },
+      documents: {
+        summary: '5 documents · all valid',
+        summaryVariant: 'success',
+        documents: [
+          { name: 'Articles of Incorporation', filename: 'Lagos_Loom_AoI.pdf', fileSize: '1.5 MB', uploadedDate: 'uploaded Jan 25, 2024' },
+          { name: 'Power of Attorney', filename: 'Lagos_Loom_PoA.pdf', fileSize: '0.5 MB', uploadedDate: 'uploaded Jan 25, 2024' },
+          { name: 'CAC Registration certificate', filename: 'Lagos_Loom_CAC.pdf', fileSize: '0.7 MB', uploadedDate: 'uploaded Jan 26, 2024' },
+          { name: 'Tax Identification certificate', filename: 'Lagos_Loom_TIN.pdf', fileSize: '0.3 MB', uploadedDate: 'uploaded Jan 26, 2024' },
+          { name: 'Manufacturing license', filename: 'Lagos_Loom_Mfg_License.pdf', fileSize: '1.2 MB', uploadedDate: 'uploaded Jan 27, 2024' },
+        ],
       },
     },
   },

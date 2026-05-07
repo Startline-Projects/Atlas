@@ -9,7 +9,7 @@ interface ClientProfileShellProps {
 
 export function ClientProfileShell({ profile }: ClientProfileShellProps) {
   return (
-    <main className="w-full max-w-[1600px] mx-auto min-w-0 pt-6 pr-8 pb-20 pl-8">
+    <main className="mx-auto max-w-[1400px] pt-[28px] px-[32px] pb-[100px] max-[720px]:px-[16px] max-[720px]:pt-[18px]">
       {/* Back row — Phase 6c */}
       <ClientBackRow profile={profile} />
 
