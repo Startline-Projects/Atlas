@@ -36,6 +36,24 @@ export type SpecialistUser = {
   poolStatus: PoolStatus;
   /** Live candidate count in this specialist's pool. */
   poolLiveCount: number;
+
+  /* ============================================================
+     Session 6 additions — performance + settings dependencies
+     ============================================================ */
+
+  /** Months at Atlas — header subtitle on /specialist/performance. */
+  tenureMonths: number;
+  /** "Mexico City, Mexico" — settings profile + perf header. */
+  cityCountry: string;
+  /**
+   * Public display name shown in chat threads to talents/clients.
+   * Conventionally first-name + last-initial. Settings § "Profile".
+   */
+  displayName: string;
+  /** Bio shown on the talent-facing profile (markdown supported). */
+  bio: string;
+  /** IANA-style label rendered in settings ("Mexico City · GMT-6"). */
+  timeZone: string;
 };
 
 export const currentUser: SpecialistUser = {
@@ -50,4 +68,11 @@ export const currentUser: SpecialistUser = {
   onCall: false,
   poolStatus: "Stable",
   poolLiveCount: 18,
+
+  tenureMonths: 14,
+  cityCountry: "Mexico City, Mexico",
+  displayName: "Miguel",
+  bio:
+    "Talent specialist for the VAs category. 14 months at Atlas. I prioritize bilingual ops candidates and specialize in healthcare-ops + EST/PST overlap matches. Reach out if a brief is sitting more than 48h.",
+  timeZone: "Mexico City · GMT−6",
 };

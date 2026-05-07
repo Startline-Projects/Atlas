@@ -6,8 +6,8 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
-import { SparklineSVG } from "./sparkline-svg";
+import { MetricCard } from "@/components/specialist/operations-shared";
+import { SparklineSVG } from "@/components/specialist/operations-shared";
 import type { PoolHealthSnapshot } from "@/lib/mock-data/specialist/pool-health";
 
 export function QualityTile({
@@ -16,7 +16,7 @@ export function QualityTile({
   quality: PoolHealthSnapshot["quality"];
 }) {
   return (
-    <PhCard label="Quality signal" title="Avg client rating" span={4}>
+    <MetricCard label="Quality signal" title="Avg client rating" span={4}>
       <div className="flex items-baseline justify-between gap-2">
         <div
           className="font-display text-[40px] font-normal leading-none tracking-[-0.03em] text-ink tabular-nums"
@@ -34,6 +34,6 @@ export function QualityTile({
         </span>
       </div>
       <SparklineSVG points={quality.points} tone={quality.tone} />
-    </PhCard>
+    </MetricCard>
   );
 }

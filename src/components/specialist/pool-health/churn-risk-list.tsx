@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import {
   AVATAR_GRADIENTS,
   type AvatarGradientKey,
@@ -40,7 +40,7 @@ export function ChurnRiskList({
   items: PoolHealthSnapshot["churnRisk"];
 }) {
   return (
-    <PhCard
+    <MetricCard
       label="Forecast"
       title="Churn risk · next 60d"
       span={6}
@@ -50,7 +50,7 @@ export function ChurnRiskList({
           <ChurnRow key={item.candidate.id} item={item} />
         ))}
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }
 

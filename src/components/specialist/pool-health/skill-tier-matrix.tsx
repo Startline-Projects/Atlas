@@ -6,7 +6,7 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import { HeatCell } from "@/components/specialist/operations-shared";
 import type { PoolHealthSnapshot } from "@/lib/mock-data/specialist/pool-health";
 
@@ -16,7 +16,7 @@ export function SkillTierMatrix({
   matrix: PoolHealthSnapshot["skillTierMatrix"];
 }) {
   return (
-    <PhCard label="Coverage map" title="Skill × tier matrix" span={6}>
+    <MetricCard label="Coverage map" title="Skill × tier matrix" span={6}>
       <div className="grid gap-1">
         {/* Header row: empty corner + column labels */}
         <div className="grid grid-cols-[110px_repeat(3,minmax(0,1fr))] gap-1 pb-1 font-mono text-[9.5px] tracking-[0.08em] uppercase text-ink-mute">
@@ -50,6 +50,6 @@ export function SkillTierMatrix({
           </div>
         ))}
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }

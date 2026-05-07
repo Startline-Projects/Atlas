@@ -15,3 +15,7 @@ export { PeriodToggle } from "./period-toggle";
 export type { PeriodOption } from "./period-toggle";
 export { HeatCell } from "./heat-cell";
 export type { HeatDensity } from "./heat-cell";
+export { MetricCard } from "./metric-card";
+export type { MetricCardTrendTone } from "./metric-card";
+export { SparklineSVG } from "./sparkline-svg";
+export type { SparklineTone } from "./sparkline-svg";

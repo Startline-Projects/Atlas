@@ -12,7 +12,7 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import type {
   PoolHealthSnapshot,
   UtilizationLegendRow,
@@ -37,7 +37,7 @@ export function UtilizationDonut({
   const remaining = CIRCUM - filled;
 
   return (
-    <PhCard label="Utilization" title="Active engagements" span={4}>
+    <MetricCard label="Utilization" title="Active engagements" span={4}>
       <div className="flex flex-wrap items-center gap-[18px]">
         <div className="relative h-[120px] w-[120px] flex-shrink-0">
           <svg
@@ -99,6 +99,6 @@ export function UtilizationDonut({
           ))}
         </div>
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }

@@ -1378,3 +1378,711 @@ as the visible UI. The PDF's submission-form fields are typed in
   (general). Session 6 candidate scope.
 
 ---
+
+## Session 6 — Performance · Reviews-approvals · Settings · Help
+
+**Status:** in progress · 6.1 (mock data + types + promotion +
+IMPLEMENTED_ROUTES + nav glue) complete.
+
+**Source:** `specialist (12).html` `view-performance` (lines
+19224–19790), `view-reviews-approvals` (19791–20106), `view-settings`
+(20107–20875), `view-help` (21224–end).
+**Spec:** PDF Part 7 §13 (Performance), Part 8 §14 (Reviews &
+approvals), Part 9 §15 (Account settings), §16 (Help & resources).
+**Routes shipping this session:** `/specialist/performance`,
+`/specialist/reviews`, `/specialist/settings` (NEW — never stubbed),
+`/specialist/help`. `IMPLEMENTED_ROUTES` goes from 11 → **15** at end
+of 6.1, completing the specialist console (15 of 18 PDF views — 3
+PDF-only artifacts not surfaced as routes: cross-cutting elements,
+notification center, global search).
+
+### Tokens added (this session)
+
+**Zero.** Hex inventory of `.perf-*`, `.rev-*`, `.set-*`, `.help-*`
+CSS resolves entirely to existing tokens, plus 5 known decorative
+literals reused or newly catalogued:
+
+- `#0A66C2` (LinkedIn brand glyph) — settings integration card. Same
+  precedent as sourcing.
+- `#4285F4` (Google blue) — settings Google Calendar card.
+- `#EA4335` (Google/Gmail red) — settings Gmail card.
+- `#4A154B` (Slack aubergine) — settings Slack card.
+- `#5C4A6E → #3A2D49` — reviews-approvals admin avatar gradient
+  (Jamie · Admin role). `#5C4A6E` is the known Session 3 my-clients
+  lg-5 hex; `#3A2D49` is the **single new** decorative literal —
+  same purple family at deeper saturation. Encoded inline as a
+  `{from, to}` literal pair on `ReviewThreadActor.avatarGradient`,
+  not added as a named gradient. If the polish-session avatar
+  primitive lands, this becomes a named gradient (proposed name:
+  `purple-deep`).
+- `#2D8CFF` (Zoom brand) and `#000000` (Notion brand) — settings
+  integration cards. New decoratives, but the brand-icon precedent
+  is the same as LinkedIn / Google / Slack.
+
+### Promotions to operations-shared/ (6.1a)
+
+Pre-emptive promotion since performance is the 2nd consumer of two
+pool-health primitives:
+
+| Was | Now | Renamed |
+|---|---|---|
+| `pool-health/ph-card.tsx` (`PhCard`) | `operations-shared/metric-card.tsx` (`MetricCard`) | yes — "ph" was a view-id artifact |
+| `pool-health/sparkline-svg.tsx` | `operations-shared/sparkline-svg.tsx` | no |
+
+9 pool-health files updated to import from
+`@/components/specialist/operations-shared`. Old files deleted.
+SparklineSVG also picked up an optional `showLastDot` boolean and an
+`"ink"` tone (pool-health's existing tones were success / lime /
+amber / danger; performance's score-trend uses an ink line under a
+benchmark dashed line). MetricCard span now accepts `3 | 4 | 6 | 8 |
+12` (added 3-span for performance KPI cards). Both extensions are
+backwards-compatible.
+
+Operations-shared library now: `StatCard`, `PeriodToggle`,
+`HeatCell`, `MetricCard`, `SparklineSVG` — **5 components, all with
+2+ consumers**.
+
+### `current-user.ts` extension (6.1c)
+
+Added 5 fields to `SpecialistUser` for performance-header subtitle
++ settings profile panel:
+
+- `tenureMonths: number` (14)
+- `cityCountry: string` ("Mexico City, Mexico")
+- `displayName: string` ("Miguel" — first name only, conventionally
+  shown to talents in chat threads)
+- `bio: string` (markdown-supported, 240 chars)
+- `timeZone: string` ("Mexico City · GMT−6")
+
+Modifies a Session 1 mock-data file but it's data-shape, not a
+frozen layer. No call sites broke — the new fields are additive.
+
+### Type design (per view)
+
+**Performance** (`performance.ts`):
+- `PerformancePeriod = "month" | "quarter" | "year"`
+- `PerformanceTabKey = "overview" | "metrics" | "peer-ranking" | "feedback" | "goals"`
+- `PerformanceHero` (score + grade + 4 quartile bands + 3 deltas)
+- `PerformanceKpiCard` (4 cards on overview row 1)
+- `CmpBarRow` (you-vs-bench bars)
+- `ScoreTrend` (12-point series + benchmark line)
+- `StrengthGrowthItem`, `PeerRankRow` (with `isYou` + `ellipsisLabel`),
+  `GoalRow`, `FeedbackCard`
+- `peerComparisonsAnonymous: boolean` — PDF rule, currently false
+  (HTML wins); flips true when services enforce category-average-only
+
+**Reviews-approvals** (`reviews-approvals.ts`):
+- `ReviewDirection = "incoming" | "outgoing" | "closed"` (the 3 outer
+  tabs)
+- `ReviewFilterKey = "all" | "urgent" | "tier-promotion" | "off-board" | "rate-change"`
+- `ReviewItemKind = "off-board" | "tier-promotion" | "rate-change" | "policy-exception" | "dispute-cosign"`
+- `ReviewRecommendation = "approve" | "reject" | "escalate" | "needs-judgment"`
+- `ReviewDecisionAction = "save-draft" | "reject" | "escalate" | "approve-cosign"`
+  — 4 decision-bar buttons (vs queue-shared/DecisionBar's 3-slot API
+  → fork in 6.3)
+- `ReviewThreadActor.avatarGradient: AvatarGradientKey | {from, to}`
+  — discriminated union allowing the ad-hoc admin gradient inline
+- `ReviewItem & ReviewRowLite` (full + lite shapes)
+- `ReviewDecisionHistoryItem` — **PDF-shape captured for migration**,
+  not rendered
+
+**Settings** (`settings.ts`):
+- `SettingsSection` union of 7 keys
+- `SettingsSubnav` (3 groups × 2-3 items each)
+- `NotificationEvent` × 8 events (`required` flag for dispute-filed)
+- 4-channel matrix: `in-app | email | sms`
+- `QuietHours` (enabled + from/to HH:mm)
+- `PreferencesState` with PDF-only fields (theme/density/auto-refresh)
+  typed but unset
+- `ActiveSession` × 3 (one current, two sign-outable)
+- `LoginHistoryEntry` typed for migration; not rendered
+- `IntegrationCard` × 6 (Google Calendar / Gmail / Slack / LinkedIn /
+  Zoom / Notion — 3 connected)
+- `DataExportItem` × 4 (Decision history / Activity log / Pool snapshot
+  / Communication archive)
+- `AdvancedToggle` × 3 + `DangerZoneAction` × 2 (transfer pool + delete
+  account, with confirm-modal copy)
+- `TWO_FACTOR_REQUIRED = true` — PDF business rule constant
+
+**Help** (`help.ts`):
+- `SearchSuggestion` × 5
+- `QuickHelpBanner` (continue-training pattern)
+- `TopicCard` × 6 (Getting started / Reviews / Re-cert / Disputes /
+  Sourcing / Clients) — `iconKey` resolves to a lucide icon at the
+  view layer
+- `ArticleSummary` × 6 (popular articles)
+- `TrainingCard` × 6 (with progress + tag variants)
+- `ContactCard` × 3 (chat-featured / email / office hours)
+- `ChangelogEntry` × 5 (new / improved / fixed)
+- `LegacyPDFCategory` typed for migration (PDF's content-type
+  organization — Onboarding / Workflows / Templates / Policies /
+  Training / Quick reference)
+
+### Business rules from PDF (Session 6 additions)
+
+| Rule | Source | Captured as |
+|---|---|---|
+| Peer comparisons must be anonymous (only category averages) | PDF §13 | `PerformanceSnapshot.peerComparisonsAnonymous: boolean` (currently `false` per HTML; flips on service-layer enforcement) |
+| 2FA is mandatory | PDF §15 | `TWO_FACTOR_REQUIRED = true` constant |
+| Reviews-approvals shows personal decision history | PDF §14 | `ReviewDecisionHistoryItem` type + 4 sample entries; not rendered (HTML deviates → active workflow) |
+| Reflection space (lessons learned per past decision) | PDF §14 | `ReviewDecisionHistoryItem.reflection?: string`; not rendered |
+| Login history list | PDF §15 | `LoginHistoryEntry` type; not rendered |
+| Working hours / Out of office mode | PDF §15 + HTML avatar dropdown | Type fields deferred; avatar-menu dropdown unbuilt (Session 1) |
+| Display preferences (theme / density / auto-refresh) | PDF §15 | `PreferencesState.theme/density/autoRefreshSec` typed; UI deferred |
+| Help navigation by content type | PDF §16 | `LegacyPDFCategory` typed for migration |
+
+### Settings savebar — dirty-field tracking migration
+
+Settings savebar uses an event-counting `modifiedCount` (incremented
+on every change event, never decremented) as visual feedback. This
+double-counts when the user toggles the same field twice — visible
+quirk: the counter goes 1→2 instead of 1→0. **Visual prototyping
+acceptable**; production-grade tracking requires:
+
+- `dirtyFields: Set<string>` per field-key
+- Initial-state snapshot for comparison (revert flips back to clean)
+- Actual revert in `onDiscard` (reset all field state to initial)
+- `dirtyFields.size` drives the savebar count
+
+**Migration target:** when the settings service slice lands, replace
+the local-state event counter with proper dirty-field tracking.
+Owner: services session.
+
+### Reviews-approvals HTML-vs-PDF deviation (final)
+
+**HTML wins on visible UI.** Building the active co-sign workflow
+(Awaiting your review · Submitted by you · Closed). PDF's personal
+decision-history captured as `ReviewDecisionHistoryItem` in mock data
+but NOT rendered.
+
+**Migration target (specific, not vague):**
+
+> Reviews-approvals in production needs both surfaces: the active
+> co-sign workflow (this session's UI) AND a personal decision-history
+> list (PDF Step 14). Recommended path: a separate route
+> `/specialist/reviews/history` OR a 4th direction tab "My history".
+> When services land, this becomes a real migration item.
+
+The 4 sample `ReviewDecisionHistoryItem` entries in the snapshot
+validate the type shape (approval / rejection / revision / dispute
+× one entry each) and provide regression coverage for the future
+migration.
+
+### Cross-session ID inventory (Session 6)
+
+**Performance** (low):
+- Header subtitle reads from `currentUser` (firstName + tenureMonths
+  + category + cityCountry — all extended in 6.1c).
+- Peer ranking: 9 `peer-*` synthetic ids + 1 `you` row + 2
+  `peer-ellipsis-*` markers.
+
+**Reviews-approvals** (high):
+- 7 review items reference: `cand-mei-chen`, `cand-anand-patel` (×2),
+  `cand-aaliyah-kone`, `cand-marcus-bauer`, `cand-sofia-reyes`. Plus
+  `client-quill-co` (×2), `DSP-2026-04-12` (S5 dispute).
+- Thread actors reference admin (Jamie), manager (L. Diaz), system
+  (Atlas), and the current specialist (Miguel via `id: "you"`).
+- 4 PDF-history items reference: `cand-anand-patel`, `cand-wei-tan`,
+  `cand-hana-reza`, `cand-sofia-reyes` + `client-quill-co`.
+
+**Settings** (low):
+- Reads from `currentUser` for profile fields. Active sessions list
+  is fictional (3 entries). Integration cards reference accounts:
+  primary calendar (`miguel@atlasworld.co`), Slack channel
+  `#vas-specialists-mx`. All synthetic.
+
+**Help** (zero cross-session refs).
+
+### `operations-shared/` extraction state (end of 6.1)
+
+| Component | Consumers (post-promotion) |
+|---|---|
+| `StatCard` | sourcing · daily-activity (2 — unchanged from S5) |
+| `PeriodToggle` | pool-health · daily-activity · performance (3 — performance is the 3rd consumer in 6.2) |
+| `HeatCell` | pool-health · daily-activity (2 — unchanged from S5) |
+| `MetricCard` | pool-health · performance (2 — promoted in 6.1) |
+| `SparklineSVG` | pool-health · performance (2 — promoted in 6.1) |
+
+5 primitives, **6 distinct views consume them**, zero forks since
+extraction. The discipline holds across all 4 shared libraries
+(queue-shared / people-shared / chat-shared / operations-shared = 36
+components total in shared libs).
+
+### Settings nav-items decision (6.1)
+
+Settings is a **direct-URL-only route** this session — not added to
+`navItems` per Session 6 directive 12 option (c). HTML's intended
+access path is the avatar-menu dropdown in the topbar
+(`specialist (12).html` lines 14018–14054), which Session 1's topbar
+deferred. Avatar-menu dropdown is captured as a polish-session item.
+`IMPLEMENTED_ROUTES` is updated to include `/specialist/settings` so
+direct URL access doesn't trigger a Coming Soon stub.
+
+### Conventions established (Session 6 additions)
+
+1. **Pre-emptive promotion at 2nd-consumer arrival is the standing
+   pattern.** When 6.1 identified MetricCard + SparklineSVG as
+   2nd-consumer triggers, both moved to operations-shared/ before
+   the 2nd consumer was built. Same precedent as 5.4's StatCard
+   (extracted before 5.5 daily-activity built). Locked-in convention.
+2. **Discriminated-union avatar-gradient typing** (reviews-approvals's
+   `ReviewThreadActor.avatarGradient: AvatarGradientKey | {from, to}`)
+   is the bridge pattern for inline ad-hoc gradients that don't fit
+   the named palette. Same pattern would apply if any future view
+   needs an avatar gradient outside the queue-types `AVATAR_GRADIENTS`
+   set. **Caveat:** the canonical avatar primitive (still deferred)
+   should consume this same union type.
+3. **PDF-shape capture pattern is locked across 3 sessions.**
+   Daily-activity submission form (S5) → Reviews decision history
+   (S6) → all use a typed-but-unrendered shape with a specific
+   migration note. Future sessions follow the same pattern for any
+   PDF rules whose visible UI is deferred.
+4. **`ReviewThreadActor.avatarGradient` discriminated-union must be
+   honored by the future Avatar primitive extraction.** When the
+   polish-session avatar primitive lands (5+ sites consolidating
+   today), its `AvatarSubject` type MUST support both
+   `AvatarGradientKey` (named candidate palette) AND `{from, to}`
+   literal pairs. System / manager / admin actors won't match the
+   candidate palette — Reviews-approvals's Jamie (admin,
+   `#5C4A6E → #3A2D49`) and any future system-role avatars need the
+   inline-literal escape hatch. Naming the gradient `purple-deep`
+   in `AVATAR_GRADIENTS` would also work, but the union is the
+   safer default.
+5. **`PerformanceSnapshot.peerComparisonsAnonymous` is the standing
+   anonymization flag for performance comparisons.** PDF Step 13
+   requires anonymous peer comparisons (averages only, no specific
+   peer scores); HTML shows specific peer scores (95/93/92/91/89).
+   HTML wins for now; the type carries the boolean for future
+   policy/legal mandate. Same pattern as
+   `REJECT_REAPPLY_LOCKOUT_MONTHS` (S2) and `TWO_FACTOR_REQUIRED`
+   (S6) — typed business rules awaiting service-layer enforcement.
+   When services land, **enforcement is service-layer**: if
+   `peerComparisonsAnonymous` is true, the API response anonymizes
+   each peer (rank stays, name + score become category averages
+   only). UI doesn't change — only the data shape coming through.
+6. **`operations-shared/MetricCard` validates the "extract pre-emptively
+   when a 2nd consumer is known" pattern.** The span extension was
+   additive (added `3` in 6.1, no breaking change to pool-health's
+   existing 4/6/8/12 spans). Performance is the 2nd consumer and
+   exercises 4 of the 5 spans (3, 6, 12 — not 4 or 8 this view).
+   Locks the pattern: when a 2nd consumer is known at type-design
+   time, promote ahead of the build. Cheaper than retrofitting.
+7. **`PeriodToggle` is the most-consumed operations-shared primitive.**
+   3 views consume it (pool-health, daily-activity, performance);
+   each with a different period set (7d/30d/90d/All; Today/7d/30d;
+   Month/Quarter/Year). Generic over the option-key type —
+   `PeriodOption<K extends string>` — so each consumer's enum is
+   preserved at the call site. Zero forks; zero discriminator
+   props added since extraction.
+8. **Reviews-approvals introduces two source-improvement patterns
+   for deep-link-aware tab interfaces:**
+   - **Direction-tab change auto-selects the first item in the new
+     direction.** When the user switches Awaiting → Closed, the URL
+     `?id=` from the prior direction would point at a now-invisible
+     row; the orchestrator auto-selects the first item in the new
+     direction so the detail pane stays populated.
+   - **Direct URL load auto-switches the direction tab to follow the
+     loaded item.** A direct-load to `?id=REV-...` for a closed item
+     while the default tab is "incoming" would leave the rail blank;
+     `effectiveDirection` reads from the active item's direction so
+     deep-links work regardless of stored tab state.
+   Same pattern logged for future deep-link-aware tab interfaces.
+9. **`ReviewsComposer` forked from `chat-shared/Composer`** because
+   reviews don't need templates / AI suggest infrastructure.
+   Single-primitive borrow (`MessageListAutoScroll`) reused. Pattern:
+   when a shared component is heavy with infrastructure the consumer
+   doesn't need, fork the consumer-specific shape and borrow only
+   the primitive(s) that genuinely fit. Same precedent as Session 5's
+   `DisputeDecisionBar` (which forked queue-shared/DecisionBar
+   wholesale because the metric block + button count differed).
+10. **`MODAL_CONFIG` record pattern is the standing convention for
+    multi-modal views.** When a view has 4–5 related modals (reviews-
+    approvals decision modals, settings change-password / 2FA /
+    transfer / delete modals), use a single `MODAL_CONFIG` record
+    keyed by modal kind to drive a single `ReviewModal` shell. Saves
+    significant boilerplate vs N separate modal components. Same UX,
+    fewer files. Validated across 2 sessions (6.3 + 6.4).
+11. **Brand glyphs render as colored-letter tiles, not brand SVGs.**
+    Pattern locked across 2 sessions: sourcing (LinkedIn dot in 5.3),
+    settings (integration cards in 6.4 — Google Calendar `G` on
+    `#4285F4`, Slack `S` on `#4A154B`, etc.). Adding a brand-icon
+    library would violate `AI_RULES.md` B14 (no new dependencies).
+    Production may add inline-SVG brand glyphs on a case-by-case
+    basis if marketing requires brand fidelity. Current pattern is
+    accessibility-friendly + dependency-free.
+
+### Session 6.5 — Help
+
+**Smallest of the 6.x views.** Help is read-only browsing — no URL
+state, no modals, no decisions. Built as 8 small, focused components
+in a single vertical stack at `max-w-[1080px]`.
+
+**Files added (10):**
+- `src/components/specialist/help/help-search.tsx` (Client) — hero
+  search input + filtered-suggestions dropdown
+- `src/components/specialist/help/help-banner.tsx` (Server) — quick-
+  help continue-training banner with lime-tinted left edge
+- `src/components/specialist/help/help-resume-button.tsx` (Client
+  island) — tiny island so the banner stays Server
+- `src/components/specialist/help/topic-grid.tsx` (Server) — 6 cards,
+  3-col, tone-keyed icons via Lucide ICON_BY_KEY map
+- `src/components/specialist/help/articles-list.tsx` (Server) — 6
+  numbered FAQ rows
+- `src/components/specialist/help/training-grid.tsx` (Server) — 6
+  cards with 1-of-6 decorative gradient thumbs (caramel / navy /
+  olive / terracotta / purple / teal — inline gradient since these
+  don't map to the named palette)
+- `src/components/specialist/help/contact-grid.tsx` (Server) — 3
+  cards (chat featured / email / office hours) with status dots
+- `src/components/specialist/help/changelog-list.tsx` (Server) — 5
+  dated rows with new/improved/fixed type pills
+- `src/components/specialist/help/help-app.tsx` (Server orchestrator)
+- `src/components/specialist/help/index.ts` (barrel)
+- `src/app/(specialist)/specialist/help/page.tsx` updated from
+  ComingSoon stub → renders `<HelpApp />` (no Suspense — no
+  `useSearchParams`)
+
+**Reuse audit:** RosterHeader (people-shared) only. No queue-shared,
+no operations-shared, no chat-shared. Lowest reuse view of 6.x — help
+is mostly composition + 6 grid layouts.
+
+**Server/Client split:** 7 of 8 components are Server. Only
+help-search + help-resume-button are Client islands. Validates the
+"Server by default, Client only when interactive" principle.
+
+### Conventions established (6.5 additions)
+
+12. **`<button type="button">` does NOT need `onClick={(e) =>
+    e.preventDefault()}` in Server Components.** Buttons have no
+    default navigation action; the `preventDefault()` is a no-op.
+    The "visual-only CTAs are `e.preventDefault()`" convention only
+    applies to `<a href="...">` tags where you actually need to
+    suppress navigation. Bare `<button type="button">` Server
+    Components just render — no handler needed. (Caught at 6.5
+    build time: Next.js 16 errors on Server-Component → Client-
+    Component prop transfer for any `onClick` value, even an inline
+    `e.preventDefault()`.) **Standing rule:** if a visual-only CTA
+    is a button, omit the handler entirely; if it's an anchor,
+    promote to a Client island (or convert to a button).
+13. **`max-w-[1080px]` is the standing read-content width** for
+    surfaces that aren't dashboards (help, future settings-help-
+    style content pages). Dashboards stay at `max-w-[1280px]` (the
+    page-shell default). Help reads more comfortably narrower —
+    matches the source HTML's `.help-shell { max-width: 1080px }`.
+14. **Server card + Client island pattern for partly-interactive
+    chrome.** When a Server-renderable card needs a single
+    interactive element, extract a tiny Client island for just
+    that element rather than promoting the whole card to Client.
+    Keeps the Client bundle minimal and the surrounding markup
+    server-rendered. **Originating example:** `help-banner.tsx`
+    (Server) wraps `help-resume-button.tsx` (Client island,
+    30 lines). **Related shape:** `daily-activity-header.tsx`
+    is fully Client because it owns the period-toggle state that
+    downstream cards subscribe to — the boundary expands when
+    state needs to flow outside the island. Rule of thumb:
+    if the island only needs to handle its own click and doesn't
+    drive sibling state, keep the wrapper Server.
+
+### Session 6 close-out (6.6)
+
+**Status:** complete · 6.1 → 6.5 all signed off · 6.6 verification clean.
+
+**Routes shipping this session:** `/specialist/performance`,
+`/specialist/reviews`, `/specialist/settings` (NEW — never stubbed),
+`/specialist/help`. Specialist console: **18 of 18 views complete · 0
+stubs remaining**.
+
+#### Final regression sweep (6.6)
+
+| Check | Result |
+|---|---|
+| `pnpm typecheck` | clean |
+| `pnpm lint` | clean |
+| `pnpm build` | clean — 34 routes prerendered (4 specialist views from this session + 14 from prior sessions + 13 candidate-profile dynamic paths + marketing + signin dynamic + _not-found) |
+| Marketing landing (`/`) byte-equivalent to baseline `790b101` | yes — `src/app/page.tsx` and `src/app/layout.tsx` unchanged. `globals.css` has additive theme tokens (Session 1 success/danger-bg/lime-text + shadow-card) that the marketing page doesn't consume → render byte-identical |
+| Both chat routes statically generated | yes (`/specialist/candidate-chat`, `/specialist/client-chat` — both `○ Static`) |
+| All 13 candidate-profile dynamic routes prerender | yes (`● /specialist/candidates/[id]` SSG, 13 paths) |
+| All 4 Session 5 operations routes work | yes (sourcing / pool-health / disputes / daily-activity all `○ Static`) |
+| 4 new Session 6 routes work | yes (performance / reviews / settings / help all `○ Static`) |
+| Coming-soon stubs remaining | **0** (grep `ComingSoon` in `src/app/(specialist)` → no matches) |
+
+#### Reuse audit summary across the 4 Session 6 views
+
+| View | queue-shared | people-shared | chat-shared | operations-shared | Other |
+|---|---|---|---|---|---|
+| **Performance** | – | RosterHeader | – | MetricCard, SparklineSVG, PeriodToggle | – |
+| **Reviews-approvals** | ReviewModal, DecisionBar (forked → ReviewsDecisionBar), ReviewTabs (forked → ReviewsDirectionTabs), QueueRail, QueueShell, ReviewHeader, ApprovedFlash | RosterHeader (via ReviewsApp) | MessageListAutoScroll (single-primitive borrow) | – | – |
+| **Settings** | ReviewModal | – | – | – | scoped `SettingsToggle` (not promoted) |
+| **Help** | – | RosterHeader | – | – | – |
+
+**Library-by-library — 4 Session 6 views consume 3 of the 4 shared
+libraries.** Settings has the lowest reuse (just ReviewModal); help
+the second-lowest (just RosterHeader). Performance is the highest
+operations-shared consumer (3 of 5 primitives). Reviews-approvals is
+the only Session 6 view to touch all 3 of queue / people / chat
+shared libs (the 7-primitive queue-shared usage is the heaviest reuse
+in the entire conversion).
+
+#### Session 6 judgment calls log (consolidated)
+
+| # | Call | Session | Status |
+|---|---|---|---|
+| 1 | Pre-emptive promotion of MetricCard + SparklineSVG to operations-shared/ before performance built | 6.1 | Approved |
+| 2 | `peerComparisonsAnonymous: false` (HTML wins over PDF §13) | 6.1 | Approved with type-flag |
+| 3 | `ReviewThreadActor.avatarGradient: AvatarGradientKey \| {from, to}` discriminated union | 6.1 | Approved |
+| 4 | `ReviewDecisionHistoryItem` typed but not rendered (active workflow wins, history captured for migration) | 6.1 | Approved |
+| 5 | Settings nav-items option (c): direct-URL-only, no sidebar entry | 6.1 | Approved |
+| 6 | Direction-tab change auto-selects first item in new direction | 6.3 | Approved as standing pattern |
+| 7 | Direct URL load auto-switches direction tab to follow loaded item | 6.3 | Approved as standing pattern |
+| 8 | `ReviewsComposer` forked from `chat-shared/Composer` (templates / AI panel removed) | 6.3 | Approved |
+| 9 | `MODAL_CONFIG` record pattern reused from 6.3 in 6.4 (settings 4 modal kinds) | 6.4 | Approved as Convention #10 |
+| 10 | Brand glyphs as colored-letter tiles (not brand SVGs) — locked across 5.3 + 6.4 | 6.4 | Approved as Convention #11 |
+| 11 | `modifiedCount` event-counter as visual feedback (production wants `dirtyFields` set) | 6.4 | Documented as migration item |
+| 12 | `<button type="button">` does NOT need `e.preventDefault()` in Server Components | 6.5 | Approved as Convention #12 |
+| 13 | `max-w-[1080px]` standing read-content width for non-dashboard pages | 6.5 | Approved as Convention #13 |
+| 14 | Server card + Client island pattern (help-banner / help-resume-button) | 6.5 | Approved as Convention #14 |
+
+#### Visual fidelity audit table (consolidated, Sessions 6.2 → 6.5)
+
+Items below were surfaced during the side-by-side at 1440px and 768px.
+Severity: **Low** = sub-perceptual or only at high zoom; **Medium** =
+visible at typical density. **Locked** = deliberate decision, not a
+bug. **Defer** = keep current shape, queue for polish session.
+
+| FA-id | View | Source HTML | Now | Severity | Recommendation |
+|---|---|---|---|---|---|
+| FA-perf-1 | Performance | `.perf-trend-svg { height: 80px }` (score-trend chart) | shared `SparklineSVG` renders `h-16` (64px) | Low | **Defer** — chart still legible; raising height in the shared primitive would cascade to pool-health (currently happy at 64px). Polish-session option: optional `height` prop on SparklineSVG that pool-health keeps default + performance overrides to 80. |
+| FA-perf-2 | Performance | `.perf-peer-row` standard rows have `padding: 9px 6px` (6px L/R); `.perf-peer-row.you` extends with `margin: 0 -8px` + `padding: 9px 14px` and uses `border-bottom: 1px solid var(--line)` (not soft) | Standard rows have no horizontal padding (relying on parent's 8px); you-row matches the `-mx-2` + `px-3.5` mechanic but standard rows are 8px tighter on L/R | Low | **Defer** — alignment is preserved; the 6px standard-row padding is sub-perceptual. The you-row mechanic itself matches. |
+| FA-rev-1 | Reviews-approvals | `ReviewsDirectionTabs` active-tab underline is full-width across the cell (border-bottom paradigm) | underline is inset 16px L/R via `right-4 left-4` absolute span | Low | **Lock** — chosen as a small departure to make the underline read as "selected pill" rather than a CSS border. Same idiom used in Session 2 ReviewTabs. Keeps the strip looking calmer. |
+| FA-rev-2 | Reviews-approvals | thread-message body parser supports inline emphasis + blockquote markers (`> quoted-line`) | parser only recognizes `<strong>...</strong>` (no blockquote handling) | Low | **Defer (dormant)** — current mock data has no quote markers in any thread message; the gap is invisible until services seed quote content. Polish-session work item: extend `BodyNode` union with `{ kind: "blockquote", value }` and a leading `> ` line-mode tokenizer. |
+| FA-set-1 | Settings | `.set-subnav` flips at `@media (max-width: 880px)` from vertical column to horizontal scroll bar above the panel | sub-nav uses Tailwind's `lg:` breakpoint (1024px) — between 880–1024px we show a not-sticky vertical column instead of a horizontal scroll | Medium | **Defer** — the 144px-wide gap (880-1024) is the only band where source HTML and our impl diverge. Real fix is a custom breakpoint at 880 in `tailwind.config` or an arbitrary value `max-[880px]:flex-row max-[880px]:overflow-x-auto`. Below 880 ours stacks too — same final shape, different transition point. Polish-session item, ~10 lines. |
+| FA-set-2 | Settings | Integration cards have brand-colored letter tiles (`G` on `#4285F4`, etc.) | Same — letter on solid brand-color tile | – | **Locked** (Convention #11) — chosen pattern across sourcing (5.3) + settings (6.4). Brand-icon library would violate AI_RULES B14. |
+| FA-set-3 | Settings | savebar `.set-savebar-status` shows count of dirty fields | `modifiedCount` increments on every change event (double-counts when toggled twice) | Medium | **Documented as migration item** — see "Settings savebar — dirty-field tracking migration" section. Production-grade impl needs `Set<string>` of dirty field-keys + initial-state snapshot. Owner: services session. |
+| FA-help-1 | Help | None observed during the side-by-side (1440px + 768px) | – | – | **Pass** — help is structural composition, low fidelity risk surface |
+
+#### Conventions added in Session 6 (numbered list)
+
+11. **`modifiedCount` event counter is visual prototyping only.**
+    Production-grade dirty-field tracking needs a `Set<string>` of
+    field-keys + initial-state snapshot for proper savebar count +
+    revert. Migration item logged.
+12. **`<button type="button">` does NOT need
+    `onClick={(e) => e.preventDefault()}` in Server Components.**
+    Buttons have no default navigation action; the handler is a no-op
+    AND triggers a Next.js Server-Component prerender error. Standing
+    rule: visual-only button → bare button (no handler); visual-only
+    anchor → Client island (or convert to a button).
+13. **`max-w-[1080px]` is the standing read-content width** for non-
+    dashboard surfaces (help, future content pages). Dashboards stay
+    at the page-shell default `max-w-[1280px]`.
+14. **Server card + Client island pattern** for partly-interactive
+    chrome. Originating example: `help-banner.tsx` (Server) wrapping
+    `help-resume-button.tsx` (Client island). Use this when an island
+    only needs to handle its own click and doesn't drive sibling
+    state. (Already inserted above as #14.)
+
+(Conventions #1-#10 documented earlier in the log; conventions #11-#14
+added in Session 6 close-out.)
+
+---
+
+## CONVERSION-COMPLETE — Specialist console (Sessions 0 → 6)
+
+### By the numbers
+
+| | Total |
+|---|---|
+| Sessions | 6 (S0 foundation → S6 final) + ad-hoc hotfixes |
+| Commits to date | 7 (S0 + S1 + S2 + S3 + S4 + S5 + S5 hotfix); S6 commit pending sign-off |
+| Specialist views shipped (real routes, no stubs) | **18 / 18** |
+| Component .ts/.tsx files in `src/components/specialist` | **181** |
+| Mock-data files in `src/lib/mock-data/specialist` | 22 (incl. 3 type-only files: `chat-types`, `queue-types`, `nav-items`; index barrel) |
+| Mock-data lines | 13,367 |
+| Source HTML lines processed | 29,306 (`specialist (12).html`) |
+| Cross-session canonical IDs (stable across S2 → S6) | 7 prefixes: `cand-*`, `client-*`, `prospect-*`, `pool-*`, `DSP-*`, `REV-*`, `peer-*` |
+| Locked conventions | 14 |
+| Migration items captured (typed-but-unrendered + service-layer enforcement flags) | 10 |
+| Tokens added across all sessions (`globals.css` `@theme`) | 7 (success / success-bg / danger-bg / lime-text / shadow-card from S1; no new tokens S2–S6) |
+
+### Specialist views shipped (18)
+
+| # | Route | Session | Type |
+|---|---|---|---|
+| 1 | `/specialist/dashboard` | S1 | Static |
+| 2 | `/specialist/review-queue` | S2 | Static |
+| 3 | `/specialist/recert-queue` | S2 | Static |
+| 4 | `/specialist/my-candidates` | S3 | Static |
+| 5 | `/specialist/my-clients` | S3 | Static |
+| 6 | `/specialist/candidates/[id]` | S3 | SSG (13 paths) |
+| 7 | `/specialist/candidate-chat` | S4 | Static |
+| 8 | `/specialist/client-chat` | S4 | Static |
+| 9 | `/specialist/sourcing` | S5 | Static |
+| 10 | `/specialist/pool-health` | S5 | Static |
+| 11 | `/specialist/disputes` | S5 | Static |
+| 12 | `/specialist/daily-activity` | S5 | Static |
+| 13 | `/specialist/performance` | S6 | Static |
+| 14 | `/specialist/reviews` | S6 | Static |
+| 15 | `/specialist/settings` | S6 | Static |
+| 16 | `/specialist/help` | S6 | Static |
+| 17 | `/specialist/signin` | S1 (auth group) | Dynamic |
+| 18 | `/specialist/forgot` | S1 (auth group) | Static |
+
+PDF views NOT surfaced as routes (intentional): cross-cutting elements,
+notification center, global search. These are integration concerns the
+spec describes as features-of-the-shell rather than standalone surfaces.
+
+### Aggregate reuse audit — 4 shared libraries
+
+| Library | Components | Consumer view directories | Highest-reuse view | Forks since extraction | Additive prop extensions |
+|---|---|---|---|---|---|
+| `queue-shared/` | 13 | 7 (review-queue, recert-queue, reviews-approvals, disputes, sourcing, settings, performance) | reviews-approvals (7 components) | 2 deliberate forks: `ReviewsDirectionTabs` (vs `ReviewTabs`), `ReviewsDecisionBar` (vs `DecisionBar`) — both shape divergences, not flag-bloat | 0 |
+| `people-shared/` | 9 | 9 (my-candidates, my-clients, sourcing, pool-health, daily-activity, performance, reviews-approvals, settings, help) | sourcing + my-candidates (RosterShell + RosterHeader + RosterCohorts + RosterFilters + RosterAttentionStrip + RosterTable + RosterBulkBar + RosterSheet) | 0 | 0 since extraction |
+| `chat-shared/` | 15 | 3 (candidate-chat, client-chat, reviews-approvals) | candidate-chat ≈ client-chat (full surface) | 1 deliberate fork: `ReviewsComposer` (templates / AI suggest infrastructure removed for reviews) | 0 |
+| `operations-shared/` | 5 | 4 (sourcing, pool-health, daily-activity, performance) | performance (3 of 5 primitives) | 0 | 2 additive (SparklineSVG `ink` tone + `showLastDot`; MetricCard span 3) |
+
+**Highest consumer-to-component ratio: `people-shared/`** at 9 view
+directories / 9 components = **1.0 view per component**, every
+primitive proven across multiple consumers.
+
+**Most-consumed single primitive: `RosterHeader`** — 9 of 18
+specialist views import it. The discipline holds: when a header shape
+recurs, the header primitive is the right scope.
+
+**Average extraction maturity:** 3 deliberate forks across 42 shared
+components (7.1% fork rate); 2 additive prop extensions, all
+backwards-compatible. **Zero per-consumer boolean flag bloat.**
+
+### Migration constants + items consolidated
+
+PDF rules typed but currently captured as constants / unrendered
+shapes — service-layer enforces, UI doesn't change.
+
+| Constant / item | Source | Currently | Service-layer enforcement |
+|---|---|---|---|
+| `POOL_DEPLETION_THRESHOLD = 5` | PDF §10 | constant (S5) | API returns urgent flag when active candidates ≤ 5 |
+| `DISPUTE_SLA_HOURS = 24` | PDF §11 | constant (S5) | API computes SLA tone from filed-at + 24h boundary |
+| `REJECT_REAPPLY_LOCKOUT_MONTHS = 6` | PDF §3 (under review) | constant (S2) | gating sign-up flow (under product review) |
+| `TWO_FACTOR_REQUIRED = true` | PDF §15 | constant (S6) | enforced at auth provider |
+| Settings `modifiedCount` → `dirtyFields: Set<string>` | (impl) | event counter | replace with field-key set + initial-state snapshot in services session |
+| Daily-activity submission form (PDF §12) | PDF §12 | type captured, UI unbuilt | services session adds POST endpoint + form route |
+| Reviews-approvals `ReviewDecisionHistoryItem` | PDF §14 | typed, 4 sample entries, not rendered | new route `/specialist/reviews/history` OR 4th tab "My history" |
+| Audit-log compliance promise (chat) | PDF §6 | "Logged to client record · audit-tracked" caption (decorative) | service-layer wires audit row on every send |
+| `peerComparisonsAnonymous: boolean` | PDF §13 | `false` (HTML wins) | API anonymizes peer scores when flag flips |
+| Login history list | PDF §15 | `LoginHistoryEntry` typed, not rendered | services session populates from auth provider; render in settings security panel |
+
+### Deferred polish items (single consolidated list with effort)
+
+| Item | Severity | Effort | Owner |
+|---|---|---|---|
+| **Avatar primitive extraction** (5+ sites consolidating today: queue-types AVATAR_GRADIENTS palette + chat avatar + reviews thread avatar + my-candidates roster avatar + sourcing prospect avatar) — must support `AvatarGradientKey \| {from, to}` discriminated union per Session 6 #4 | Medium | ~1 day | polish session |
+| **Avatar-menu dropdown** (top-bar profile menu — direct-URL-only access to settings until this ships) | Medium | ~half day | polish session |
+| FA-perf-1 SVG height (64 → 80 in performance score-trend) | Low | ~1 hr | polish session |
+| FA-perf-2 peer-row 6px L/R padding | Low | ~30 min | polish session |
+| FA-rev-1 underline inset on direction tabs | Low | Lock — keep | – |
+| FA-rev-2 thread-body blockquote support | Low (dormant) | ~half day | services session (real quote content arrives) |
+| FA-set-1 settings sub-nav 880px breakpoint | Medium | ~10 lines | polish session |
+| FA-3 chat-row industry+size sub-line (S4 deferred) | Medium (most user-visible) | ~half day | services session OR a dedicated client-profile session |
+| FA-4 chat-row asymmetric padding (S4) | Low | ~10 min | polish session |
+| FA-6 chat send-button glyph (S4) | Low | ~10 min | polish session |
+| FA-pool-1 / FA-pool-2 / FA-pool-3 (pool-health locked deviations) | – | – | Locked |
+| New-conversation modal (chat compose flow) | Out of scope | ~1-2 days | future feature work |
+| Settings `dirtyFields` migration | Low (functional) | ~half day | services session |
+
+**Headline polish-session scope:** ~1.5 days for FA fixes + avatar
+primitive + avatar-menu dropdown. Everything else is either locked,
+service-layer-blocked, or out of scope.
+
+### What backend wiring will inherit
+
+**Checklist for the services session:**
+
+- [ ] Replace `currentUser` mock-data import with auth-resolved user
+- [ ] Wire all 18 list/snapshot mock-data functions to API endpoints
+      (each `getX()` becomes a fetch + cache hook)
+- [ ] Honor `POOL_DEPLETION_THRESHOLD`, `DISPUTE_SLA_HOURS`,
+      `REJECT_REAPPLY_LOCKOUT_MONTHS`, `TWO_FACTOR_REQUIRED`
+      service-side
+- [ ] Implement audit-log row write on every chat send (S4 promise)
+- [ ] Render `ReviewDecisionHistoryItem` (new route or 4th tab — see
+      reviews-approvals migration note)
+- [ ] Render daily-activity submission form (PDF §12 — type captured,
+      UI deferred)
+- [ ] Replace settings `modifiedCount` with proper dirty-field tracking
+- [ ] Render `LoginHistoryEntry` in settings security panel
+- [ ] Render `PreferencesState.theme/density/autoRefreshSec` UI
+- [ ] Wire `peerComparisonsAnonymous: true` API behavior (peer rank
+      anonymization) — UI doesn't change, API response shape does
+- [ ] Replace `<button type="button">` Server-Component CTAs that are
+      currently no-op (help, settings, performance) with real
+      navigation / handlers
+- [ ] Replace deep-link `?id=` with router-driven param resolution
+      that re-fetches if needed (current impl assumes mock data is
+      synchronously available)
+
+### Phase 2 playbook — what carries forward to Manager / Admin / Talent conversions
+
+Patterns proven across 6 sessions, ready to lift wholesale:
+
+1. **6-session structure with strict checkpoint-and-approval.**
+   Step 1 acknowledgement → Step 2 build → Step 3 verify (typecheck +
+   lint + build) → Step 4 deliverable → wait for `next`. Cadence
+   forces small, reviewable diffs.
+2. **"HTML wins over PDF" rule** — when source HTML and spec PDF
+   diverge, build the HTML, capture the PDF shape as typed-but-
+   unrendered mock data with a specific migration note. Validated
+   3 times: daily-activity (S5), reviews-approvals (S6), help
+   (LegacyPDFCategory).
+3. **Cross-session ID strategy** — stable canonical prefixes
+   (`cand-*`, `client-*`, `prospect-*`, `pool-*`, `DSP-*`, `REV-*`,
+   `peer-*`) make IDs joinable across mock-data files without a
+   service layer. Manager / Admin / Talent should pick their own
+   prefixes (`mgr-*`, `admin-*`, `talent-*`) and respect Specialist's
+   when those surfaces cross-reference.
+4. **Shared component extraction discipline.** Extract pre-emptively
+   when 2nd consumer is known (S6 #1 with MetricCard); extract on
+   first true 2-consumer arrival otherwise; **never extract until
+   3 boolean flags are needed — fork instead.** Validated by 7.1%
+   fork rate across 42 shared components.
+5. **`CONVERSION_LOG.md` as single source of truth.** Locks
+   conventions, captures judgment calls, records HTML-vs-PDF
+   deviations, lists migration items. Future sessions read this
+   file first. The discipline is more valuable than per-PR commit
+   messages.
+6. **Migration note discipline — specific, not vague.** Every
+   typed-but-unrendered shape names the route / tab / API behavior
+   that will render it. Avoids "future work" bit-rot.
+7. **Visual fidelity audit (FA-id table).** Side-by-side at 1440px
+   and 768px after every checkpoint. Each item gets severity
+   (Low / Medium / Locked / Defer) + recommendation + effort
+   estimate. Locks deliberate departures so they don't show up as
+   regression in QA later.
+8. **Server by default; Client only when state or effects.** Validated
+   across 181 components — &lt;30% are Client. The Banner-with-Client-
+   island pattern (S6 #14) keeps the boundary tight. Next.js 16's
+   strict prop-passing rules (S6 #12) are the safety net.
+9. **Operations-shared / queue-shared / people-shared / chat-shared
+   layering.** Each shared lib was pre-emptively named in session
+   planning, populated as 2nd consumers arrived, and stayed
+   fork-free with rare exceptions. Carry the same 4 names forward;
+   add `manager-shared/`, `admin-shared/`, `talent-shared/` as new
+   surfaces accrue.
+10. **`MODAL_CONFIG` record pattern** for views with 4+ similar
+    modals (S6 #10). Saves N modal-component files for one shell.
+11. **Hotfix-and-relock pattern** for late-arriving constraints
+    (e.g. sticky-stack ribbon discovered after S5 commit). Land
+    a small targeted hotfix commit, log the fix in
+    CONVERSION_LOG, move on. Don't try to absorb retroactively into
+    the originating session.
+
+### Final state
+
+**Specialist console:** 18 of 18 views shipped, 0 coming-soon stubs,
+typecheck + lint + build clean, marketing landing byte-equivalent to
+S0 baseline `790b101`, 3 deliberate forks across 42 shared components
+(7.1% fork rate), 14 locked conventions, 10 migration items captured.
+
+**Ready for:** services session (backend wiring), polish session (FA
+items + avatar primitive + avatar-menu dropdown), Phase 2 (Manager /
+Admin / Talent surfaces).
+
+---

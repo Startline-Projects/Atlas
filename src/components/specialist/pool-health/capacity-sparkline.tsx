@@ -4,8 +4,8 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
-import { SparklineSVG } from "./sparkline-svg";
+import { MetricCard } from "@/components/specialist/operations-shared";
+import { SparklineSVG } from "@/components/specialist/operations-shared";
 import type { PoolHealthSnapshot } from "@/lib/mock-data/specialist/pool-health";
 
 export function CapacitySparkline({
@@ -14,7 +14,7 @@ export function CapacitySparkline({
   capacity: PoolHealthSnapshot["capacity"];
 }) {
   return (
-    <PhCard label="Capacity" title="Pool size" span={4}>
+    <MetricCard label="Capacity" title="Pool size" span={4}>
       <div className="flex items-baseline justify-between gap-2">
         <div
           className="font-display text-[40px] font-normal leading-none tracking-[-0.03em] text-ink tabular-nums"
@@ -32,6 +32,6 @@ export function CapacitySparkline({
         </span>
       </div>
       <SparklineSVG points={capacity.points} tone={capacity.tone} />
-    </PhCard>
+    </MetricCard>
   );
 }

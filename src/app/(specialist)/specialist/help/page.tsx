@@ -1,6 +1,9 @@
-import { ComingSoon } from "@/components/specialist/shell/coming-soon";
+import { HelpApp } from "@/components/specialist/help/help-app";
 
-// TODO: implemented in a later session. Spec PDF Part 9 — Account & Settings.
+/**
+ * Help & resources view — long-form vertical scroll. Server-rendered;
+ * only the search input is a Client island. No URL state.
+ */
 export default function HelpPage() {
-  return <ComingSoon title="Help & resources" />;
+  return <HelpApp />;
 }

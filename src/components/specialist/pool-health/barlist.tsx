@@ -7,7 +7,7 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import type { PoolHealthSnapshot } from "@/lib/mock-data/specialist/pool-health";
 
 export function Barlist({
@@ -18,7 +18,7 @@ export function Barlist({
   others: PoolHealthSnapshot["geographicOthers"];
 }) {
   return (
-    <PhCard label="Coverage" title="Geographic distribution" span={6}>
+    <MetricCard label="Coverage" title="Geographic distribution" span={6}>
       <div className="flex flex-col gap-2.5">
         {geographic.map((row) => (
           <BarRow
@@ -37,7 +37,7 @@ export function Barlist({
           dim
         />
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }
 

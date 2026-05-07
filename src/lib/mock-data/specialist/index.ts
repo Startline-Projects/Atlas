@@ -25,3 +25,7 @@ export * from "./sourcing";
 export * from "./pool-health";
 export * from "./disputes";
 export * from "./daily-activity";
+export * from "./performance";
+export * from "./reviews-approvals";
+export * from "./settings";
+export * from "./help";

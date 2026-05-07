@@ -1,13 +1,18 @@
 /**
- * Pure inline SVG sparkline — used by capacity-sparkline (47 talents)
- * and quality-tile (4.7/5). 12-point series, full-width container,
- * 64px tall.
+ * Pure inline SVG sparkline — used by pool-health (capacity / quality
+ * tiles) and performance (score-trend chart). 12-point series typical,
+ * full-width container, 64px tall.
  *
- * Renders both the area fill (semi-transparent ink) and the line
- * stroke. Last point gets a small dot.
+ * Renders both an area fill (semi-transparent stroke color) and the
+ * line stroke. The last point gets a small dot.
  *
- * Per source CSS `.ph-spark-line` / `.ph-spark-area` / `.ph-spark-dot`:
- * stroke 1.6, ink color, area opacity 0.06.
+ * Per source CSS (`.ph-spark-line` / `.perf-trend-line`): stroke 1.6,
+ * area opacity ~0.06–0.08.
+ *
+ * Originally extracted from pool-health/sparkline-svg.tsx in Session 5
+ * with a "promote when 2nd consumer appears" note. Performance is the
+ * 2nd consumer; promoted to operations-shared/ at the start of
+ * Session 6.1.
  *
  * Server Component (path computed at render time from the points).
  */
@@ -16,22 +21,26 @@ const VIEWBOX_W = 320;
 const VIEWBOX_H = 64;
 const PADDING_Y = 6;
 
-export type SparklineTone = "success" | "lime" | "amber" | "danger";
+export type SparklineTone = "success" | "lime" | "amber" | "danger" | "ink";
 
 const STROKE_COLOR: Record<SparklineTone, string> = {
   success: "var(--color-success)",
   lime: "var(--color-lime-deep)",
   amber: "var(--color-amber)",
   danger: "var(--color-danger)",
+  ink: "var(--color-ink)",
 };
 
 export function SparklineSVG({
   points,
   tone = "success",
+  showLastDot = true,
 }: {
-  /** Series of values 0-100 (or any consistent range — the renderer normalizes). */
+  /** Series of values (any range — the renderer normalizes). */
   points: ReadonlyArray<number>;
   tone?: SparklineTone;
+  /** Render the small filled circle at the last point. Default true. */
+  showLastDot?: boolean;
 }) {
   if (points.length < 2) return null;
 
@@ -83,7 +92,9 @@ export function SparklineSVG({
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <circle cx={lastX} cy={lastY} r={2.5} fill={stroke} />
+      {showLastDot ? (
+        <circle cx={lastX} cy={lastY} r={2.5} fill={stroke} />
+      ) : null}
     </svg>
   );
 }

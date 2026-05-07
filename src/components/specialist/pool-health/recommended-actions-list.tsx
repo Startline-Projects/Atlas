@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Sparkles, AlertOctagon, Lightbulb } from "lucide-react";
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import type {
   PoolHealthSnapshot,
   RecommendedAction,
@@ -47,13 +47,13 @@ export function RecommendedActionsList({
   actions: PoolHealthSnapshot["recommendedActions"];
 }) {
   return (
-    <PhCard label="Atlas insights" title="Recommended actions" span={12}>
+    <MetricCard label="Atlas insights" title="Recommended actions" span={12}>
       <div className="flex flex-col gap-2.5">
         {actions.map((a, i) => (
           <RecItem key={i} action={a} />
         ))}
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }
 

@@ -10,7 +10,7 @@
  * Server Component.
  */
 
-import { PhCard } from "./ph-card";
+import { MetricCard } from "@/components/specialist/operations-shared";
 import type {
   PoolHealthSnapshot,
   TierKey,
@@ -36,7 +36,7 @@ export function TierCompositionBar({
   composition: PoolHealthSnapshot["tierComposition"];
 }) {
   return (
-    <PhCard label="Composition" title="Tier distribution" span={6}>
+    <MetricCard label="Composition" title="Tier distribution" span={6}>
       <div className="my-1.5 flex h-9 overflow-hidden rounded-md">
         {composition.map((row) => (
           <div
@@ -74,6 +74,6 @@ export function TierCompositionBar({
           </div>
         ))}
       </div>
-    </PhCard>
+    </MetricCard>
   );
 }

@@ -186,4 +186,8 @@ export const IMPLEMENTED_ROUTES: ReadonlyArray<string> = [
   "/specialist/pool-health",
   "/specialist/disputes",
   "/specialist/daily-activity",
+  "/specialist/performance",
+  "/specialist/reviews",
+  "/specialist/settings",
+  "/specialist/help",
 ];
