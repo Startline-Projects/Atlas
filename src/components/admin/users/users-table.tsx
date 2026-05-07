@@ -107,7 +107,7 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
     onSelectAll(e.currentTarget.checked);
   };
 
-  // Row click handler: navigate to candidate detail page (admin.html lines 26789-26824 pattern)
+  // Row click handler: navigate to candidate or client detail page (admin.html lines 26789-26824 pattern)
   const handleRowClick = (e: MouseEvent<HTMLDivElement>, rowId: string, row: TableRow) => {
     const target = e.target as HTMLElement;
 
@@ -119,9 +119,11 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
       return;
     }
 
-    // Only navigate for candidate rows
+    // Navigate for candidate or client rows
     if (activeTab === 'candidates' && 'hiresCount' in row && rowId.indexOf('cand-') === 0) {
       router.push(`/admin/users/candidates/${rowId}`);
+    } else if (activeTab === 'clients' && 'spendCount' in row && rowId.indexOf('cl-') === 0) {
+      router.push(`/admin/users/clients/${rowId}`);
     }
   };
 
@@ -171,11 +173,12 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
             {/* Table Body */}
             {rows.map((row, idx) => {
               const isCandidateRow = activeTab === 'candidates' && 'hiresCount' in row;
+              const isClientRow = activeTab === 'clients' && 'spendCount' in row;
               return (
               <div
                 key={row.id}
                 onClick={(e) => handleRowClick(e, row.id, row)}
-                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? 'bg-[rgba(214,242,77,0.10)] selected' : 'hover:bg-[#FCF9F1]'}`}
+                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow || isClientRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? 'bg-[rgba(214,242,77,0.10)] selected' : 'hover:bg-[#FCF9F1]'}`}
                 style={{ gridTemplateColumns: tableConfig.gridCols }}
                 role="row"
                 data-user-id={row.id}
