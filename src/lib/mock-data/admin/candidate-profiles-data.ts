@@ -139,6 +139,15 @@ export interface PrivacyItem {
   value: string;
   detail: string;
   icon: string;
+  valueVariant?: 'success' | 'warn' | 'danger' | 'default';
+}
+
+export interface PrivacySection {
+  statusPill?: {
+    label: string;
+    variant?: 'warn' | 'danger' | 'neutral' | 'default';
+  };
+  items: PrivacyItem[];
 }
 
 export interface CandidateProfile extends CandidateUser {
@@ -246,8 +255,8 @@ export interface CandidateProfile extends CandidateUser {
   // Trust & Safety Signals (Section 8)
   signals: TrustSignalsSection;
 
-  // Privacy & Legal (Section 9)
-  privacy: PrivacyItem[];
+  // Data Privacy & Legal (Section 9)
+  privacy: PrivacySection;
 }
 
 // ============================================================
@@ -835,32 +844,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
 
     // Section 9: Privacy & Legal (lines 16970–17018)
-    privacy: [
-      {
-        label: 'Data subject access requests', // line 16986
-        value: 'None active', // line 16988
-        detail: 'No GDPR / CCPA access requests filed by this candidate.', // line 16989
-        icon: 'document',
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
       },
-      {
-        label: 'Data export logs', // line 16995
-        value: '2 exports', // line 16997
-        detail: 'Latest: Apr 14, 2026 by Aïsha Okafor · candidate\'s annual data summary (auto-generated, no action).', // line 16998
-        icon: 'download',
-      },
-      {
-        label: 'Account deletion requests', // line 17004
-        value: 'None', // line 17006
-        detail: 'No active deletion requests · right-to-be-forgotten not invoked.', // line 17007
-        icon: 'trash',
-      },
-      {
-        label: 'Active legal holds', // line 17013
-        value: 'None', // line 17015
-        detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.', // line 17016
-        icon: 'alert',
-      },
-    ],
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: '2 exports',
+          detail: 'Latest: Apr 14, 2026 by Aïsha Okafor · candidate\'s annual data summary (auto-generated, no action).',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
 
     // Quick facts (Phase 5f right rail)
     quickFacts: {
@@ -1138,7 +1156,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: 'None',
+          detail: 'No data export requests initiated.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Sep 1, 2023',
       timezoneShort: 'COT · UTC-5',
@@ -1247,7 +1299,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: 'None',
+          detail: 'No data export requests initiated.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Apr 2, 2026',
       timezoneShort: 'CST · UTC+8',
@@ -1443,7 +1529,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'DSAR pending review',
+        variant: 'warn',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: '1 pending',
+          valueVariant: 'warn',
+          detail: 'Subject access request filed Apr 26, 2026, on hold pending suspension review. SLA paused.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: '1 export',
+          detail: 'Last export Apr 22, 2026 — pre-suspension account snapshot for compliance archive.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Jul 15, 2024',
       timezoneShort: 'EST · UTC-5',
@@ -1629,7 +1749,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: '1 export',
+          detail: 'Last export Mar 15, 2024 — candidate\'s annual data summary (auto-generated, no action).',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Jan 20, 2024',
       timezoneShort: 'ALMT · UTC+6',
@@ -1823,7 +1977,40 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'Legal hold active',
+        variant: 'danger',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: '1 historical',
+          detail: 'Resolved Mar 18, 2026 — full account export delivered per GDPR Article 15.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: '3 exports',
+          detail: 'Latest: Mar 20, 2026 — formal data archive triggered by ban-related compliance review.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: '1 active',
+          valueVariant: 'warn',
+          detail: 'RTBF request filed Apr 5, 2026 · processing blocked by active legal hold (see below).',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: '1 active',
+          valueVariant: 'warn',
+          detail: 'Litigation hold filed Apr 2, 2026 by Atlas Trust & Safety · prevents account deletion until resolved.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Feb 8, 2024',
       timezoneShort: 'EET · UTC+2',
@@ -2056,7 +2243,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: '1 export',
+          detail: 'Last export May 8, 2024 — candidate\'s initial onboarding data summary.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'May 12, 2024',
       timezoneShort: 'IST · UTC+5:30',
@@ -2164,7 +2385,41 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
       ],
     },
-    privacy: [],
+    privacy: {
+      statusPill: {
+        label: 'All clear',
+        variant: 'default',
+      },
+      items: [
+        {
+          label: 'Data subject access requests',
+          value: 'None active',
+          valueVariant: 'success',
+          detail: 'No GDPR / CCPA access requests filed by this candidate.',
+          icon: 'document',
+        },
+        {
+          label: 'Data export logs',
+          value: 'None',
+          detail: 'No data export requests initiated.',
+          icon: 'download',
+        },
+        {
+          label: 'Account deletion requests',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No active deletion requests · right-to-be-forgotten not invoked.',
+          icon: 'trash',
+        },
+        {
+          label: 'Active legal holds',
+          value: 'None',
+          valueVariant: 'success',
+          detail: 'No legal holds, subpoenas, or law-enforcement requests on this account.',
+          icon: 'alert',
+        },
+      ],
+    },
     quickFacts: {
       joinedDate: 'Apr 5, 2026',
       timezoneShort: 'IST · UTC+0',

@@ -13,6 +13,7 @@ import { ProfileSectionFinancial } from './sections/profile-section-financial';
 import { ProfileSectionCommunications } from './sections/profile-section-communications';
 import { ProfileSectionAudit } from './sections/profile-section-audit';
 import { ProfileSectionSignals } from './sections/profile-section-signals';
+import { ProfileSectionPrivacy } from './sections/profile-section-privacy';
 
 interface CandidateProfileShellProps {
   profile: CandidateProfile;
@@ -39,6 +40,7 @@ export function CandidateProfileShell({ profile }: CandidateProfileShellProps) {
           <ProfileSectionCommunications profile={profile} />
           <ProfileSectionAudit profile={profile} />
           <ProfileSectionSignals profile={profile} />
+          <ProfileSectionPrivacy profile={profile} />
         </div>
 
         {/* Right rail */}
