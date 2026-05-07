@@ -3,11 +3,11 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 import { cn } from '@/lib/utils/cn';
 
-interface ProfileSectionSignalsProps {
+interface CandidateSectionSignalsProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionSignals({ profile }: ProfileSectionSignalsProps) {
+export function CandidateSectionSignals({ profile }: CandidateSectionSignalsProps) {
   const { signals } = profile;
 
   const getCardBorderColor = (variant: 'flag' | 'danger' | 'clear') => {

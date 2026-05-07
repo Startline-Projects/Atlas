@@ -4,11 +4,11 @@ import { Fragment, useState } from 'react';
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 import { cn } from '@/lib/utils/cn';
 
-interface ProfileSectionAuditProps {
+interface CandidateSectionAuditProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionAudit({ profile }: ProfileSectionAuditProps) {
+export function CandidateSectionAudit({ profile }: CandidateSectionAuditProps) {
   const [expandedCount] = useState(profile.auditLog.recent.length);
 
   const getDotColor = (category: string) => {

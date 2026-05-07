@@ -4,11 +4,11 @@ import React from 'react';
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 import { cn } from '@/lib/utils/cn';
 
-interface ProfileSectionPrivacyProps {
+interface CandidateSectionPrivacyProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionPrivacy({ profile }: ProfileSectionPrivacyProps) {
+export function CandidateSectionPrivacy({ profile }: CandidateSectionPrivacyProps) {
   const { privacy } = profile;
 
   const getIconSvg = (icon: string) => {

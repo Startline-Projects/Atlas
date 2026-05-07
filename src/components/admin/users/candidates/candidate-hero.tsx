@@ -64,11 +64,11 @@ const actionBtnStyles = {
 };
 const disabledBtnClasses = 'opacity-45 cursor-not-allowed pointer-events-none';
 
-interface ProfileHeroProps {
+interface CandidateHeroProps {
   profile: CandidateProfile;
 }
 
-export function ProfileHero({ profile }: ProfileHeroProps) {
+export function CandidateHero({ profile }: CandidateHeroProps) {
   const { initials, name, cohortBadge, country, flag, timezone, languages, title, status, atlasId, specialist } = profile;
 
   return (

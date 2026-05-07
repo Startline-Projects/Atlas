@@ -4,11 +4,11 @@ import { IdentityPhotoCard } from './identity/identity-photo-card';
 import { IdentityLivenessVideo } from './identity/identity-liveness-video';
 import { IdentityFraudCard } from './identity/identity-fraud-card';
 
-interface ProfileSectionIdentityProps {
+interface CandidateSectionIdentityProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionIdentity({ profile }: ProfileSectionIdentityProps) {
+export function CandidateSectionIdentity({ profile }: CandidateSectionIdentityProps) {
   const { identity } = profile;
 
   const statusClass = identity.verified ? '' : 'warn';

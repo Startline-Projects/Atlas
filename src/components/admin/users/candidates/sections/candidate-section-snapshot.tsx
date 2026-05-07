@@ -1,10 +1,10 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileSectionSnapshotProps {
+interface CandidateSectionSnapshotProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionSnapshot({ profile }: ProfileSectionSnapshotProps) {
+export function CandidateSectionSnapshot({ profile }: CandidateSectionSnapshotProps) {
   const { profileSnapshot } = profile;
 
   if (!profileSnapshot) return null;

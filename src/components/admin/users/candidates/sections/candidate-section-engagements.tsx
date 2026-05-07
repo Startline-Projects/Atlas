@@ -1,11 +1,11 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 import { EngagementsTabs } from './engagements/engagements-tabs';
 
-interface ProfileSectionEngagementsProps {
+interface CandidateSectionEngagementsProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionEngagements({ profile }: ProfileSectionEngagementsProps) {
+export function CandidateSectionEngagements({ profile }: CandidateSectionEngagementsProps) {
   const activeItems = profile.engagements.items.filter((item) => item.status === 'active');
   const pastItems = profile.engagements.items.filter((item) => item.status === 'past');
   const totalHires = profile.engagements.active + profile.engagements.past;

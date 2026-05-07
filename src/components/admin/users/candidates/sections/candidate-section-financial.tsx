@@ -1,10 +1,10 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileSectionFinancialProps {
+interface CandidateSectionFinancialProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionFinancial({ profile }: ProfileSectionFinancialProps) {
+export function CandidateSectionFinancial({ profile }: CandidateSectionFinancialProps) {
   const { financial } = profile;
   const hasTransactions = financial.recentTransactions.length > 0;
   const hasTaxDocs = financial.taxDocs.length > 0;

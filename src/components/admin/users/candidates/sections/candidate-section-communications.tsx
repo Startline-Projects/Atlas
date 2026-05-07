@@ -4,11 +4,11 @@ import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-
 import { CommunicationFilterTabs } from './communications/comm-filter-tabs';
 import { cn } from '@/lib/utils/cn';
 
-interface ProfileSectionCommunicationsProps {
+interface CandidateSectionCommunicationsProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionCommunications({ profile }: ProfileSectionCommunicationsProps) {
+export function CandidateSectionCommunications({ profile }: CandidateSectionCommunicationsProps) {
   return (
     <section
       id="cd-section-communications"

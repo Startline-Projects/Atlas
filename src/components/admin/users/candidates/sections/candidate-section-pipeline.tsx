@@ -1,10 +1,10 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileSectionPipelineProps {
+interface CandidateSectionPipelineProps {
   profile: CandidateProfile;
 }
 
-export function ProfileSectionPipeline({ profile }: ProfileSectionPipelineProps) {
+export function CandidateSectionPipeline({ profile }: CandidateSectionPipelineProps) {
   const { vettingPipeline } = profile;
 
   if (!vettingPipeline) return null;

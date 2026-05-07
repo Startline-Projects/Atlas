@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileBackRowProps {
+interface CandidateBackRowProps {
   profile: CandidateProfile;
 }
 
-export function ProfileBackRow({ profile }: ProfileBackRowProps) {
+export function CandidateBackRow({ profile }: CandidateBackRowProps) {
   return (
     <div className="flex items-center gap-[14px] mb-[18px] flex-wrap">
       {/* Back button with arrow (admin.html line 15920-15923) */}

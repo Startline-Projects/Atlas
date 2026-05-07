@@ -50,9 +50,9 @@ export function UsersShell({ initialTab }: UsersShellProps) {
     setActiveTab(tab);
     setSelectedRows(new Set());
 
-    // Candidates uses real route; others use hash-based routing for now
-    if (tab === 'candidates') {
-      router.push('/admin/users/candidates');
+    // Candidates and Clients use real routes; others use hash-based routing for now
+    if (tab === 'candidates' || tab === 'clients') {
+      router.push(`/admin/users/${tab}`);
     } else {
       router.push('/admin/users#' + tab);
     }

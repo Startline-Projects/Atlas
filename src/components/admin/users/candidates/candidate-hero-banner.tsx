@@ -1,10 +1,10 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileHeroBannerProps {
+interface CandidateHeroBannerProps {
   profile: CandidateProfile;
 }
 
-export function ProfileHeroBanner({ profile }: ProfileHeroBannerProps) {
+export function CandidateHeroBanner({ profile }: CandidateHeroBannerProps) {
   // Only render for suspended or banned candidates
   if (profile.status !== 'suspended' && profile.status !== 'banned') {
     return null;

@@ -57,7 +57,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'clients',
           label: 'Clients',
-          pathname: '/admin/users#clients',
+          pathname: '/admin/users/clients',
           icon: ClientsNavIcon,
           count: '6.2K',
         },

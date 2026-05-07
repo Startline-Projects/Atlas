@@ -1,10 +1,10 @@
 import type { CandidateProfile } from '@/lib/mock-data/admin/candidate-profiles-data';
 
-interface ProfileRailQuickFactsProps {
+interface CandidateRailQuickFactsProps {
   profile: CandidateProfile;
 }
 
-export function ProfileRailQuickFacts({ profile }: ProfileRailQuickFactsProps) {
+export function CandidateRailQuickFacts({ profile }: CandidateRailQuickFactsProps) {
   const facts = [
     { label: 'Atlas ID', value: profile.atlasId },
     { label: 'Joined', value: profile.quickFacts.joinedDate },
