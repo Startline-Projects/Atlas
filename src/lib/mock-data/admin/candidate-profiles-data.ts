@@ -95,6 +95,37 @@ export interface AuditEntry {
   };
 }
 
+export interface SignalGroup {
+  type: 'anti-cheat' | 'reports-against' | 'reports-by' | 'pattern-flags';
+  title: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical' | 'none';
+  detail: string;
+  cardVariant: 'flag' | 'danger' | 'clear';
+
+  status?: {
+    label: string;
+    variant?: 'resolved' | 'open' | 'clear';
+  };
+
+  metadata?: {
+    filedDate: string;
+    resolvedBy?: {
+      name: string;
+      date: string;
+      turnaround: string;
+    };
+    referenceId?: string;
+  };
+}
+
+export interface TrustSignalsSection {
+  statusPill?: {
+    label: string;
+    variant?: 'warn' | 'danger' | 'neutral' | 'default';
+  };
+  groups: SignalGroup[];
+}
+
 export interface TrustSignal {
   title: string;
   severity?: 'low' | 'high' | 'none';
@@ -213,7 +244,7 @@ export interface CandidateProfile extends CandidateUser {
   };
 
   // Trust & Safety Signals (Section 8)
-  trustSignals: TrustSignal[];
+  signals: TrustSignalsSection;
 
   // Privacy & Legal (Section 9)
   privacy: PrivacyItem[];
@@ -750,36 +781,58 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
 
     // Section 8: Trust & Safety Signals (lines 16882–16968)
-    trustSignals: [
-      {
-        title: 'Anti-cheat flag · Interview 2', // line 16902
-        severity: 'low', // line 16903
-        detail: 'External tab opened during AI Interview 2 recording (one occurrence). Specialist reviewed the recording and found candidate briefly checked the time. No malicious intent.', // line 16906
-        status: 'resolved', // line 16916
-        meta: 'Filed Mar 12, 2024 · Resolved by Daniel Kovács · 1d turnaround · INC-2024-0019', // line 16908–16913
+    signals: {
+      statusPill: {
+        label: '1 historical flag · all clear',
+        variant: 'warn',
       },
-      {
-        title: 'Reports filed against candidate', // line 16925
-        severity: 'none',
-        detail: 'No abuse, fraud, or quality reports filed against this candidate by clients or other users.', // line 16929
-        status: 'clear', // line 16932
-        meta: '0 of 0', // line 16932
-      },
-      {
-        title: 'Reports filed by candidate', // line 16941
-        severity: 'none',
-        detail: 'Candidate has not filed any abuse or T&S reports.', // line 16945
-        status: 'clear', // line 16948
-        meta: '0 of 0', // line 16948
-      },
-      {
-        title: 'Pattern flags · multi-account / similar identity', // line 16957
-        severity: 'none',
-        detail: 'No pattern matches detected. No similar accounts found across name + face + IP cross-reference.', // line 16961
-        status: 'clear', // line 16964
-        meta: '0 matches', // line 16964
-      },
-    ],
+      groups: [
+        {
+          type: 'anti-cheat',
+          title: 'Anti-cheat flag · Interview 2',
+          severity: 'low',
+          detail: 'External tab opened during AI Interview 2 recording (one occurrence). Specialist reviewed the recording and found candidate briefly checked the time. No malicious intent.',
+          cardVariant: 'flag',
+          status: {
+            label: 'Resolved',
+            variant: 'resolved',
+          },
+          metadata: {
+            filedDate: 'Mar 12, 2024',
+            resolvedBy: {
+              name: 'Daniel Kovács',
+              date: 'Mar 12, 2024',
+              turnaround: '1d turnaround',
+            },
+            referenceId: 'INC-2024-0019',
+          },
+        },
+        {
+          type: 'reports-against',
+          title: 'Reports filed against candidate',
+          severity: 'none',
+          detail: 'No abuse, fraud, or quality reports filed against this candidate by clients or other users.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'reports-by',
+          title: 'Reports filed by candidate',
+          severity: 'none',
+          detail: 'Candidate has not filed any abuse or T&S reports.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'pattern-flags',
+          title: 'Pattern flags · multi-account / similar identity',
+          severity: 'none',
+          detail: 'No pattern matches detected. No similar accounts found across name + face + IP cross-reference.',
+          cardVariant: 'clear',
+          status: { label: '0 matches', variant: 'clear' },
+        },
+      ],
+    },
 
     // Section 9: Privacy & Legal (lines 16970–17018)
     privacy: [
@@ -1048,7 +1101,43 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '3:15 PM', verb: 'Interview 2 passed', target: 'Data Analysis · score 86/100', detail: '1st attempt', category: 'interview', outcome: { label: 'Passed', variant: 'success' } },
       ],
     },
-    trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags', status: 'clear' }],
+    signals: {
+      statusPill: { label: 'All clear', variant: 'default' },
+      groups: [
+        {
+          type: 'anti-cheat',
+          title: 'Anti-cheat flags',
+          severity: 'none',
+          detail: 'No anti-cheat flags or incidents on record.',
+          cardVariant: 'clear',
+          status: { label: '0 flags', variant: 'clear' },
+        },
+        {
+          type: 'reports-against',
+          title: 'Reports filed against candidate',
+          severity: 'none',
+          detail: 'No abuse, fraud, or quality reports filed against this candidate.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'reports-by',
+          title: 'Reports filed by candidate',
+          severity: 'none',
+          detail: 'Candidate has not filed any abuse or T&S reports.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'pattern-flags',
+          title: 'Pattern flags · multi-account / similar identity',
+          severity: 'none',
+          detail: 'No pattern matches detected. No similar accounts found.',
+          cardVariant: 'clear',
+          status: { label: '0 matches', variant: 'clear' },
+        },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Sep 1, 2023',
@@ -1149,7 +1238,15 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '3:50 PM', verb: 'Email verified', target: 'lin@example.com', detail: 'Magic link · 1st attempt', category: 'profile', outcome: { label: 'Verified', variant: 'success' } },
       ],
     },
-    trustSignals: [],
+    signals: {
+      statusPill: { label: 'All clear', variant: 'default' },
+      groups: [
+        { type: 'anti-cheat', title: 'Anti-cheat flags', severity: 'none', detail: 'No anti-cheat flags on record.', cardVariant: 'clear', status: { label: '0 flags', variant: 'clear' } },
+        { type: 'reports-against', title: 'Reports filed against candidate', severity: 'none', detail: 'No reports filed against this candidate.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'reports-by', title: 'Reports filed by candidate', severity: 'none', detail: 'Candidate has not filed any reports.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Apr 2, 2026',
@@ -1305,15 +1402,47 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '4:15 PM', verb: 'Review received', target: '5 stars from Canva', detail: '"Marcus designed our message queue architecture under load..."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0312' },
       ],
     },
-    trustSignals: [
-      {
-        title: 'IP/VPN risk detected',
-        severity: 'high',
-        detail: 'Suspicious pattern: consistent IP location inconsistencies across 4 logins in Apr 2026. VPN usage detected on Apr 28.',
-        status: 'flagged',
-        meta: 'Flagged Apr 28 by Aïsha Okafor · Pending candidate response · Manual review in progress',
-      },
-    ],
+    signals: {
+      statusPill: { label: '2 active flags · suspended', variant: 'danger' },
+      groups: [
+        {
+          type: 'anti-cheat',
+          title: 'IP/VPN risk detection',
+          severity: 'high',
+          detail: 'Suspicious pattern: consistent IP location inconsistencies across 4 logins in Apr 2026. VPN usage detected on Apr 28. Manual review initiated.',
+          cardVariant: 'danger',
+          status: { label: 'Open', variant: 'open' },
+          metadata: {
+            filedDate: 'Apr 28, 2026',
+            referenceId: 'SUSP-2026-0428',
+          },
+        },
+        {
+          type: 'reports-against',
+          title: 'Reports filed against candidate',
+          severity: 'none',
+          detail: 'No external reports filed against this candidate.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'reports-by',
+          title: 'Reports filed by candidate',
+          severity: 'none',
+          detail: 'Candidate has not filed any reports.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'pattern-flags',
+          title: 'Pattern flags · multi-account / similar identity',
+          severity: 'medium',
+          detail: 'Geographic pattern inconsistency detected across logins. Possible VPN network usage. Pattern analysis ongoing.',
+          cardVariant: 'danger',
+          status: { label: '1 match', variant: 'open' },
+        },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Jul 15, 2024',
@@ -1491,7 +1620,15 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '4:00 PM', verb: 'Contract signed', target: 'ENG-2026-135 with Airtable', detail: '$22/hr · 30 hrs/week · 5-month term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-135' },
       ],
     },
-    trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags or concerns', status: 'clear' }],
+    signals: {
+      statusPill: { label: 'All clear', variant: 'default' },
+      groups: [
+        { type: 'anti-cheat', title: 'Anti-cheat flags', severity: 'none', detail: 'No anti-cheat flags on record.', cardVariant: 'clear', status: { label: '0 flags', variant: 'clear' } },
+        { type: 'reports-against', title: 'Reports filed against candidate', severity: 'none', detail: 'No reports filed against this candidate.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'reports-by', title: 'Reports filed by candidate', severity: 'none', detail: 'Candidate has not filed any reports.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Jan 20, 2024',
@@ -1640,15 +1777,52 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '4:20 PM', verb: 'Contract signed', target: 'ENG-2026-189 with SaaS Studio', detail: '$44/hr · 30 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-189' },
       ],
     },
-    trustSignals: [
-      {
-        title: 'Account banned',
-        severity: 'high',
-        detail: 'Multiple TOS violations detected. Pattern analysis suggests multi-account operation. Biometric inconsistencies and behavioral red flags.',
-        status: 'flagged',
-        meta: 'Banned Apr 28, 2026 by Dario Mensah · Case BAN-2026-018 · Permanent',
-      },
-    ],
+    signals: {
+      statusPill: { label: '5 flags · banned', variant: 'danger' },
+      groups: [
+        {
+          type: 'anti-cheat',
+          title: 'Critical integrity violations',
+          severity: 'critical',
+          detail: 'Multiple TOS violations detected. Biometric inconsistencies and behavioral red flags. Pattern analysis suggests multi-account operation.',
+          cardVariant: 'danger',
+          status: { label: 'Resolved', variant: 'resolved' },
+          metadata: {
+            filedDate: 'Apr 28, 2026',
+            resolvedBy: {
+              name: 'Dario Mensah',
+              date: 'Apr 28, 2026',
+              turnaround: 'Permanent ban',
+            },
+            referenceId: 'BAN-2026-018',
+          },
+        },
+        {
+          type: 'reports-against',
+          title: 'Reports filed against candidate',
+          severity: 'high',
+          detail: '4 fraud/quality reports filed. Pattern of problematic deliverables and TOS violations.',
+          cardVariant: 'danger',
+          status: { label: '4 of 4', variant: 'clear' },
+        },
+        {
+          type: 'reports-by',
+          title: 'Reports filed by candidate',
+          severity: 'none',
+          detail: 'No reports filed by this candidate.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'pattern-flags',
+          title: 'Pattern flags · multi-account / similar identity',
+          severity: 'critical',
+          detail: 'Multi-account operation detected. 2 linked accounts identified sharing IP, device fingerprint, and payment method. Pattern indicates coordinated fraud.',
+          cardVariant: 'danger',
+          status: { label: '2 matches', variant: 'clear' },
+        },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Feb 8, 2024',
@@ -1836,7 +2010,52 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '9:20 AM', verb: 'Profile updated', target: 'added Snowflake to tools', detail: '192.168.55.22 · Bangalore · Chrome', category: 'profile', outcome: { label: 'Auto-approved', variant: 'success' }, refId: 'PRF-2026-0201' },
       ],
     },
-    trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags or concerns', status: 'clear' }],
+    signals: {
+      statusPill: { label: '1 historical flag · all clear', variant: 'warn' },
+      groups: [
+        {
+          type: 'anti-cheat',
+          title: 'Anti-cheat flag · Interview 1 (resolved)',
+          severity: 'low',
+          detail: 'Minor time zone inconsistency detected during Interview 1 recording. Reviewed and cleared as timezone clock drift. No malicious intent.',
+          cardVariant: 'flag',
+          status: { label: 'Resolved', variant: 'resolved' },
+          metadata: {
+            filedDate: 'May 15, 2024',
+            resolvedBy: {
+              name: 'Sarah Chen',
+              date: 'May 15, 2024',
+              turnaround: 'same day',
+            },
+            referenceId: 'INC-2024-0056',
+          },
+        },
+        {
+          type: 'reports-against',
+          title: 'Reports filed against candidate',
+          severity: 'none',
+          detail: 'No reports filed against this candidate.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'reports-by',
+          title: 'Reports filed by candidate',
+          severity: 'none',
+          detail: 'Candidate has not filed any reports.',
+          cardVariant: 'clear',
+          status: { label: '0 of 0', variant: 'clear' },
+        },
+        {
+          type: 'pattern-flags',
+          title: 'Pattern flags · multi-account / similar identity',
+          severity: 'none',
+          detail: 'No pattern matches detected.',
+          cardVariant: 'clear',
+          status: { label: '0 matches', variant: 'clear' },
+        },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'May 12, 2024',
@@ -1936,7 +2155,15 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
         { time: '7:35 PM', verb: 'Account created', target: 'via email signup', detail: 'james@example.com', category: 'created', refId: 'ACC-2026-001898', dayGroup: { label: 'Today · April 30, 2026', count: 1 } },
       ],
     },
-    trustSignals: [],
+    signals: {
+      statusPill: { label: 'All clear', variant: 'default' },
+      groups: [
+        { type: 'anti-cheat', title: 'Anti-cheat flags', severity: 'none', detail: 'No anti-cheat flags on record.', cardVariant: 'clear', status: { label: '0 flags', variant: 'clear' } },
+        { type: 'reports-against', title: 'Reports filed against candidate', severity: 'none', detail: 'No reports filed against this candidate.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'reports-by', title: 'Reports filed by candidate', severity: 'none', detail: 'Candidate has not filed any reports.', cardVariant: 'clear', status: { label: '0 of 0', variant: 'clear' } },
+        { type: 'pattern-flags', title: 'Pattern flags · multi-account / similar identity', severity: 'none', detail: 'No pattern matches detected.', cardVariant: 'clear', status: { label: '0 matches', variant: 'clear' } },
+      ],
+    },
     privacy: [],
     quickFacts: {
       joinedDate: 'Apr 5, 2026',
