@@ -50,7 +50,7 @@ Build in this sequence, one step at a time:
 | 2 | Admin Dashboard | ❌ not started | — | Critical alerts, platform health, financial snapshot, activity feed |
 | 3 | Admin Profile & Permissions | ❌ not started | — | Permissions matrix, activity timeline, account settings |
 | 4 | Users Overview | ❌ not started | — | Tabs (Candidates, Clients, Specialists, Manager, Admins), bulk actions |
-| 5 | Candidate Detail | ❌ not started | — | Identity verification, vetting pipeline, engagement history, audit log, trust signals |
+| 5 | Candidate Detail | ✅ done | ProfileSectionIdentity, ProfileSectionPipeline, ProfileSectionSnapshot, ProfileSectionEngagements, ProfileSectionFinancial, ProfileRail, ProfileSectionTrust, ProfileSectionPrivacy, CandidateProfileShell, ProfileSectionCommunications, CommunicationFilterTabs, ProfileSectionAudit | 11 sub-steps (5a–5k): identity verification, vetting pipeline, profile snapshot, engagements, financial, quick facts, trust signals, privacy, shell/nav, communications (filter tabs + threads), audit log (day-grouped timeline, pseudo-line/dot, outcome labels, avatar initials). All 4 audit passes completed. 13 visual-fidelity drifts fixed. 6 conversion patterns documented. |
 | 6 | Client Detail | ❌ not started | — | Similar structure to Step 5, client-specific sections |
 | 7 | Specialist Detail | ❌ not started | — | Performance summary, caseload, audit-level visibility |
 | 8 | Manager Detail | ❌ not started | — | Manager-specific metrics and actions. Singleton route /admin/users/manager — Atlas currently has one Manager of Talent Specialists (Mateo Vargas, mgr-001-v8b2c4). If future product decisions add other manager roles, this route will need to migrate to /admin/users/managers/[id]. Flag for review at that point. |
@@ -61,9 +61,9 @@ Build in this sequence, one step at a time:
 
 ### Current session status
 
-- **Current step:** 1 (Sign In) — DONE (all 8 browser tests verified)
-- **Last finished:** 1 (Admin Sign In) + 1.5 (preview panel refactor with Context)
-- **Next step:** 2 (Admin Dashboard) — pending approval to begin
+- **Current step:** 5 (Candidate Detail) — DONE (all 11 sub-steps: 5a–5k completed and verified)
+- **Last finished:** 5k (Communications & Audit Log) — day-grouped timeline, outcome labels, avatar initials, status pills
+- **Next step:** 6 (Client Detail) — pending approval to begin
 
 ### Step 1 — Fixes and refactors applied
 
@@ -144,5 +144,33 @@ Hard invariants:
 ✅ Server Components by default. "use client" only where needed (state, scroll listeners, modals).
 ✅ Reuse AdminPreviewPanel from layout — never re-import or duplicate it inside a step's page.
 
+### Conversion patterns (documented in Phase 5 commits)
+
+1. **Design token naming in arbitrary brackets:** Always use SHORT aliases from `:root` block (e.g., `var(--line)` not `var(--color-line)`) when using arbitrary bracket notation like `border-[var(...)]`. SHORT aliases resolve correctly; LONG form from `@theme` silently falls back.
+
+2. **Fraunces font optical sizing:** Use `font-display` utility for font-family PLUS separate `[font-variation-settings:'opsz'_96]` arbitrary class for optical sizing. The `font-display` utility alone sets only the font-family; optical sizing requires the variation-settings override.
+
+3. **Status pill pseudo-elements with currentColor:** Implement ::before/::after dots/icons as semantic HTML divs (not CSS pseudo-elements) when they need to inherit color from parent. Pattern: `before:content-[''] before:bg-[currentColor]` makes the dot inherit the text color of its container, eliminating need for separate color rules per variant.
+
+4. **Outcome label vs. variant data structure:** Store outcome as an object with two fields, not a string enum. Shape: `outcome?: { label: string; variant: 'success' | 'partial' | 'escalated' }`. The `label` is the display text ("Auto-approved", "Verified · 2FA", etc.); `variant` is the CSS class selector. This separation allows specific labels per event type while sharing color logic.
+
+5. **Avatar initials as explicit data, not derived:** Add `initials: string` field to data interfaces. Do NOT derive initials from name parsing (e.g., `name.split(' ').map(w => w[0])`), as multi-word names like "The Lagos Loom" produce "TL" instead of intended "LL". Admin.html hardcodes initials per row; store them as data.
+
+6. **Day-grouped lists (Pattern X: single card, inline header dividers):** When admin.html shows grouped content (audit days, threads by date, engagement history by year), the structure is ONE card with header dividers inside, not MULTIPLE cards per group. Headers use a different background color (paper-deep/cream) and border lines to create visual separation. Store a `dayGroup?: { label, count }` field on the FIRST entry of each group; render emits a divider when the field is present. Labels are bespoke ("Today · April 30, 2026", "Mar 12, 2024 — Mar 8, 2024 · earlier") and must be stored as data, not computed from timestamps.
+
 Step 5 sub-step breakdown (Candidate Detail)
 Step 5 is large (HTML lines 15915–17093, ~1,178 lines, 9 sections + header + action toolbar). Split into 11 sub-steps. Ship one sub-step per commit. Update the row's status here when each sub-step closes.
+
+| Phase | Section(s) | HTML lines | Status | Files | Notes |
+|---|---|---|---|---|---|
+| 5a | Identity Verification | 16015–16186 | ✅ | ProfileSectionIdentity, IdentityVerificationContext | Type-safe interfaces for IdentityCheckResult antifraudChecks array |
+| 5b | Vetting Pipeline | 16188–16322 | ✅ | ProfileSectionPipeline, VettingPipelineContext | Pipeline step timeline with color-coded status badges |
+| 5c | Profile Snapshot | 16324–16464 | ✅ | ProfileSectionSnapshot, ProfileSnapshotContext | Skills grid, work history, portfolio, ratings |
+| 5d | Engagement History | 16466–16521 | ✅ | ProfileSectionEngagements, EngagementsContext | Active vs. past engagements, hourly rates, date ranges |
+| 5e | Financial Activity | 16523–16626 | ✅ | ProfileSectionFinancial, FinancialContext | Total earned, pending payout, transaction history |
+| 5f | Right Rail (Quick Facts) | 16628–16720 | ✅ | ProfileRail | Joined date, timezone, languages, status indicators |
+| 5g | Trust & Safety Signals | 16882–16968 | ✅ | ProfileSectionTrust, TrustSignalsContext | Anti-cheat flags, multi-account detection, pattern analysis |
+| 5h | Privacy & Legal | 16970–17018 | ✅ | ProfileSectionPrivacy, PrivacyContext | GDPR/CCPA requests, data exports, deletion requests, legal holds |
+| 5i | Navigation & Shell | phase-5-overview | ✅ | CandidateProfileShell, ProfileBackRow, ProfileHero, ProfileHeroBanner | Top-level page layout with sidebar navigation, status banners |
+| 5j | Search & Filtering | tbd | ❌ | tbd | Candidate search, filter by status, sort by metrics (deferred) |
+| 5k | Communications & Audit Log | 16628–16880 | ✅ | ProfileSectionCommunications, CommunicationFilterTabs, ProfileSectionAudit, AVATAR_GRADIENTS lookup map | Section 6 & 7: Filter tabs (All/Specialist/Clients/Admin), thread list with avatar gradients, timeline pseudoelements (pseudo-line and pseudo-dot via semantic divs), day headers, category-based tag colors, outcome badges, responsive mobile layout (max-[540px] variants) |

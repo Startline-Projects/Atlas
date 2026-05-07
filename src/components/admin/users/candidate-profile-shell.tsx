@@ -10,6 +10,8 @@ import { ProfileSectionPipeline } from './sections/profile-section-pipeline';
 import { ProfileSectionSnapshot } from './sections/profile-section-snapshot';
 import { ProfileSectionEngagements } from './sections/profile-section-engagements';
 import { ProfileSectionFinancial } from './sections/profile-section-financial';
+import { ProfileSectionCommunications } from './sections/profile-section-communications';
+import { ProfileSectionAudit } from './sections/profile-section-audit';
 
 interface CandidateProfileShellProps {
   profile: CandidateProfile;
@@ -26,13 +28,15 @@ export function CandidateProfileShell({ profile }: CandidateProfileShellProps) {
       <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-[32px] items-start
                       max-[1100px]:grid-cols-[1fr] max-[1100px]:gap-[24px]">
 
-        {/* Main content column - future sections (5j-5l) */}
+        {/* Main content column - Sections 1-7 */}
         <div className="min-w-0">
           <ProfileSectionIdentity profile={profile} />
           <ProfileSectionPipeline profile={profile} />
           <ProfileSectionSnapshot profile={profile} />
           <ProfileSectionEngagements profile={profile} />
           <ProfileSectionFinancial profile={profile} />
+          <ProfileSectionCommunications profile={profile} />
+          <ProfileSectionAudit profile={profile} />
         </div>
 
         {/* Right rail */}

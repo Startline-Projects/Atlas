@@ -10,6 +10,25 @@ import type { CandidateUser } from './users-data';
  */
 
 // ============================================================
+// AVATAR GRADIENTS (from admin.html lines 4688–4699)
+// ============================================================
+
+export const AVATAR_GRADIENTS: Record<string, string> = {
+  'av-1': 'linear-gradient(135deg, #D9A77F, #8B5A3C)',
+  'av-2': 'linear-gradient(135deg, #7BA8D9, #3F6CA1)',
+  'av-3': 'linear-gradient(135deg, #B89BD6, #6E3FE0)',
+  'av-4': 'linear-gradient(135deg, #C7CFA8, #6B8E23)',
+  'av-5': 'linear-gradient(135deg, #E8B4B8, #8B5A6F)',
+  'av-6': 'linear-gradient(135deg, #F0CC4F, #B8911E)',
+  'av-7': 'linear-gradient(135deg, #9CC9C2, #4D8A82)',
+  'av-8': 'linear-gradient(135deg, #DCA294, #8B4F47)',
+  'av-9': 'linear-gradient(135deg, #A4B5D8, #4D6699)',
+  'av-10': 'linear-gradient(135deg, #C9B8A4, #7A6B57)',
+  'av-11': 'linear-gradient(135deg, #DD9F70, #8B5C3C)',
+  'av-12': 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+};
+
+// ============================================================
 // TYPES
 // ============================================================
 
@@ -52,6 +71,7 @@ export interface CommunicationThread {
   avatar: string; // av-1 to av-12 class
   name: string;
   role: 'specialist' | 'client' | 'admin';
+  initials: string; // 2-letter uppercase (DK, SB, LL, etc.)
   lastMessage: string;
   time: string;
   messageCount: number;
@@ -64,8 +84,15 @@ export interface AuditEntry {
   target: string;
   detail: string;
   category: 'profile' | 'signin' | 'contract' | 'review' | 'flag' | 'decision' | 'interview' | 'created' | 'export' | 'refund' | 'dispute' | 'override';
-  outcome?: 'success' | 'pending' | 'resolved';
+  outcome?: {
+    label: string; // e.g. 'Auto-approved', 'Verified · 2FA', 'Passed'
+    variant: 'success' | 'partial' | 'escalated';
+  };
   refId?: string;
+  dayGroup?: {
+    label: string; // e.g. 'Today · April 30, 2026', 'Apr 22, 2026', 'Mar 12, 2024 — Mar 8, 2024 · earlier'
+    count: number; // number of events in this day group
+  };
 }
 
 export interface TrustSignal {
@@ -175,6 +202,7 @@ export interface CandidateProfile extends CandidateUser {
   communications: {
     totalMessages: number;
     threads: number;
+    totalCaption?: string;
     items: CommunicationThread[];
   };
 
@@ -586,12 +614,14 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     communications: {
       totalMessages: 241, // line 16637
       threads: 6, // line 16637
+      totalCaption: '241 messages over 14 months', // line 16645
       items: [
         {
           threadId: 'thread-1',
           avatar: 'av-2',
           name: 'Daniel Kovács',
           role: 'specialist', // line 16653
+          initials: 'DK', // Drift C
           lastMessage: 'Hey Adesuwa — quick check-in on the Studio Berlin engagement. Client mentioned the auth flow review went well. Anything you need from my side this week?', // line 16656
           time: '2h ago', // line 16654
           messageCount: 87, // line 16659
@@ -602,6 +632,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           avatar: 'av-10',
           name: 'Studio Berlin GmbH',
           role: 'client', // line 16668
+          initials: 'SB', // Drift C
           lastMessage: 'Just merged your PR on the reconciliation pipeline — beautiful work. Schedule a 30-min sync Thursday to talk about the next phase?', // line 16671
           time: '4h ago', // line 16669
           messageCount: 52, // line 16674
@@ -611,6 +642,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           avatar: 'av-11',
           name: 'Quantum Robotics Pte',
           role: 'client', // line 16682
+          initials: 'QR', // Drift C
           lastMessage: 'Thanks for catching that idempotency issue — that one would\'ve cost us. Approval signed for the extended scope.', // line 16685
           time: '1d ago', // line 16683
           messageCount: 34, // line 16689
@@ -620,6 +652,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           avatar: 'av-1',
           name: 'The Lagos Loom',
           role: 'client', // line 16696
+          initials: 'LL', // Drift C — NOT 'TL'! (line 16693)
           lastMessage: 'Adesuwa — invoice for week 11 looks good, payment processed today. Looking forward to wrapping the migration next week.', // line 16699
           time: '3d ago', // line 16697
           messageCount: 48, // line 16702
@@ -629,6 +662,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           avatar: 'av-3',
           name: 'Internal note · Daniel Kovács',
           role: 'admin', // line 16710
+          initials: 'DK', // Drift C
           lastMessage: 'Resolved Interview 2 anti-cheat flag. Candidate explained needed to check time during recording — no malicious intent. Documented and closed.', // line 16713
           time: 'Mar 12', // line 16711
           messageCount: 3, // line 16716
@@ -646,8 +680,9 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'rate $50 → $52/hr', // line 16744
           detail: '192.168.41.20 · Lagos · Chrome',
           category: 'profile', // line 16741
-          outcome: 'success', // line 16748
+          outcome: { label: 'Auto-approved', variant: 'success' }, // Drift B (line 16748)
           refId: 'PRF-2026-0411', // line 16750
+          dayGroup: { label: 'Today · April 30, 2026', count: 2 }, // Drift D: day header for Today group
         },
         {
           time: '9:42 AM', // line 16757
@@ -655,7 +690,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'Adesuwa Babatunde', // line 16759
           detail: '192.168.41.20 · Lagos · Chrome 124 · macOS 14.4',
           category: 'signin', // line 16756
-          outcome: 'success', // line 16763
+          outcome: { label: 'Verified · 2FA', variant: 'success' }, // Drift B (line 16763)
         },
         {
           time: '9:30 AM', // line 16775
@@ -663,8 +698,9 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'ENG-2026-184 with Studio Berlin GmbH', // line 16777
           detail: '$52/hr · 30 hrs/week · 6-week initial term',
           category: 'contract', // implied from context
-          outcome: 'success', // line 16781
+          outcome: { label: 'Active', variant: 'success' }, // Drift B (line 16781)
           refId: 'ENG-2026-184', // line 16783
+          dayGroup: { label: 'Apr 22, 2026', count: 1 }, // Drift D: day header for Apr 22 group
         },
         {
           time: '3:14 PM', // line 16797
@@ -673,6 +709,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           detail: '"Senior eng you can throw a vague problem at and get back something thoughtful…"',
           category: 'review', // line 16796
           refId: 'REV-2026-0312', // line 16803
+          dayGroup: { label: 'Apr 15, 2026', count: 1 }, // Drift D: day header for Apr 15 group
         },
         {
           time: 'Mar 12 11:00 AM', // line 16815
@@ -680,8 +717,9 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'Low severity · Interview 2', // line 16817
           detail: 'External tab opened during recording (one occurrence)',
           category: 'flag', // line 16814
-          outcome: 'resolved', // line 16821
+          outcome: { label: 'Resolved by Daniel Kovács', variant: 'success' }, // Drift B (line 16821)
           refId: 'INC-2024-0019', // line 16823
+          dayGroup: { label: 'Mar 12, 2024 — Mar 8, 2024 · earlier', count: 8 }, // Drift D: day header for earlier group
         },
         {
           time: 'Mar 8 2:30 PM', // line 16830
@@ -689,7 +727,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'by Daniel Kovács', // line 16832
           detail: '"Strong technical depth, clear communication, compelling portfolio"',
           category: 'decision', // line 16829
-          outcome: 'success', // line 16836
+          outcome: { label: 'Approved · Live', variant: 'success' }, // Drift B (line 16836)
           refId: 'REV-2024-0084', // line 16838
         },
         {
@@ -698,7 +736,7 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
           target: 'Engineering · score 92/100', // line 16847
           detail: 'Technical 94 · Code quality 90 · 1st attempt',
           category: 'interview', // line 16844 (implied)
-          outcome: 'success', // line 16853
+          outcome: { label: 'Passed', variant: 'success' }, // Drift B (line 16853)
         },
         {
           time: 'Mar 4 9:00 AM', // line 16860
@@ -962,8 +1000,54 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
       taxDocs: [],
       recentTransactions: [],
     },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
+    communications: {
+      totalMessages: 87,
+      threads: 3,
+      totalCaption: '87 messages over 9 months',
+      items: [
+        {
+          threadId: 'c2-1',
+          avatar: 'av-5',
+          name: 'María González',
+          role: 'specialist',
+          initials: 'MG', // Drift C
+          lastMessage: 'Great analysis on the retention cohort. Let\'s sync Thursday to discuss the quarterly dashboard.',
+          time: '3h ago',
+          messageCount: 34,
+          unread: true,
+        },
+        {
+          threadId: 'c2-2',
+          avatar: 'av-7',
+          name: 'Openpay',
+          role: 'client',
+          initials: 'OP', // Drift C
+          lastMessage: 'Dashboard is working perfectly. Team loves the drill-down feature. Can we expand to customer segments?',
+          time: '1d ago',
+          messageCount: 28,
+        },
+        {
+          threadId: 'c2-3',
+          avatar: 'av-9',
+          name: 'Jobsity',
+          role: 'client',
+          initials: 'JB', // Drift C
+          lastMessage: 'Thanks for catching the data quality issue. Really saved us from bad reporting.',
+          time: '5d ago',
+          messageCount: 25,
+        },
+      ],
+    },
+    auditLog: {
+      totalEvents: 18,
+      recent: [
+        { time: '11:22 AM', verb: 'Profile updated', target: 'hourly rate $45 → $48/hr', detail: '192.168.45.30 · Bogotá · Chrome', category: 'profile', outcome: { label: 'Auto-approved', variant: 'success' }, refId: 'PRF-2026-0405', dayGroup: { label: 'Today · April 30, 2026', count: 5 } },
+        { time: '9:15 AM', verb: 'Sign-in', target: 'Carlos Restrepo', detail: '192.168.45.30 · Bogotá · Chrome 125 · macOS 14.5', category: 'signin', outcome: { label: 'Verified', variant: 'success' } },
+        { time: '2:44 PM', verb: 'Contract signed', target: 'ENG-2026-087 with Shopify', detail: '$40/hr · 35 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-087' },
+        { time: '10:30 AM', verb: 'Review received', target: '5 stars from Openpay', detail: '"Built our retention funnel model from scratch..."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0212' },
+        { time: '3:15 PM', verb: 'Interview 2 passed', target: 'Data Analysis · score 86/100', detail: '1st attempt', category: 'interview', outcome: { label: 'Passed', variant: 'success' } },
+      ],
+    },
     trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags', status: 'clear' }],
     privacy: [],
     quickFacts: {
@@ -1057,8 +1141,14 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
     engagements: { active: 0, past: 0, items: [] },
     financial: { totalEarned: '$0', last30Days: '$0', pendingPayout: '$0', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
+    communications: { totalMessages: 0, threads: 0, totalCaption: 'no messages yet', items: [] },
+    auditLog: {
+      totalEvents: 2,
+      recent: [
+        { time: '3:47 PM', verb: 'Account created', target: 'via email signup', detail: 'lin@example.com', category: 'created', refId: 'ACC-2026-001850', dayGroup: { label: 'Today · April 30, 2026', count: 2 } },
+        { time: '3:50 PM', verb: 'Email verified', target: 'lin@example.com', detail: 'Magic link · 1st attempt', category: 'profile', outcome: { label: 'Verified', variant: 'success' } },
+      ],
+    },
     trustSignals: [],
     privacy: [],
     quickFacts: {
@@ -1155,9 +1245,75 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
     engagements: { active: 0, past: 0, items: [] },
     financial: { totalEarned: '$16,000', last30Days: '$0', pendingPayout: '$0', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
-    trustSignals: [],
+    communications: {
+      totalMessages: 156,
+      threads: 4,
+      totalCaption: '156 messages over 8 months',
+      items: [
+        {
+          threadId: 'c4-1',
+          avatar: 'av-4',
+          name: 'Robert Chen',
+          role: 'specialist',
+          initials: 'RC', // Drift C
+          lastMessage: 'Following up on the suspension review. Need your availability for a clarification call this week.',
+          time: '2h ago',
+          messageCount: 42,
+          unread: true,
+        },
+        {
+          threadId: 'c4-2',
+          avatar: 'av-8',
+          name: 'Canva',
+          role: 'client',
+          initials: 'CV', // Drift C
+          lastMessage: 'Marcus, we\'re still interested in continuing the engagement if the review clears. The queue work was exceptional.',
+          time: '1d ago',
+          messageCount: 38,
+        },
+        {
+          threadId: 'c4-3',
+          avatar: 'av-6',
+          name: 'Stripe',
+          role: 'client',
+          initials: 'ST', // Drift C
+          lastMessage: 'No updates from our side. Will proceed based on account status decision.',
+          time: '3d ago',
+          messageCount: 31,
+        },
+        {
+          threadId: 'c4-4',
+          avatar: 'av-2',
+          name: 'Internal note · Aïsha Okafor',
+          role: 'admin',
+          initials: 'AO', // Drift C
+          lastMessage: 'Manual review initiated. Candidate flagged for IP/VPN inconsistency. Awaiting follow-up.',
+          time: 'Apr 28',
+          messageCount: 45,
+        },
+      ],
+    },
+    auditLog: {
+      totalEvents: 31,
+      recent: [
+        { time: '10:15 AM', verb: 'Suspension initiated', target: 'Manual review pending', detail: '192.168.99.15 · Seattle · Flagged for policy review', category: 'override', outcome: { label: 'In review', variant: 'partial' }, refId: 'SUSP-2026-0428', dayGroup: { label: 'Today · April 30, 2026', count: 2 } },
+        { time: '2:45 PM', verb: 'Account suspended', target: 'by Aïsha Okafor', detail: 'IP/VPN risk pattern detected · awaiting response', category: 'flag', outcome: { label: 'Suspended', variant: 'escalated' }, refId: 'SUSP-2026-0428' },
+        { time: '9:32 AM', verb: 'Contract ended', target: 'ENG-2026-045 with Stripe', detail: '$65/hr · engagement paused pending review', category: 'contract', outcome: { label: 'Paused', variant: 'partial' }, dayGroup: { label: 'Apr 22, 2026', count: 5 } },
+        { time: '3:20 PM', verb: 'Contract signed', target: 'ENG-2026-042 with Canva', detail: '$65/hr · 25 hrs/week · 12-week term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-042' },
+        { time: '1:30 PM', verb: 'Sign-in', target: 'Marcus Thompson', detail: '192.168.99.15 · Seattle · Chrome 125 · Windows 11', category: 'signin', outcome: { label: 'Verified', variant: 'success' } },
+        { time: '11:00 AM', verb: 'Contract signed', target: 'ENG-2026-038 with Canva', detail: '$62/hr · 30 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-038' },
+        { time: '4:15 PM', verb: 'Review received', target: '5 stars from Canva', detail: '"Marcus designed our message queue architecture under load..."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0312' },
+      ],
+    },
+    trustSignals: [
+      {
+        title: 'IP/VPN risk detected',
+        severity: 'high',
+        detail: 'Suspicious pattern: consistent IP location inconsistencies across 4 logins in Apr 2026. VPN usage detected on Apr 28.',
+        status: 'flagged',
+        meta: 'Flagged Apr 28 by Aïsha Okafor · Pending candidate response · Manual review in progress',
+      },
+    ],
     privacy: [],
     quickFacts: {
       joinedDate: 'Jul 15, 2024',
@@ -1297,9 +1453,45 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
       ],
     },
     financial: { totalEarned: '$36,000', last30Days: '$2,100', pendingPayout: '$500', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
-    trustSignals: [],
+    communications: {
+      totalMessages: 42,
+      threads: 2,
+      totalCaption: '42 messages over 4 months',
+      items: [
+        {
+          threadId: 'c5-1',
+          avatar: 'av-12',
+          name: 'Svetlana Volkova',
+          role: 'specialist',
+          initials: 'SV', // Drift C
+          lastMessage: 'Check-in: how\'s the Loom engagement going? Client mentioned strong work on the vendor coordination.',
+          time: '8h ago',
+          messageCount: 24,
+          unread: true,
+        },
+        {
+          threadId: 'c5-2',
+          avatar: 'av-3',
+          name: 'Loom',
+          role: 'client',
+          initials: 'LM', // Drift C
+          lastMessage: 'Aigerim is amazing. Calendar now flows perfectly and she\'s saved us days of coordination work each week.',
+          time: '2d ago',
+          messageCount: 18,
+        },
+      ],
+    },
+    auditLog: {
+      totalEvents: 12,
+      recent: [
+        { time: '2:10 PM', verb: 'Sign-in', target: 'Aigerim Bekova', detail: '192.168.67.45 · Almaty · Safari · iOS 18', category: 'signin', outcome: { label: 'Verified', variant: 'success' }, dayGroup: { label: 'Today · April 30, 2026', count: 5 } },
+        { time: '10:30 AM', verb: 'Contract signed', target: 'ENG-2026-156 with Loom', detail: '$20/hr · 35 hrs/week · ongoing', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-156' },
+        { time: '3:45 PM', verb: 'Review received', target: '5 stars from Chime', detail: '"Aigerim manages our exec calendar flawlessly..."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0401' },
+        { time: '1:20 PM', verb: 'Profile updated', target: 'added Asana to tools', detail: '192.168.67.45 · Almaty · Chrome', category: 'profile', outcome: { label: 'Auto-approved', variant: 'success' }, refId: 'PRF-2026-0315' },
+        { time: '4:00 PM', verb: 'Contract signed', target: 'ENG-2026-135 with Airtable', detail: '$22/hr · 30 hrs/week · 5-month term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-135' },
+      ],
+    },
+    trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags or concerns', status: 'clear' }],
     privacy: [],
     quickFacts: {
       joinedDate: 'Jan 20, 2024',
@@ -1379,9 +1571,84 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
     engagements: { active: 0, past: 0, items: [] },
     financial: { totalEarned: '$0', last30Days: '$0', pendingPayout: '$0', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
-    trustSignals: [],
+    communications: {
+      totalMessages: 203,
+      threads: 5,
+      totalCaption: '203 messages over 2 months',
+      items: [
+        {
+          threadId: 'c6-1',
+          avatar: 'av-11',
+          name: 'Internal note · Dario Mensah',
+          role: 'admin',
+          initials: 'DM', // Drift C
+          lastMessage: 'Account banned per policy violations (Apr 28). All active contracts terminated. Account remains locked for historical audit.',
+          time: 'Apr 28',
+          messageCount: 112,
+        },
+        {
+          threadId: 'c6-2',
+          avatar: 'av-6',
+          name: 'TechFlow',
+          role: 'client',
+          initials: 'TF', // Drift C
+          lastMessage: 'We received notice of account termination. Disappointed—we had a good working relationship.',
+          time: 'Apr 28',
+          messageCount: 47,
+        },
+        {
+          threadId: 'c6-3',
+          avatar: 'av-9',
+          name: 'Aurora Designs',
+          role: 'client',
+          initials: 'AD', // Drift C
+          lastMessage: 'Account seems locked. Reaching out to Atlas support to understand what happened.',
+          time: 'Apr 28',
+          messageCount: 28,
+        },
+        {
+          threadId: 'c6-4',
+          avatar: 'av-5',
+          name: 'SaaS Studio',
+          role: 'client',
+          initials: 'SS', // Drift C
+          lastMessage: 'We\'ll look for a replacement designer. No issues during our engagement but understand the policy.',
+          time: 'Apr 27',
+          messageCount: 9,
+        },
+        {
+          threadId: 'c6-5',
+          avatar: 'av-10',
+          name: 'Internal note · Dario Mensah',
+          role: 'admin',
+          initials: 'DM', // Drift C
+          lastMessage: 'Ban issued: Multiple accounts, TOS violations, suspicious behavior pattern. BAN-2026-018. Case closed.',
+          time: 'Apr 27',
+          messageCount: 7,
+        },
+      ],
+    },
+    auditLog: {
+      totalEvents: 44,
+      recent: [
+        { time: '4:00 PM', verb: 'Account banned', target: 'by Dario Mensah · Super Admin', detail: 'Repeated TOS violations · Multiple account fraud · Permanent ban', category: 'override', outcome: { label: 'Banned', variant: 'escalated' }, refId: 'BAN-2026-018', dayGroup: { label: 'Today · April 30, 2026', count: 3 } },
+        { time: '3:30 PM', verb: 'Contracts terminated', target: 'all active engagements', detail: '4 contracts cancelled effective immediately', category: 'contract', outcome: { label: 'Terminated', variant: 'escalated' } },
+        { time: '2:15 PM', verb: 'Dispute filed', target: 'High priority · TOS violation', detail: 'Pattern flagged: account behavior inconsistent with single user', category: 'dispute', outcome: { label: 'Escalated', variant: 'escalated' }, refId: 'DSP-2026-0428' },
+        { time: '10:45 AM', verb: 'Contract signed', target: 'ENG-2026-201 with TechFlow', detail: '$48/hr · 40 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-201', dayGroup: { label: 'Apr 22, 2026', count: 4 } },
+        { time: '2:30 PM', verb: 'Review received', target: '5 stars from Aurora Designs', detail: '"Incredibly creative designs. Fast turnaround."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0315' },
+        { time: '9:00 AM', verb: 'Sign-in', target: 'Deniz Kaya', detail: 'Unknown IP · Istanbul · Chrome', category: 'signin', outcome: { label: 'Verified', variant: 'success' } },
+        { time: '4:20 PM', verb: 'Contract signed', target: 'ENG-2026-189 with SaaS Studio', detail: '$44/hr · 30 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-189' },
+      ],
+    },
+    trustSignals: [
+      {
+        title: 'Account banned',
+        severity: 'high',
+        detail: 'Multiple TOS violations detected. Pattern analysis suggests multi-account operation. Biometric inconsistencies and behavioral red flags.',
+        status: 'flagged',
+        meta: 'Banned Apr 28, 2026 by Dario Mensah · Case BAN-2026-018 · Permanent',
+      },
+    ],
     privacy: [],
     quickFacts: {
       joinedDate: 'Feb 8, 2024',
@@ -1521,9 +1788,55 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
       ],
     },
     financial: { totalEarned: '$54,000', last30Days: '$4,500', pendingPayout: '$1,200', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
-    trustSignals: [],
+    communications: {
+      totalMessages: 68,
+      threads: 3,
+      totalCaption: '68 messages over 3 months',
+      items: [
+        {
+          threadId: 'c7-1',
+          avatar: 'av-8',
+          name: 'Amit Patel',
+          role: 'specialist',
+          initials: 'AP', // Drift C
+          lastMessage: 'Strong engagement updates. Databricks mentioned the real-time pipeline work was exceptional. Keep it up!',
+          time: '6h ago',
+          messageCount: 31,
+          unread: true,
+        },
+        {
+          threadId: 'c7-2',
+          avatar: 'av-4',
+          name: 'Databricks',
+          role: 'client',
+          initials: 'DB', // Drift C
+          lastMessage: 'Current project wrapping up next month. Really impressed with how you handled the scale challenges.',
+          time: '1d ago',
+          messageCount: 22,
+        },
+        {
+          threadId: 'c7-3',
+          avatar: 'av-7',
+          name: 'Freshworks',
+          role: 'client',
+          initials: 'FW', // Drift C
+          lastMessage: 'Thanks for taking on the infrastructure redesign. Team learning a lot from your approach.',
+          time: '4d ago',
+          messageCount: 15,
+        },
+      ],
+    },
+    auditLog: {
+      totalEvents: 15,
+      recent: [
+        { time: '4:30 PM', verb: 'Sign-in', target: 'Priya Sharma', detail: '192.168.55.22 · Bangalore · Chrome 125 · macOS 15', category: 'signin', outcome: { label: 'Verified', variant: 'success' }, dayGroup: { label: 'Today · April 30, 2026', count: 5 } },
+        { time: '2:15 PM', verb: 'Contract signed', target: 'ENG-2026-234 with Databricks', detail: '$48/hr · 40 hrs/week · initial term', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-234' },
+        { time: '10:45 AM', verb: 'Review received', target: '5 stars from Grab', detail: '"Priya built our real-time analytics pipeline during the monsoon season..."', category: 'review', outcome: { label: 'Approved', variant: 'success' }, refId: 'REV-2026-0412' },
+        { time: '3:30 PM', verb: 'Contract signed', target: 'ENG-2026-198 with Freshworks', detail: '$52/hr · 30 hrs/week · ongoing', category: 'contract', outcome: { label: 'Active', variant: 'success' }, refId: 'ENG-2026-198' },
+        { time: '9:20 AM', verb: 'Profile updated', target: 'added Snowflake to tools', detail: '192.168.55.22 · Bangalore · Chrome', category: 'profile', outcome: { label: 'Auto-approved', variant: 'success' }, refId: 'PRF-2026-0201' },
+      ],
+    },
+    trustSignals: [{ title: 'All clear', severity: 'none', detail: 'No flags or concerns', status: 'clear' }],
     privacy: [],
     quickFacts: {
       joinedDate: 'May 12, 2024',
@@ -1616,8 +1929,13 @@ export const CANDIDATE_PROFILES: Record<string, CandidateProfile> = {
     },
     engagements: { active: 0, past: 0, items: [] },
     financial: { totalEarned: '$0', last30Days: '$0', pendingPayout: '$0', paymentMethod: { provider: '—', account: '—', meta: '—' }, taxDocs: [], recentTransactions: [] },
-    communications: { totalMessages: 0, threads: 0, items: [] },
-    auditLog: { totalEvents: 0, recent: [] },
+    communications: { totalMessages: 0, threads: 0, totalCaption: 'no messages yet', items: [] },
+    auditLog: {
+      totalEvents: 1,
+      recent: [
+        { time: '7:35 PM', verb: 'Account created', target: 'via email signup', detail: 'james@example.com', category: 'created', refId: 'ACC-2026-001898', dayGroup: { label: 'Today · April 30, 2026', count: 1 } },
+      ],
+    },
     trustSignals: [],
     privacy: [],
     quickFacts: {
