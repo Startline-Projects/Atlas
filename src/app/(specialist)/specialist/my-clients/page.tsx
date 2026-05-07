@@ -1,6 +1,5 @@
-import { ComingSoon } from "@/components/specialist/shell/coming-soon";
+import { MyClientsApp } from "@/components/specialist/my-clients/my-clients-app";
 
-// TODO: implemented in a later session. Spec PDF Part 4 — Client Management, Step 7.
 export default function MyClientsPage() {
-  return <ComingSoon title="My clients" />;
+  return <MyClientsApp />;
 }

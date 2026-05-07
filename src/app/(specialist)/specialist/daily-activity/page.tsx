@@ -1,6 +1,9 @@
-import { ComingSoon } from "@/components/specialist/shell/coming-soon";
+import { DailyActivityPage as DailyActivityFeed } from "@/components/specialist/daily-activity/daily-activity-page";
 
-// TODO: implemented in a later session. Spec PDF Part 7 — Daily Activity & Performance, Step 12.
+/**
+ * Daily-activity view — read-only audit log. Server-rendered; period
+ * toggle and filter chips are Client islands. No URL state.
+ */
 export default function DailyActivityPage() {
-  return <ComingSoon title="Daily activity" />;
+  return <DailyActivityFeed />;
 }

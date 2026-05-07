@@ -1,6 +1,19 @@
-import { ComingSoon } from "@/components/specialist/shell/coming-soon";
+import { Suspense } from "react";
+import { SourcingApp } from "@/components/specialist/sourcing/sourcing-app";
 
-// TODO: implemented in a later session. Spec PDF Part 5 — Sourcing & Pool Health, Step 9.
+/**
+ * Sourcing pipeline view. URL state: `?id=<prospect-...>` opens the
+ * slide-over detail. Direct URL load like
+ * `/specialist/sourcing?id=prospect-tomas-reyes` opens that prospect.
+ *
+ * `useSearchParams` requires a Suspense boundary on Next 15+. Empty
+ * fallback because the boundary resolves on the client almost
+ * instantly.
+ */
 export default function SourcingPage() {
-  return <ComingSoon title="Sourcing pipeline" />;
+  return (
+    <Suspense fallback={null}>
+      <SourcingApp />
+    </Suspense>
+  );
 }

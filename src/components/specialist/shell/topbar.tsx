@@ -12,7 +12,7 @@ import { currentUser } from "@/lib/mock-data/specialist/current-user";
  */
 export function Topbar() {
   return (
-    <header className="bg-paper/90 border-line-soft sticky top-9 z-[6] flex items-center justify-between gap-4 border-b px-4 py-2.5 backdrop-blur-md backdrop-saturate-[140%] sm:px-6">
+    <header className="bg-cream/90 border-line-soft sticky top-9 z-[6] flex items-center justify-between gap-4 border-b px-4 py-2.5 backdrop-blur-md backdrop-saturate-[140%] sm:px-6">
       <div className="flex flex-shrink-0 items-center gap-2.5">
         <Link
           href="/specialist/dashboard"

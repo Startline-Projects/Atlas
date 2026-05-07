@@ -1,6 +1,9 @@
-import { ComingSoon } from "@/components/specialist/shell/coming-soon";
+import { PoolHealthPage as PoolHealthDashboard } from "@/components/specialist/pool-health/pool-health-page";
 
-// TODO: implemented in a later session. Spec PDF Part 5 — Sourcing & Pool Health, Step 10 (Pool Health page).
+/**
+ * Pool-health view — strategic dashboard. Server-rendered; the only
+ * Client island is the period-toggle in the header. No URL state.
+ */
 export default function PoolHealthPage() {
-  return <ComingSoon title="Pool health" />;
+  return <PoolHealthDashboard />;
 }

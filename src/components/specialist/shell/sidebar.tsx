@@ -13,13 +13,29 @@ import { SidebarProfile } from "./sidebar-profile";
 
 const SECTIONS: ReadonlyArray<NavSection> = ["Workspace", "Operations"];
 
-/** Pick the longest matching nav href so nested routes still highlight the parent. */
+/** True when `pathname` falls under (or equals) `prefix`. */
+function matches(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/**
+ * Pick the longest matching nav href so nested routes still highlight the
+ * parent. Also considers each item's `additionalActivePathPrefixes` so
+ * dynamic routes without a sidebar entry (e.g. `/specialist/candidates/[id]`)
+ * can highlight a related parent (e.g. "My candidates").
+ */
 function activeKeyFor(pathname: string, items: ReadonlyArray<NavItem>): string | null {
   let bestMatch: NavItem | null = null;
+  let bestPrefixLen = -1;
   for (const item of items) {
-    if (pathname === item.href || pathname.startsWith(`${item.href}/`)) {
-      if (!bestMatch || item.href.length > bestMatch.href.length) {
+    const prefixes: ReadonlyArray<string> = [
+      item.href,
+      ...(item.additionalActivePathPrefixes ?? []),
+    ];
+    for (const p of prefixes) {
+      if (matches(pathname, p) && p.length > bestPrefixLen) {
         bestMatch = item;
+        bestPrefixLen = p.length;
       }
     }
   }
