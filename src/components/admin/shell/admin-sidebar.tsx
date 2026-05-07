@@ -58,6 +58,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || (pathname === '/admin/users' && hash === '#candidates');
     }
 
+    // Special case for Clients: also match /admin/users/clients/[id] detail routes
+    if (itemPathname === '/admin/users/clients') {
+      return pathname === '/admin/users/clients'
+          || pathname.startsWith('/admin/users/clients/');
+    }
+
     return pathname === itemPathname;
   };
 
