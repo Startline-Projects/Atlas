@@ -169,6 +169,37 @@ const { data } = useSWR("/api/v1/jobs", () => apiClient.jobs.list({ status: "OPE
 
 The UI never imports a service. Ever.
 
+### 3.6 Per-role surface structure
+
+Every role (specialist, client, manager, admin) follows an identical folder structure for routes, components, mock data, and client state. This uniformity makes it easy to clone the pattern for new roles and ensures consistency across all user surfaces.
+
+**Routes:** Route groups use parentheses notation to keep auth separate from main content:
+- `src/app/(role)/role/[feature]/page.tsx` — main routes (dashboard, etc.)
+- `src/app/(role-auth)/role/[auth-route]/page.tsx` — auth routes (signin, OTP, etc.)
+
+Example: `(admin)` and `(admin-auth)` for the admin role; `(specialist)` and `(specialist-auth)` for specialists.
+
+**Components:** UI lives in `src/components/role/`, organized by function:
+- `shell/` — layout wrapper, topbar, sidebar, preview panels
+- `auth/` — signin form, OTP input, session timeout modal
+- `[feature]/` — feature-specific components (dashboard, etc.)
+
+**Mock data:** ALL `.ts` data files (arrays, constants, mock objects) live in `src/lib/mock-data/role/`, never under `src/components/`. Include a `index.ts` barrel file for re-exports.
+
+**Client state:** Contexts and client state live in `src/lib/role/`, never under `src/components/`.
+
+**Invariants:**
+- ❌ NO `.ts` data files under `src/components/`
+- ❌ NO components or JSX under `src/lib/`
+- ❌ NO role-specific logic outside these folders
+- ✅ Components import data from `@/lib/mock-data/role/` using absolute paths
+- ✅ Routes import components from `@/components/role/` using absolute paths
+- ✅ All roles follow the identical folder structure
+
+**Reference implementations:** See specialist and admin folders for the complete pattern.
+
+When building a new role (client, manager, etc.), copy the folder structure from specialist or admin and replace the role name everywhere. See `FOLDER_STRUCTURE.md` for the full template.
+
 ---
 
 ## 4. AI Agent Rules
@@ -177,8 +208,9 @@ The UI never imports a service. Ever.
 
 1. Read `ARCHITECTURE.md` and this file.
 2. Read the relevant slice — the service, repository, and validator that already exist for the entity.
-3. State, in plain English, which layer the change belongs to and which files will be touched.
-4. If the change crosses layers improperly, stop and ask.
+3. If building a new role surface (dashboard, forms, auth flows, etc.), read the per-role surface structure (section 3.6) and verify the folder layout matches specialist or admin before generating any components or routes.
+4. State, in plain English, which layer the change belongs to and which files will be touched.
+5. If the change crosses layers improperly, stop and ask.
 
 ### 4.2 During generation
 
