@@ -7,15 +7,13 @@ import { SpecialistSectionAssignments } from './sections/specialist-section-assi
 import { SpecialistSectionNotes } from './sections/specialist-section-notes';
 import { SpecialistSectionReviews } from './sections/specialist-section-reviews';
 import { SpecialistSectionHr } from './sections/specialist-section-hr';
+import { SpecialistSectionAudit } from './sections/specialist-section-audit';
+import { SpecialistRail } from './specialist-rail';
+import { cn } from '@/lib/utils/cn';
 
 interface SpecialistProfileShellProps {
   profile: SpecialistProfile;
 }
-
-// Sections 01-07 are now built (Phases 7c-7i). Section 08 remains as placeholder.
-const PLACEHOLDER_SECTIONS = [
-  { num: '08', key: 'audit',        title: 'Audit log',                     phase: '7j' },
-];
 
 export function SpecialistProfileShell({ profile }: SpecialistProfileShellProps) {
   // admin.html lines 4790, 7258, 4785, 4791 + spec mappings:
@@ -39,7 +37,7 @@ export function SpecialistProfileShell({ profile }: SpecialistProfileShellProps)
   const bannerIconClass = bannerIsDanger ? 'text-[var(--danger)]' : 'text-[var(--amber)]';
 
   return (
-    <main className="mx-auto max-w-[1400px] pt-[28px] px-[32px] pb-[100px] max-[720px]:px-[16px] max-[720px]:pt-[18px]">
+    <div className="mx-auto max-w-[1400px] pt-[28px] px-[32px] pb-[100px] max-[720px]:px-[16px] max-[720px]:pt-[18px]">
       {/* Back row (admin.html lines 18210-18225) */}
       <SpecialistBackRow profile={profile} />
 
@@ -277,60 +275,45 @@ export function SpecialistProfileShell({ profile }: SpecialistProfileShellProps)
         </div>
       </div>
 
-      {/* Section 01 — Performance summary (Phase 7c — built) */}
-      <SpecialistSectionPerformance profile={profile} />
+      {/* admin.html line 18311: 2-col cd-body grid (main 1fr / rail 280px / gap 32) — single-col when rail absent */}
+      <div
+        className={cn(
+          'grid items-start',
+          profile.rail
+            ? 'grid-cols-[minmax(0,1fr)_280px] gap-[32px] max-[1100px]:grid-cols-1 max-[1100px]:gap-[24px]'
+            : 'grid-cols-1'
+        )}
+      >
+        {/* admin.html line 18314: <main class="cd-main"> */}
+        <main className="min-w-0">
+          {/* Section 01 — Performance summary (Phase 7c) */}
+          <SpecialistSectionPerformance profile={profile} />
 
-      {/* Section 02 — Workload & caseload (Phase 7d — built) */}
-      <SpecialistSectionWorkload profile={profile} />
+          {/* Section 02 — Workload & caseload (Phase 7d) */}
+          <SpecialistSectionWorkload profile={profile} />
 
-      {/* Section 03 — Daily activity audit (Phase 7e — built) */}
-      <SpecialistSectionActivity profile={profile} />
+          {/* Section 03 — Daily activity audit (Phase 7e) */}
+          <SpecialistSectionActivity profile={profile} />
 
-      {/* Section 04 — Candidates & clients assigned (Phase 7f — built) */}
-      <SpecialistSectionAssignments profile={profile} />
+          {/* Section 04 — Candidates & clients assigned (Phase 7f) */}
+          <SpecialistSectionAssignments profile={profile} />
 
-      {/* Section 05 — Notes (Phase 7g — built) */}
-      <SpecialistSectionNotes profile={profile} />
+          {/* Section 05 — Notes (Phase 7g) */}
+          <SpecialistSectionNotes profile={profile} />
 
-      {/* Section 06 — Performance review history (Phase 7h — built) */}
-      <SpecialistSectionReviews profile={profile} />
+          {/* Section 06 — Performance review history (Phase 7h) */}
+          <SpecialistSectionReviews profile={profile} />
 
-      {/* Section 07 — HR record (Phase 7i — built) */}
-      <SpecialistSectionHr profile={profile} />
+          {/* Section 07 — HR record (Phase 7i) */}
+          <SpecialistSectionHr profile={profile} />
 
-      {/* Section 08 — placeholder, replaced in Phase 7j */}
-      <div>
-        {PLACEHOLDER_SECTIONS.map((s) => (
-          <section
-            key={s.num}
-            id={`sp-section-${s.key}`}
-            className="border-t border-[var(--line)] pt-[36px] mt-[36px] scroll-mt-[80px]"
-          >
-            <div className="flex items-baseline justify-between mb-[24px] flex-wrap gap-[8px]">
-              <div className="flex items-baseline gap-[14px]">
-                <span className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-[var(--ink-mute)] font-semibold">
-                  {s.num} · 08
-                </span>
-                <h2 className="font-display [font-variation-settings:'opsz'_96] text-[24px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0">
-                  {s.title}
-                </h2>
-              </div>
-            </div>
-            <div className="bg-[var(--paper)] border border-dashed border-[var(--line)] rounded-[var(--r-md)] p-[40px] text-center">
-              <div className="font-mono text-[11px] text-[var(--ink-mute)] tracking-[0.06em] uppercase">
-                Phase {s.phase} will build this section
-              </div>
-            </div>
-          </section>
-        ))}
+          {/* Section 08 — Audit log (Phase 7j) */}
+          <SpecialistSectionAudit profile={profile} />
+        </main>
+
+        {/* admin.html line 19295: <aside class="cd-rail"> — TOC + Quick Facts + scroll-spy (Phase 7k) */}
+        {profile.rail && <SpecialistRail rail={profile.rail} />}
       </div>
-
-      {/* Right rail placeholder — Phase 7k will replace with full TOC + Quick Facts */}
-      <div className="mt-[36px] p-[16px] bg-[var(--cream-deep)] border border-[var(--line-soft)] rounded-[var(--r-md)]">
-        <p className="text-[12px] text-[var(--ink-soft)]">
-          Right rail: [Phase 7k will add Quick Facts + TOC + scroll-spy]
-        </p>
-      </div>
-    </main>
+    </div>
   );
 }

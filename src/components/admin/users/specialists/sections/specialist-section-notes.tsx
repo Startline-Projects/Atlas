@@ -110,7 +110,7 @@ export function SpecialistSectionNotes({
     // admin.html line 18893: <section id="sp-section-notes">
     <section
       id="sp-section-notes"
-      className="scroll-mt-[80px] border-t border-[var(--line)] py-[36px]"
+      className="scroll-mt-[80px] border-t border-[var(--line)] py-[36px] first:border-t-0 first:pt-[12px]"
     >
       {/* Section header — admin.html lines 18894-18900 */}
       <div className="mb-[22px] flex flex-wrap items-baseline justify-between gap-[16px]">

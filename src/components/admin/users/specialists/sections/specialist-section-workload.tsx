@@ -192,7 +192,7 @@ export function SpecialistSectionWorkload({ profile }: SpecialistSectionWorkload
     // admin.html line 18614: <section id="sp-section-workload">
     <section
       id="sp-section-workload"
-      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px]"
+      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px] first:border-t-0 first:pt-[12px]"
     >
       {/* admin.html line 18615: cd-section-head */}
       <div className="flex items-baseline justify-between gap-[16px] mb-[22px] flex-wrap">

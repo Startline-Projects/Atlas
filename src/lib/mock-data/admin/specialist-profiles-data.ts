@@ -66,8 +66,11 @@ export interface SpecialistProfile {
   // Section 07 — HR record (Phase 7i)
   hr?: HrSection;
 
-  // Section data fields will be added in Phases 7j–7k:
-  // auditLog?, quickFacts?
+  // Section 08 — Audit log (Phase 7j)
+  auditLog?: AuditSection;
+
+  // Right rail — TOC + Quick Facts (Phase 7k)
+  rail?: SpecialistRail;
 }
 
 // ============================================================
@@ -358,6 +361,71 @@ interface HrSection {
   };
   disciplinary: DisciplinaryClean;
   emptyState?: { title: string; detail: string };
+}
+
+// ============================================================
+// AUDIT LOG TYPES (Phase 7j) — Section 08
+// ============================================================
+
+type AuditCategory = 'signin' | 'override' | 'suspension' | 'ban' | 'refund' | 'dispute' | 'export';
+type AuditTagVariant = 'default' | 'signin' | 'override' | 'refund' | 'dispute' | 'suspension' | 'ban' | 'export' | 'investigation';
+type AuditOutcomeVariant = 'success' | 'partial' | 'escalated';
+
+interface AuditDetailSegment {
+  type: 'text' | 'sep' | 'refId' | 'outcome';
+  text: string;
+  outcomeVariant?: AuditOutcomeVariant;
+}
+
+interface AuditEvent {
+  time: string;            // "11:42 AM" or multi-line "Sep 20\n2024"
+  cat?: AuditCategory;     // controls dot color via data-cat
+  verb: string;
+  target?: string;         // shown bold inline after verb
+  details: AuditDetailSegment[];
+  tagLabel: string;        // "ACTIVITY" / "SIGN-IN" / "COACHING" etc.
+  tagVariant: AuditTagVariant;
+}
+
+interface AuditDay {
+  dateLabel: string;       // "Today · April 30, 2026" / "Apr 28, 2026" / "Earlier · 2024"
+  countLabel: string;      // "2 events" / "1 event"
+  events: AuditEvent[];
+}
+
+interface AuditSection {
+  sectionStatus: { label: string; variant: 'success' | 'warn' | 'danger' | 'neutral' };
+  days: AuditDay[];
+  footerLabel?: string;    // "Showing 8 of 42 events"
+  loadMoreLabel?: string;  // "Load more" — null hides button
+  emptyState?: { title: string; detail: string };
+}
+
+// ============================================================
+// RAIL TYPES (Phase 7k) — TOC + Quick Facts
+// ============================================================
+
+type TocStatus = 'default' | 'ok' | 'warn' | 'danger';
+
+interface TocItem {
+  num: string;             // "01"
+  href: string;            // "#sp-section-performance"
+  sectionId: string;       // "sp-section-performance"
+  dataKey: string;         // "performance"
+  label: string;           // "Performance"
+  meta: string;            // "96.4%"
+  metaVariant: TocStatus;
+}
+
+interface QuickFact {
+  label: string;           // "Atlas employee ID"
+  value: string;           // "spec-001-d3c9a1"
+  valueVariant?: 'success' | 'warn' | 'danger';
+}
+
+interface SpecialistRail {
+  toc: TocItem[];
+  quickFacts: QuickFact[];
 }
 
 // ============================================================
@@ -1096,6 +1164,284 @@ function buildHr(input: HrBuilderInput): HrSection {
 }
 
 // ============================================================
+// AUDIT LOG BUILDER (Phase 7j)
+// ============================================================
+
+interface AuditBuilderInput {
+  status: 'on-track' | 'at-risk' | 'inactive' | 'pending';
+  totalEvents: number;             // for footer "Showing 8 of N events"
+  hireDate: string;                // "Aug 14, 2022" — drives final account-created entry
+  hireMonthDay: string;            // "Aug 14" for time field
+  hireYear: string;                // "2022"
+  category: string;                // "Engineering" — used in account-created details
+  ipCity: string;                  // "Berlin" / "Mexico City" / etc.
+  ipAddress: string;               // "91.64.118.7"
+  os: string;                      // "macOS 14.4"
+  todayActivitySummary: string;    // "12 LinkedIn · 3 calls · 2 reviews · 1 dispute resolved"
+  managerName: string;             // "Mateo Vargas"
+  // Optional inactive marker (handoff event near leave start)
+  handoffDate?: string;            // "Apr 22, 2026"
+  handoffReceivers?: string;       // "Yuki Tanaka and Maya Tanaka"
+  handoffEventTime?: string;       // "5:18 PM"
+  // For at-risk pattern: include caseload-alert event
+  includeCaseloadAlert?: boolean;
+  caseloadActive?: number;
+  caseloadTarget?: number;
+  // Optional reviewers for the Q1 review delivered event
+  reviewDeliveredDate?: string;    // "Apr 8, 2026"
+  reviewRefId?: string;            // "PR-2026-0412-DK"
+}
+
+function buildAuditLog(input: AuditBuilderInput): AuditSection {
+  const days: AuditDay[] = [];
+
+  if (input.status !== 'inactive') {
+    // Today — 2 events: activity submission + sign-in
+    days.push({
+      dateLabel: 'Today · April 30, 2026',
+      countLabel: '2 events',
+      events: [
+        {
+          time: '11:42 AM',
+          verb: 'Daily activity submitted',
+          target: input.todayActivitySummary,
+          details: [
+            { type: 'text', text: 'On time · before 12:00 PM CET deadline' },
+            { type: 'sep', text: '·' },
+            { type: 'outcome', outcomeVariant: 'success', text: `Approved by ${input.managerName}` },
+          ],
+          tagLabel: 'ACTIVITY',
+          tagVariant: 'default',
+        },
+        {
+          time: '9:08 AM',
+          cat: 'signin',
+          verb: 'Sign-in',
+          details: [
+            { type: 'text', text: `${input.ipAddress} · ${input.ipCity} · Chrome · ${input.os}` },
+            { type: 'sep', text: '·' },
+            { type: 'outcome', outcomeVariant: 'success', text: '2FA verified' },
+          ],
+          tagLabel: 'SIGN-IN',
+          tagVariant: 'signin',
+        },
+      ],
+    });
+  } else if (input.handoffDate) {
+    // Inactive — last event is handoff completion
+    days.push({
+      dateLabel: input.handoffDate,
+      countLabel: '1 event',
+      events: [
+        {
+          time: input.handoffEventTime ?? '5:18 PM',
+          cat: 'override',
+          verb: 'Caseload handoff completed',
+          target: `to ${input.handoffReceivers ?? 'covering specialists'}`,
+          details: [
+            { type: 'text', text: `Approved by ${input.managerName}` },
+            { type: 'sep', text: '·' },
+            { type: 'text', text: 'All active candidates and clients reassigned' },
+          ],
+          tagLabel: 'HANDOFF',
+          tagVariant: 'override',
+        },
+      ],
+    });
+  }
+
+  // Recent past day — Apr 28
+  if (input.includeCaseloadAlert && input.caseloadActive && input.caseloadTarget) {
+    const overPct = Math.round(((input.caseloadActive - input.caseloadTarget) / input.caseloadTarget) * 100);
+    days.push({
+      dateLabel: 'Apr 28, 2026',
+      countLabel: '2 events',
+      events: [
+        {
+          time: '11:42 AM',
+          cat: 'override',
+          verb: 'Coaching note logged',
+          target: `by ${input.managerName} (Manager)`,
+          details: [
+            { type: 'text', text: `Topic: caseload rebalancing · 5 cases moved to covering specialist` },
+            { type: 'sep', text: '·' },
+            { type: 'refId', text: 'CN-2026-0412' },
+          ],
+          tagLabel: 'COACHING',
+          tagVariant: 'override',
+        },
+        {
+          time: '10:15 AM',
+          verb: 'Caseload alert triggered',
+          target: `${input.caseloadActive} active vs target ${input.caseloadTarget}`,
+          details: [
+            { type: 'text', text: `Auto-flagged at +${overPct}% over target` },
+            { type: 'sep', text: '·' },
+            { type: 'text', text: `Notified ${input.managerName}` },
+          ],
+          tagLabel: 'SYSTEM',
+          tagVariant: 'default',
+        },
+      ],
+    });
+  } else if (input.status === 'on-track' || input.status === 'pending') {
+    days.push({
+      dateLabel: 'Apr 28, 2026',
+      countLabel: '1 event',
+      events: [
+        {
+          time: '4:52 PM',
+          verb: 'Candidate review approved',
+          target: '3 final-stage approvals',
+          details: [
+            { type: 'text', text: `By ${input.managerName} · within SLA` },
+            { type: 'sep', text: '·' },
+            { type: 'outcome', outcomeVariant: 'success', text: 'All approved' },
+          ],
+          tagLabel: 'ACTIVITY',
+          tagVariant: 'default',
+        },
+      ],
+    });
+  }
+
+  // Q1 review delivered — Apr 8
+  if (input.reviewDeliveredDate) {
+    days.push({
+      dateLabel: input.reviewDeliveredDate,
+      countLabel: '1 event',
+      events: [
+        {
+          time: '2:30 PM',
+          cat: 'override',
+          verb: 'Q1 2026 performance review delivered',
+          target: 'final cycle',
+          details: [
+            { type: 'text', text: `By ${input.managerName} + Aïsha Okafor (you)` },
+            { type: 'sep', text: '·' },
+            { type: 'text', text: 'Annual cycle' },
+            { type: 'sep', text: '·' },
+            { type: 'refId', text: input.reviewRefId ?? 'PR-2026-0412' },
+          ],
+          tagLabel: 'REVIEW',
+          tagVariant: 'override',
+        },
+      ],
+    });
+  }
+
+  // Earlier · {hire year} — 1-3 events depending on tenure
+  const earlierEvents: AuditEvent[] = [];
+  earlierEvents.push({
+    time: `${input.hireMonthDay}\n${input.hireYear}`,
+    cat: 'signin',
+    verb: 'Account created · hire date',
+    details: [
+      { type: 'text', text: `Onboarded by ${input.managerName}` },
+      { type: 'sep', text: '·' },
+      { type: 'text', text: `${input.category} category` },
+      { type: 'sep', text: '·' },
+      { type: 'refId', text: `EMP-${input.hireYear}-${(Math.floor(Math.random() * 9000) + 1000).toString()}` },
+    ],
+    tagLabel: 'CREATED',
+    tagVariant: 'signin',
+  });
+  if (input.status !== 'pending') {
+    earlierEvents.unshift({
+      time: 'Apr 5\n2024',
+      verb: 'Annual security & privacy training completed',
+      details: [
+        { type: 'text', text: 'GDPR + CCPA · phishing + MFA' },
+        { type: 'sep', text: '·' },
+        { type: 'refId', text: 'PRT-2024-2841 · SEC-2024-1209' },
+      ],
+      tagLabel: 'CERT',
+      tagVariant: 'default',
+    });
+  }
+  days.push({
+    dateLabel: `Earlier · ${input.hireYear}`,
+    countLabel: `${earlierEvents.length} event${earlierEvents.length === 1 ? '' : 's'}`,
+    events: earlierEvents,
+  });
+
+  return {
+    sectionStatus: { label: `${input.totalEvents} events · immutable`, variant: 'neutral' },
+    days,
+    footerLabel: `Showing ${days.reduce((sum, d) => sum + d.events.length, 0)} of ${input.totalEvents} events`,
+    loadMoreLabel: 'Load more',
+  };
+}
+
+// ============================================================
+// RAIL BUILDER (Phase 7k) — TOC derives from each section's data
+// ============================================================
+
+interface RailBuilderInput {
+  // TOC metas per section (specialist-specific)
+  performanceMeta: string;
+  performanceVariant: TocStatus;
+  workloadMeta: string;
+  workloadVariant: TocStatus;
+  activityMeta: string;
+  activityVariant: TocStatus;
+  assignmentsMeta: string;
+  notesMeta: string;
+  reviewsMeta: string;
+  hrMeta: string;
+  hrVariant: TocStatus;
+  auditMeta: string;
+  // Quick facts
+  atlasId: string;
+  hired: string;
+  tenure: string;
+  category: string;
+  region: string;
+  manager: string;
+  twoFactor: string;
+  twoFactorVariant?: 'success' | 'warn' | 'danger';
+  lastSeen: string;
+  lastSeenVariant?: 'success' | 'warn' | 'danger';
+}
+
+function buildRail(input: RailBuilderInput): SpecialistRail {
+  return {
+    toc: [
+      { num: '01', href: '#sp-section-performance', sectionId: 'sp-section-performance', dataKey: 'performance',
+        label: 'Performance', meta: input.performanceMeta, metaVariant: input.performanceVariant },
+      { num: '02', href: '#sp-section-workload', sectionId: 'sp-section-workload', dataKey: 'workload',
+        label: 'Workload', meta: input.workloadMeta, metaVariant: input.workloadVariant },
+      { num: '03', href: '#sp-section-activity', sectionId: 'sp-section-activity', dataKey: 'activity',
+        label: 'Daily activity', meta: input.activityMeta, metaVariant: input.activityVariant },
+      { num: '04', href: '#sp-section-assignments', sectionId: 'sp-section-assignments', dataKey: 'assignments',
+        label: 'Assignments', meta: input.assignmentsMeta, metaVariant: 'default' },
+      { num: '05', href: '#sp-section-notes', sectionId: 'sp-section-notes', dataKey: 'notes',
+        label: 'Notes', meta: input.notesMeta, metaVariant: 'default' },
+      { num: '06', href: '#sp-section-reviews', sectionId: 'sp-section-reviews', dataKey: 'reviews',
+        label: 'Reviews', meta: input.reviewsMeta, metaVariant: 'default' },
+      { num: '07', href: '#sp-section-hr', sectionId: 'sp-section-hr', dataKey: 'hr',
+        label: 'HR record', meta: input.hrMeta, metaVariant: input.hrVariant },
+      { num: '08', href: '#sp-section-audit', sectionId: 'sp-section-audit', dataKey: 'audit',
+        label: 'Audit log', meta: input.auditMeta, metaVariant: 'default' },
+    ],
+    quickFacts: [
+      { label: 'Atlas employee ID', value: input.atlasId },
+      { label: 'Hired', value: input.hired },
+      { label: 'Tenure', value: input.tenure },
+      { label: 'Category', value: input.category },
+      { label: 'Region', value: input.region },
+      { label: 'Manager', value: input.manager },
+      ...(input.twoFactorVariant
+        ? [{ label: '2FA', value: input.twoFactor, valueVariant: input.twoFactorVariant }]
+        : [{ label: '2FA', value: input.twoFactor }]),
+      ...(input.lastSeenVariant
+        ? [{ label: 'Last seen', value: input.lastSeen, valueVariant: input.lastSeenVariant }]
+        : [{ label: 'Last seen', value: input.lastSeen }]),
+    ],
+  };
+}
+
+// ============================================================
 // 11 SPECIALIST FIXTURES — match users-data.ts SPECIALISTS_ROWS
 // ============================================================
 
@@ -1476,6 +1822,164 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         detail: 'No formal warnings, PIPs, or HR-flagged incidents in 3 years 8 months of tenure.',
       },
     },
+    // Audit log — VERBATIM from admin.html lines 19145-19290
+    auditLog: {
+      sectionStatus: { label: '42 events · immutable', variant: 'neutral' },
+      days: [
+        {
+          dateLabel: 'Today · April 30, 2026',
+          countLabel: '2 events',
+          events: [
+            {
+              time: '11:42 AM',
+              verb: 'Daily activity submitted',
+              target: '12 LinkedIn · 3 calls · 2 reviews · 1 dispute resolved',
+              details: [
+                { type: 'text', text: 'On time · before 12:00 PM CET deadline' },
+                { type: 'sep', text: '·' },
+                { type: 'outcome', outcomeVariant: 'success', text: 'Approved by Mateo Vargas' },
+              ],
+              tagLabel: 'ACTIVITY',
+              tagVariant: 'default',
+            },
+            {
+              time: '9:08 AM',
+              cat: 'signin',
+              verb: 'Sign-in',
+              target: 'Daniel Kovács',
+              details: [
+                { type: 'text', text: '91.64.118.7 · Berlin · Chrome · macOS 14.4' },
+                { type: 'sep', text: '·' },
+                { type: 'outcome', outcomeVariant: 'success', text: '2FA verified' },
+              ],
+              tagLabel: 'SIGN-IN',
+              tagVariant: 'signin',
+            },
+          ],
+        },
+        {
+          dateLabel: 'Apr 28, 2026',
+          countLabel: '2 events',
+          events: [
+            {
+              time: '11:42 AM',
+              cat: 'override',
+              verb: 'Coaching note logged',
+              target: 'by Mateo Vargas (Manager)',
+              details: [
+                { type: 'text', text: 'Topic: caseload rebalancing · 5 cases moved to Lukas Chen' },
+                { type: 'sep', text: '·' },
+                { type: 'refId', text: 'CN-2026-0412' },
+              ],
+              tagLabel: 'COACHING',
+              tagVariant: 'override',
+            },
+            {
+              time: '10:15 AM',
+              verb: 'Caseload alert triggered',
+              target: '47 active vs target 40',
+              details: [
+                { type: 'text', text: 'Auto-flagged at +15% over target' },
+                { type: 'sep', text: '·' },
+                { type: 'text', text: 'Notified Mateo Vargas' },
+              ],
+              tagLabel: 'SYSTEM',
+              tagVariant: 'default',
+            },
+          ],
+        },
+        {
+          dateLabel: 'Apr 8, 2026',
+          countLabel: '1 event',
+          events: [
+            {
+              time: '2:30 PM',
+              cat: 'override',
+              verb: 'Q1 2026 performance review delivered',
+              target: 'Exceeds expectations',
+              details: [
+                { type: 'text', text: 'By Mateo Vargas + Aïsha Okafor (you)' },
+                { type: 'sep', text: '·' },
+                { type: 'text', text: 'Annual cycle' },
+                { type: 'sep', text: '·' },
+                { type: 'refId', text: 'PR-2026-0412-DK' },
+              ],
+              tagLabel: 'REVIEW',
+              tagVariant: 'override',
+            },
+          ],
+        },
+        {
+          dateLabel: 'Earlier · 2024',
+          countLabel: '3 events',
+          events: [
+            {
+              time: 'Sep 20\n2024',
+              verb: 'Mediation certification completed',
+              target: 'Atlas Internal Program',
+              details: [
+                { type: 'refId', text: 'MED-2024-0048' },
+                { type: 'sep', text: '·' },
+                { type: 'text', text: '2-year cycle · renews Sep 20, 2026' },
+              ],
+              tagLabel: 'CERT',
+              tagVariant: 'default',
+            },
+            {
+              time: 'Apr 5\n2024',
+              verb: 'Annual security & privacy training completed',
+              details: [
+                { type: 'text', text: 'GDPR + CCPA · phishing + MFA' },
+                { type: 'sep', text: '·' },
+                { type: 'refId', text: 'PRT-2024-2841 · SEC-2024-1209' },
+              ],
+              tagLabel: 'CERT',
+              tagVariant: 'default',
+            },
+            {
+              time: 'Aug 14\n2022',
+              cat: 'signin',
+              verb: 'Account created · hire date',
+              target: 'Daniel Kovács',
+              details: [
+                { type: 'text', text: 'Onboarded by Mateo Vargas' },
+                { type: 'sep', text: '·' },
+                { type: 'text', text: 'Engineering category' },
+                { type: 'sep', text: '·' },
+                { type: 'refId', text: 'EMP-2022-0007' },
+              ],
+              tagLabel: 'CREATED',
+              tagVariant: 'signin',
+            },
+          ],
+        },
+      ],
+      footerLabel: 'Showing 8 of 42 events',
+      loadMoreLabel: 'Load more',
+    },
+    // Right rail — VERBATIM from admin.html lines 19294-19349
+    rail: {
+      toc: [
+        { num: '01', href: '#sp-section-performance', sectionId: 'sp-section-performance', dataKey: 'performance', label: 'Performance',     meta: '96.4%',     metaVariant: 'ok' },
+        { num: '02', href: '#sp-section-workload',    sectionId: 'sp-section-workload',    dataKey: 'workload',    label: 'Workload',        meta: '3 items',   metaVariant: 'warn' },
+        { num: '03', href: '#sp-section-activity',    sectionId: 'sp-section-activity',    dataKey: 'activity',    label: 'Daily activity',  meta: '28/30',     metaVariant: 'ok' },
+        { num: '04', href: '#sp-section-assignments', sectionId: 'sp-section-assignments', dataKey: 'assignments', label: 'Assignments',     meta: '47 / 14',   metaVariant: 'default' },
+        { num: '05', href: '#sp-section-notes',       sectionId: 'sp-section-notes',       dataKey: 'notes',       label: 'Notes',           meta: '2 entries', metaVariant: 'default' },
+        { num: '06', href: '#sp-section-reviews',     sectionId: 'sp-section-reviews',     dataKey: 'reviews',     label: 'Reviews',         meta: '4 cycles',  metaVariant: 'default' },
+        { num: '07', href: '#sp-section-hr',          sectionId: 'sp-section-hr',          dataKey: 'hr',          label: 'HR record',       meta: 'clean',     metaVariant: 'ok' },
+        { num: '08', href: '#sp-section-audit',       sectionId: 'sp-section-audit',       dataKey: 'audit',       label: 'Audit log',       meta: '42',        metaVariant: 'default' },
+      ],
+      quickFacts: [
+        { label: 'Atlas employee ID', value: 'spec-001-d3c9a1' },
+        { label: 'Hired',             value: 'Aug 14, 2022' },
+        { label: 'Tenure',            value: '3y 8mo' },
+        { label: 'Category',          value: 'Engineering' },
+        { label: 'Region',            value: 'EU · Berlin' },
+        { label: 'Manager',           value: 'Mateo Vargas' },
+        { label: '2FA',               value: 'Enrolled', valueVariant: 'success' },
+        { label: 'Last seen',         value: '2h ago',   valueVariant: 'success' },
+      ],
+    },
   },
 
   'spec-002': {
@@ -1651,6 +2155,35 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 7 months of tenure. One stress-related sick day Mar 14, 2026 (not flagged).',
     }),
+    auditLog: buildAuditLog({
+      status: 'at-risk',
+      totalEvents: 38,
+      hireDate: 'Sep 21, 2023',
+      hireMonthDay: 'Sep 21',
+      hireYear: '2023',
+      category: 'Operations',
+      ipCity: 'Mexico City',
+      ipAddress: '187.190.41.92',
+      os: 'Windows 11',
+      todayActivitySummary: '8 LinkedIn · 2 calls · 5 reviews · 2 disputes resolved',
+      managerName: 'Mateo Vargas',
+      includeCaseloadAlert: true,
+      caseloadActive: 52,
+      caseloadTarget: 40,
+      reviewDeliveredDate: 'Apr 12, 2026',
+      reviewRefId: 'PR-2026-0418-SR',
+    }),
+    rail: buildRail({
+      performanceMeta: '92.1%', performanceVariant: 'warn',
+      workloadMeta: '5 items', workloadVariant: 'danger',
+      activityMeta: '26/30', activityVariant: 'warn',
+      assignmentsMeta: '52 / 17', notesMeta: '2 entries', reviewsMeta: '3 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '38',
+      atlasId: 'spec-002-a7f4e2', hired: 'Sep 21, 2023', tenure: '2y 7mo',
+      category: 'Operations', region: 'Americas · Mexico City', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '4h ago', lastSeenVariant: 'success',
+    }),
   },
 
   'spec-003': {
@@ -1793,6 +2326,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       baseLocation: 'Dubai · home · co-working',
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 4 months of tenure.',
+    }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 31,
+      hireDate: 'Jan 16, 2024',
+      hireMonthDay: 'Jan 16',
+      hireYear: '2024',
+      category: 'Finance',
+      ipCity: 'Dubai',
+      ipAddress: '94.200.183.42',
+      os: 'macOS 14.5',
+      todayActivitySummary: '10 LinkedIn · 4 calls · 3 reviews · 1 client check-in',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 6, 2026',
+      reviewRefId: 'PR-2026-0406-JN',
+    }),
+    rail: buildRail({
+      performanceMeta: '98.2%', performanceVariant: 'ok',
+      workloadMeta: '1 item', workloadVariant: 'warn',
+      activityMeta: '30/30', activityVariant: 'ok',
+      assignmentsMeta: '38 / 11', notesMeta: '2 entries', reviewsMeta: '3 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '31',
+      atlasId: 'spec-003-b8c2f9', hired: 'Jan 16, 2024', tenure: '2y 4mo',
+      category: 'Finance', region: 'MENA · Dubai', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '1h ago', lastSeenVariant: 'success',
     }),
   },
 
@@ -1947,6 +2506,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 11 months of tenure.',
     }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 28,
+      hireDate: 'Jun 10, 2024',
+      hireMonthDay: 'Jun 10',
+      hireYear: '2024',
+      category: 'Engineering',
+      ipCity: 'Tokyo',
+      ipAddress: '126.51.78.143',
+      os: 'macOS 14.4',
+      todayActivitySummary: '14 LinkedIn · 5 calls · 4 reviews · 2 client check-ins',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 9, 2026',
+      reviewRefId: 'PR-2026-0409-MT',
+    }),
+    rail: buildRail({
+      performanceMeta: '97.8%', performanceVariant: 'ok',
+      workloadMeta: '2 items', workloadVariant: 'warn',
+      activityMeta: '29/30', activityVariant: 'ok',
+      assignmentsMeta: '41 / 12', notesMeta: '2 entries', reviewsMeta: '3 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '28',
+      atlasId: 'spec-004-e1d7b3', hired: 'Jun 10, 2024', tenure: '1y 11mo',
+      category: 'Engineering', region: 'APAC · Tokyo', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '30m ago', lastSeenVariant: 'success',
+    }),
   },
 
   'spec-005': {
@@ -2049,6 +2634,35 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       baseLocation: 'Singapore · home · co-working',
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 3 years 1 month of tenure.',
+    }),
+    auditLog: buildAuditLog({
+      status: 'inactive',
+      totalEvents: 36,
+      hireDate: 'Apr 2, 2023',
+      hireMonthDay: 'Apr 2',
+      hireYear: '2023',
+      category: 'Design',
+      ipCity: 'Singapore',
+      ipAddress: '116.197.253.18',
+      os: 'macOS 14.3',
+      todayActivitySummary: '',
+      managerName: 'Mateo Vargas',
+      handoffDate: 'Apr 22, 2026',
+      handoffReceivers: 'Yuki Tanaka and Maya Tanaka',
+      handoffEventTime: '5:18 PM',
+      reviewDeliveredDate: 'Apr 18, 2026',
+      reviewRefId: 'PR-2026-0418-LC',
+    }),
+    rail: buildRail({
+      performanceMeta: '94.5%', performanceVariant: 'ok',
+      workloadMeta: 'on leave', workloadVariant: 'default',
+      activityMeta: 'paused', activityVariant: 'default',
+      assignmentsMeta: 'handed off', notesMeta: '2 entries', reviewsMeta: '4 cycles',
+      hrMeta: 'on leave', hrVariant: 'warn', auditMeta: '36',
+      atlasId: 'spec-005-f4a8c1', hired: 'Apr 2, 2023', tenure: '3y 1mo',
+      category: 'Design', region: 'APAC · Singapore', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '8d ago', lastSeenVariant: 'warn',
     }),
   },
 
@@ -2189,6 +2803,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       baseLocation: 'São Paulo · home · co-working',
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 5 months of tenure.',
+    }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 33,
+      hireDate: 'Nov 28, 2023',
+      hireMonthDay: 'Nov 28',
+      hireYear: '2023',
+      category: 'Healthcare',
+      ipCity: 'São Paulo',
+      ipAddress: '189.115.42.71',
+      os: 'macOS 14.4',
+      todayActivitySummary: '11 LinkedIn · 3 calls · 3 reviews · 2 client check-ins',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 10, 2026',
+      reviewRefId: 'PR-2026-0410-AS',
+    }),
+    rail: buildRail({
+      performanceMeta: '95.7%', performanceVariant: 'ok',
+      workloadMeta: '1 item', workloadVariant: 'warn',
+      activityMeta: '29/30', activityVariant: 'ok',
+      assignmentsMeta: '44 / 13', notesMeta: '2 entries', reviewsMeta: '3 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '33',
+      atlasId: 'spec-006-c9e3a7', hired: 'Nov 28, 2023', tenure: '2y 5mo',
+      category: 'Healthcare', region: 'LATAM · São Paulo', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '2h ago', lastSeenVariant: 'success',
     }),
   },
 
@@ -2333,6 +2973,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 8 months of tenure.',
     }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 27,
+      hireDate: 'Sep 11, 2024',
+      hireMonthDay: 'Sep 11',
+      hireYear: '2024',
+      category: 'Manufacturing',
+      ipCity: 'Osaka',
+      ipAddress: '210.165.92.184',
+      os: 'macOS 14.5',
+      todayActivitySummary: '13 LinkedIn · 4 calls · 3 reviews · 1 client check-in',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 11, 2026',
+      reviewRefId: 'PR-2026-0411-YT',
+    }),
+    rail: buildRail({
+      performanceMeta: '96.9%', performanceVariant: 'ok',
+      workloadMeta: '1 item', workloadVariant: 'warn',
+      activityMeta: '29/30', activityVariant: 'ok',
+      assignmentsMeta: '42 / 12', notesMeta: '2 entries', reviewsMeta: '3 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '27',
+      atlasId: 'spec-007-d6b1e8', hired: 'Sep 11, 2024', tenure: '1y 8mo',
+      category: 'Manufacturing', region: 'APAC · Osaka', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '45m ago', lastSeenVariant: 'success',
+    }),
   },
 
   'spec-008': {
@@ -2462,6 +3128,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       baseLocation: 'Accra · home · co-working',
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 9 months of tenure. Exemplary record across all categories.',
+    }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 34,
+      hireDate: 'Aug 22, 2023',
+      hireMonthDay: 'Aug 22',
+      hireYear: '2023',
+      category: 'Sustainability',
+      ipCity: 'Accra',
+      ipAddress: '154.160.44.18',
+      os: 'macOS 14.5',
+      todayActivitySummary: '9 community-network outreach · 3 calls · 2 reviews · 1 client check-in',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 5, 2026',
+      reviewRefId: 'PR-2026-0405-KA',
+    }),
+    rail: buildRail({
+      performanceMeta: '99.1%', performanceVariant: 'ok',
+      workloadMeta: '0 items', workloadVariant: 'ok',
+      activityMeta: '30/30', activityVariant: 'ok',
+      assignmentsMeta: '36 / 9', notesMeta: '2 entries', reviewsMeta: '4 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '34',
+      atlasId: 'spec-008-e9c2a5', hired: 'Aug 22, 2023', tenure: '2y 9mo',
+      category: 'Sustainability', region: 'Africa · Accra', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '1h ago', lastSeenVariant: 'success',
     }),
   },
 
@@ -2604,6 +3296,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 5 months of tenure.',
     }),
+    auditLog: buildAuditLog({
+      status: 'on-track',
+      totalEvents: 22,
+      hireDate: 'Dec 4, 2024',
+      hireMonthDay: 'Dec 4',
+      hireYear: '2024',
+      category: 'Operations',
+      ipCity: 'Tbilisi',
+      ipAddress: '85.114.62.197',
+      os: 'macOS 14.4',
+      todayActivitySummary: '10 LinkedIn · 3 calls · 3 reviews · 1 client check-in',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 7, 2026',
+      reviewRefId: 'PR-2026-0407-EV',
+    }),
+    rail: buildRail({
+      performanceMeta: '95.2%', performanceVariant: 'ok',
+      workloadMeta: '1 item', workloadVariant: 'warn',
+      activityMeta: '28/30', activityVariant: 'warn',
+      assignmentsMeta: '40 / 11', notesMeta: '2 entries', reviewsMeta: '2 cycles',
+      hrMeta: 'clean', hrVariant: 'ok', auditMeta: '22',
+      atlasId: 'spec-009-a3f7c4', hired: 'Dec 4, 2024', tenure: '1y 5mo',
+      category: 'Operations', region: 'EU · Tbilisi', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '3h ago', lastSeenVariant: 'success',
+    }),
   },
 
   'spec-010': {
@@ -2733,6 +3451,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       pendingProbationCert: true,
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 2 months of tenure (probation period).',
     }),
+    auditLog: buildAuditLog({
+      status: 'pending',
+      totalEvents: 14,
+      hireDate: 'Mar 17, 2025',
+      hireMonthDay: 'Mar 17',
+      hireYear: '2025',
+      category: 'Finance',
+      ipCity: 'Riyadh',
+      ipAddress: '37.106.218.44',
+      os: 'macOS 14.5',
+      todayActivitySummary: '10 LinkedIn · 2 calls · 2 reviews · 1 mentor sync',
+      managerName: 'Mateo Vargas',
+      reviewDeliveredDate: 'Apr 14, 2026',
+      reviewRefId: 'PR-2026-0414-HA',
+    }),
+    rail: buildRail({
+      performanceMeta: '97.5%', performanceVariant: 'ok',
+      workloadMeta: '0 items', workloadVariant: 'ok',
+      activityMeta: '30/30', activityVariant: 'ok',
+      assignmentsMeta: '35 / 9', notesMeta: '2 entries', reviewsMeta: '1 cycle',
+      hrMeta: 'probation', hrVariant: 'warn', auditMeta: '14',
+      atlasId: 'spec-010-b2d8f1', hired: 'Mar 17, 2025', tenure: '1y 2mo',
+      category: 'Finance', region: 'MENA · Riyadh', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '15m ago', lastSeenVariant: 'success',
+    }),
   },
 
   'spec-011': {
@@ -2835,6 +3579,35 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       baseLocation: 'Vancouver · home · co-working',
       compliance: 'all-current',
       disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 2 months of tenure.',
+    }),
+    auditLog: buildAuditLog({
+      status: 'inactive',
+      totalEvents: 29,
+      hireDate: 'Mar 3, 2024',
+      hireMonthDay: 'Mar 3',
+      hireYear: '2024',
+      category: 'Design',
+      ipCity: 'Vancouver',
+      ipAddress: '24.86.144.207',
+      os: 'macOS 14.4',
+      todayActivitySummary: '',
+      managerName: 'Mateo Vargas',
+      handoffDate: 'Apr 18, 2026',
+      handoffReceivers: 'Sarah Reyes and Daniel Kovács',
+      handoffEventTime: '4:42 PM',
+      reviewDeliveredDate: 'Apr 14, 2026',
+      reviewRefId: 'PR-2026-0414-OP',
+    }),
+    rail: buildRail({
+      performanceMeta: '96.0%', performanceVariant: 'ok',
+      workloadMeta: 'on leave', workloadVariant: 'default',
+      activityMeta: 'paused', activityVariant: 'default',
+      assignmentsMeta: 'handed off', notesMeta: '2 entries', reviewsMeta: '4 cycles',
+      hrMeta: 'on leave', hrVariant: 'warn', auditMeta: '29',
+      atlasId: 'spec-011-c5e9a2', hired: 'Mar 3, 2024', tenure: '2y 2mo',
+      category: 'Design', region: 'Americas · Vancouver', manager: 'Mateo Vargas',
+      twoFactor: 'Enrolled', twoFactorVariant: 'success',
+      lastSeen: '12d ago', lastSeenVariant: 'warn',
     }),
   },
 };

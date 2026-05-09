@@ -162,7 +162,7 @@ export function SpecialistSectionAssignments({ profile }: SpecialistSectionAssig
     // admin.html line 18782: <section id="sp-section-assignments">
     <section
       id="sp-section-assignments"
-      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px]"
+      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px] first:border-t-0 first:pt-[12px]"
     >
       {/* Section header — admin.html lines 18783-18789 */}
       <div className="flex items-baseline justify-between gap-[16px] mb-[22px] flex-wrap">

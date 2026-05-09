@@ -119,7 +119,7 @@ export function SpecialistSectionReviews({ profile }: SpecialistSectionReviewsPr
     // admin.html line 18951: <section id="sp-section-reviews">
     <section
       id="sp-section-reviews"
-      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px]"
+      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px] first:border-t-0 first:pt-[12px]"
     >
       {/* Section header — admin.html lines 18952-18958 */}
       <div className="flex items-baseline justify-between gap-[16px] mb-[22px] flex-wrap">

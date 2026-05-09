@@ -138,7 +138,7 @@ export function SpecialistSectionHr({ profile }: SpecialistSectionHrProps) {
     // admin.html line 19031: <section id="sp-section-hr">
     <section
       id="sp-section-hr"
-      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px]"
+      className="border-t border-[var(--line)] py-[36px] scroll-mt-[80px] first:border-t-0 first:pt-[12px]"
     >
       {/* Section header — admin.html lines 19032-19038 */}
       <div className="flex items-baseline justify-between gap-[16px] mb-[22px] flex-wrap">
