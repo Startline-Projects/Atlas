@@ -60,8 +60,14 @@ export interface SpecialistProfile {
   // Section 05 — Notes (Phase 7g)
   notes?: NotesSection;
 
-  // Section data fields will be added in Phases 7h–7k:
-  // reviews?, hr?, auditLog?, quickFacts?
+  // Section 06 — Performance review history (Phase 7h)
+  reviews?: ReviewsSection;
+
+  // Section 07 — HR record (Phase 7i)
+  hr?: HrSection;
+
+  // Section data fields will be added in Phases 7j–7k:
+  // auditLog?, quickFacts?
 }
 
 // ============================================================
@@ -279,6 +285,79 @@ interface NotesBlockEntry {
 interface NotesSection {
   sectionStatus: { label: string; variant: 'success' | 'warn' | 'danger' | 'neutral' };
   notes: NotesBlockEntry[];
+}
+
+// ============================================================
+// REVIEWS SECTION TYPES (Phase 7h) — Section 06
+// ============================================================
+
+interface ReviewComment {
+  authorRole: 'Manager' | 'Admin';
+  authorName: string;
+  text: string;
+}
+
+interface ReviewCycle {
+  quarter: string;        // "Q1 2026 review"
+  isLatest?: boolean;
+  meta: string;           // "Final · delivered Apr 8, 2026 · cycle annual"
+  ratingLabel: string;    // "Overall rating" (latest) | "Overall" (compact)
+  ratingValue: string;    // "Exceeds expectations" | "Meets expectations" | "Needs work"
+  ratingHigh?: boolean;   // applies success color when true
+  starsFilled: number;    // 0-5
+  comments?: ReviewComment[];
+}
+
+interface ReviewsSection {
+  sectionStatus: { label: string; variant: 'success' | 'warn' | 'danger' | 'neutral' };
+  cycles: ReviewCycle[];
+  initiateLabel?: string; // "Initiate Q2 2026 review" — null hides the button
+  emptyState?: { title: string; detail: string };
+}
+
+// ============================================================
+// HR SECTION TYPES (Phase 7i) — Section 07
+// ============================================================
+
+interface HrDdValue {
+  text: string;
+  emphasisColor?: 'success' | 'warn' | 'danger'; // for "Active" green / "On leave" amber etc.
+}
+
+interface HrDlEntry {
+  dt: string;
+  dd: HrDdValue;
+}
+
+interface HrCard {
+  title: string;
+  entries: HrDlEntry[];
+}
+
+interface ComplianceRow {
+  name: string;
+  meta: string;
+  due: string;
+  statusLabel: string;
+  variant: 'current' | 'due' | 'overdue';
+}
+
+interface DisciplinaryClean {
+  flagged?: false;
+  title: string;
+  detail: string;
+}
+
+interface HrSection {
+  sectionStatus: { label: string; variant: 'success' | 'warn' | 'danger' | 'neutral' };
+  hrCards: HrCard[];
+  compliance: {
+    summaryLabel: string;
+    summaryVariant: 'success' | 'warn';
+    rows: ComplianceRow[];
+  };
+  disciplinary: DisciplinaryClean;
+  emptyState?: { title: string; detail: string };
 }
 
 // ============================================================
@@ -810,6 +889,213 @@ function buildNotes(input: NotesBuilderInput): NotesSection {
 }
 
 // ============================================================
+// REVIEWS BUILDER (Phase 7h) — generates 1–4 review cycles
+// ============================================================
+
+interface ReviewsBuilderInput {
+  pattern: 'on-track' | 'at-risk' | 'inactive' | 'perfect' | 'short-tenure' | 'probation';
+  managerAuthor: string;       // "Mateo Vargas"
+  adminAuthor?: string;        // default "Aïsha Okafor (you)"
+  managerComment: string;      // latest cycle manager text
+  adminComment: string;        // latest cycle admin text
+  q1DeliveredDate: string;     // "Apr 8, 2026"
+  q1Cycle?: string;            // "annual" by default
+  initiateNextLabel?: string;  // null to hide button
+  // For probation pattern (spec-010), force "Active · probation" feel
+}
+
+function buildReviews(input: ReviewsBuilderInput): ReviewsSection {
+  const adminAuthor = input.adminAuthor ?? 'Aïsha Okafor (you)';
+  const cycleSuffix = input.q1Cycle ?? 'annual';
+
+  // Latest Q1 2026 cycle (always present)
+  let latestRating: { value: string; high?: boolean; stars: number };
+  switch (input.pattern) {
+    case 'perfect':
+      latestRating = { value: 'Exceeds expectations', high: true, stars: 5 };
+      break;
+    case 'on-track':
+    case 'inactive':
+      latestRating = { value: 'Exceeds expectations', high: true, stars: 4 };
+      break;
+    case 'at-risk':
+    case 'probation':
+    case 'short-tenure':
+      latestRating = { value: 'Meets expectations', stars: 3 };
+      break;
+  }
+
+  const latestCycle: ReviewCycle = {
+    quarter: 'Q1 2026 review',
+    isLatest: true,
+    meta: `Final · delivered ${input.q1DeliveredDate} · cycle ${cycleSuffix}`,
+    ratingLabel: 'Overall rating',
+    ratingValue: latestRating.value,
+    ...(latestRating.high ? { ratingHigh: true } : {}),
+    starsFilled: latestRating.stars,
+    comments: [
+      { authorRole: 'Manager', authorName: input.managerAuthor, text: input.managerComment },
+      { authorRole: 'Admin', authorName: adminAuthor, text: input.adminComment },
+    ],
+  };
+
+  // Past cycles per pattern
+  const pastCycles: ReviewCycle[] = [];
+  if (input.pattern === 'probation') {
+    // spec-010 has only the Q1 2026 latest (probation midpoint)
+  } else if (input.pattern === 'short-tenure') {
+    // spec-009 has 2 cycles total (Q1 + Q4)
+    pastCycles.push(
+      { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+        ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+    );
+  } else if (input.pattern === 'at-risk') {
+    pastCycles.push(
+      { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+        ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+      { quarter: 'Q3 2025 review', meta: 'Final · delivered Oct 9, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 4 },
+    );
+  } else if (input.pattern === 'on-track') {
+    pastCycles.push(
+      { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 4 },
+      { quarter: 'Q3 2025 review', meta: 'Final · delivered Oct 9, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+    );
+  } else if (input.pattern === 'inactive') {
+    // spec-005 + spec-011 — 4 cycles total (3 past)
+    pastCycles.push(
+      { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 4 },
+      { quarter: 'Q3 2025 review', meta: 'Final · delivered Oct 9, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 4 },
+      { quarter: 'Q2 2025 review', meta: 'Final · delivered Jul 12, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+    );
+  } else if (input.pattern === 'perfect') {
+    pastCycles.push(
+      { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 5 },
+      { quarter: 'Q3 2025 review', meta: 'Final · delivered Oct 9, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 5 },
+      { quarter: 'Q2 2025 review', meta: 'Final · delivered Jul 12, 2025',
+        ratingLabel: 'Overall', ratingValue: 'Exceeds expectations', ratingHigh: true, starsFilled: 5 },
+    );
+  }
+
+  const cycles = [latestCycle, ...pastCycles];
+
+  return {
+    sectionStatus: {
+      label: `${cycles.length} review${cycles.length === 1 ? '' : 's'} on file`,
+      variant: input.pattern === 'at-risk' ? 'warn' : 'success',
+    },
+    cycles,
+    ...(input.initiateNextLabel === null
+      ? {}
+      : { initiateLabel: input.initiateNextLabel ?? 'Initiate Q2 2026 review' }),
+  };
+}
+
+// ============================================================
+// HR BUILDER (Phase 7i) — generates 2 hr-cards + compliance + disciplinary
+// ============================================================
+
+interface HrBuilderInput {
+  hireDate: string;            // "Aug 14, 2022"
+  tenure: string;              // "3y 8mo"
+  baseAndBonus: string;        // "$78,000 · 15% target performance bonus"
+  equity: string;              // "3,200 RSUs · 4-yr vesting (45% vested)"
+  employmentStatus: HrDdValue; // typically { text: 'Active', emphasisColor: 'success' }
+  category: string;            // "Engineering (primary)"
+  baseLocation: string;        // "Berlin · home · co-working"
+  // Compliance pattern
+  compliance: 'all-current' | 'one-due' | 'two-due';
+  pendingProbationCert?: boolean; // for spec-010
+  // Disciplinary
+  disciplinaryDetail: string;   // "No formal warnings, PIPs, or HR-flagged incidents in 3 years 8 months of tenure."
+}
+
+function buildHr(input: HrBuilderInput): HrSection {
+  const isWarn = input.employmentStatus.emphasisColor === 'warn';
+
+  // Card 1 — Employment terms
+  const employmentCard: HrCard = {
+    title: 'Employment terms',
+    entries: [
+      { dt: 'Hire date', dd: { text: `${input.hireDate} · ${input.tenure}` } },
+      { dt: 'Contract type', dd: { text: 'Full-time · permanent' } },
+      { dt: 'Base + bonus', dd: { text: input.baseAndBonus } },
+      { dt: 'Equity', dd: { text: input.equity } },
+      { dt: 'Employment status', dd: input.employmentStatus },
+      { dt: 'Termination history', dd: { text: 'None' } },
+    ],
+  };
+
+  // Card 2 — Admin tool access
+  const accessCard: HrCard = {
+    title: 'Admin tool access',
+    entries: [
+      { dt: 'Permission tier', dd: { text: 'Specialist · standard' } },
+      { dt: 'Elevated access', dd: { text: 'None (no admin tools)' } },
+      { dt: 'Categories owned', dd: { text: input.category } },
+      { dt: 'Restricted actions', dd: { text: 'Cannot suspend candidates · cannot issue refunds > $500' } },
+      { dt: 'SSO domains', dd: { text: 'atlas.example · 2FA enforced' } },
+      { dt: 'IP allowlist', dd: { text: `3 trusted IPs (${input.baseLocation})` } },
+    ],
+  };
+
+  // Compliance rows — base 4 with last as 'due' if input.compliance != 'all-current'
+  const complianceRows: ComplianceRow[] = [
+    { name: 'Privacy training (GDPR + CCPA)', meta: 'Annual cycle · cert PRT-2024-2841',
+      due: 'renews Apr 5, 2027', statusLabel: 'Current', variant: 'current' },
+    { name: 'Security training (Phishing + MFA)', meta: 'Annual cycle · cert SEC-2024-1209',
+      due: 'renews Apr 5, 2027', statusLabel: 'Current', variant: 'current' },
+    { name: 'Mediation certification', meta: 'Atlas Internal Program · cert MED-2024-0048',
+      due: 'renews Sep 20, 2026', statusLabel: 'Current', variant: 'current' },
+  ];
+
+  if (input.compliance === 'all-current') {
+    complianceRows.push({
+      name: 'Anti-fraud training', meta: 'Annual cycle · cert AF-2025-0312',
+      due: 'renews Mar 12, 2027', statusLabel: 'Current', variant: 'current',
+    });
+  } else if (input.pendingProbationCert) {
+    // spec-010 — probation cert pending
+    complianceRows.push({
+      name: 'Probation certification', meta: 'Atlas onboarding cohort Mar 2025',
+      due: 'due May 15, 2026', statusLabel: 'Due in 1mo', variant: 'due',
+    });
+  } else {
+    complianceRows.push({
+      name: 'Anti-fraud training (refresher)', meta: 'Annual cycle · last completed Jun 2024',
+      due: 'due Jun 1, 2026', statusLabel: 'Due in 4mo', variant: 'due',
+    });
+  }
+
+  const summaryLabel = input.compliance === 'all-current'
+    ? 'All current'
+    : 'All current · 1 due in 4 months';
+
+  return {
+    sectionStatus: isWarn
+      ? { label: 'On leave · clean record', variant: 'neutral' }
+      : { label: 'All current · clean', variant: 'success' },
+    hrCards: [employmentCard, accessCard],
+    compliance: {
+      summaryLabel,
+      summaryVariant: input.compliance === 'all-current' ? 'success' : 'warn',
+      rows: complianceRows,
+    },
+    disciplinary: {
+      title: 'Disciplinary record · clean',
+      detail: input.disciplinaryDetail,
+    },
+  };
+}
+
+// ============================================================
 // 11 SPECIALIST FIXTURES — match users-data.ts SPECIALISTS_ROWS
 // ============================================================
 
@@ -1125,6 +1411,71 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         },
       ],
     },
+    // Reviews — VERBATIM from admin.html lines 18951-19026
+    reviews: {
+      sectionStatus: { label: '4 reviews on file', variant: 'success' },
+      initiateLabel: 'Initiate Q2 2026 review',
+      cycles: [
+        {
+          quarter: 'Q1 2026 review',
+          isLatest: true,
+          meta: 'Final · delivered Apr 8, 2026 · cycle annual',
+          ratingLabel: 'Overall rating',
+          ratingValue: 'Exceeds expectations',
+          ratingHigh: true,
+          starsFilled: 4,
+          comments: [
+            { authorRole: 'Manager', authorName: 'Mateo Vargas',
+              text: 'Daniel continues to set the operational baseline for the EU group. Above-target SLA hit, low escalation rate, and visibly stronger client relationships than last quarter. The one note to watch: caseload running 15% above target consistently — we discussed and agreed to rebalance.' },
+            { authorRole: 'Admin', authorName: 'Aïsha Okafor (you)',
+              text: "Concur with Mateo's read. Compliance posture clean, communication patterns healthy, audit log shows zero red flags this cycle. Recommend approving for tenure milestone review at Q2 end." },
+          ],
+        },
+        { quarter: 'Q4 2025 review', meta: 'Final · delivered Jan 11, 2026',
+          ratingLabel: 'Overall', ratingValue: 'Exceeds expectations',
+          ratingHigh: true, starsFilled: 4 },
+        { quarter: 'Q3 2025 review', meta: 'Final · delivered Oct 9, 2025',
+          ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+        { quarter: 'Q2 2025 review', meta: 'Final · delivered Jul 12, 2025',
+          ratingLabel: 'Overall', ratingValue: 'Meets expectations', starsFilled: 3 },
+      ],
+    },
+    // HR — VERBATIM from admin.html lines 19031-19140
+    hr: {
+      sectionStatus: { label: 'All current · clean', variant: 'success' },
+      hrCards: [
+        { title: 'Employment terms', entries: [
+          { dt: 'Hire date',           dd: { text: 'Aug 14, 2022 · 3y 8mo' } },
+          { dt: 'Contract type',       dd: { text: 'Full-time · permanent' } },
+          { dt: 'Base + bonus',        dd: { text: '$78,000 · 15% target performance bonus' } },
+          { dt: 'Equity',              dd: { text: '3,200 RSUs · 4-yr vesting (45% vested)' } },
+          { dt: 'Employment status',   dd: { text: 'Active', emphasisColor: 'success' } },
+          { dt: 'Termination history', dd: { text: 'None' } },
+        ]},
+        { title: 'Admin tool access', entries: [
+          { dt: 'Permission tier',    dd: { text: 'Specialist · standard' } },
+          { dt: 'Elevated access',    dd: { text: 'None (no admin tools)' } },
+          { dt: 'Categories owned',   dd: { text: 'Engineering (primary)' } },
+          { dt: 'Restricted actions', dd: { text: 'Cannot suspend candidates · cannot issue refunds > $500' } },
+          { dt: 'SSO domains',        dd: { text: 'atlas.example · 2FA enforced' } },
+          { dt: 'IP allowlist',       dd: { text: '3 trusted IPs (Berlin · home · co-working)' } },
+        ]},
+      ],
+      compliance: {
+        summaryLabel: 'All current · 1 due in 4 months',
+        summaryVariant: 'warn',
+        rows: [
+          { name: 'Privacy training (GDPR + CCPA)',     meta: 'Annual cycle · cert PRT-2024-2841',           due: 'renews Apr 5, 2027',  statusLabel: 'Current',     variant: 'current' },
+          { name: 'Security training (Phishing + MFA)', meta: 'Annual cycle · cert SEC-2024-1209',           due: 'renews Apr 5, 2027',  statusLabel: 'Current',     variant: 'current' },
+          { name: 'Mediation certification',            meta: 'Atlas Internal Program · cert MED-2024-0048', due: 'renews Sep 20, 2026', statusLabel: 'Current',     variant: 'current' },
+          { name: 'Anti-fraud training (refresher)',    meta: 'Annual cycle · last completed Jun 2024',     due: 'due Jun 1, 2026',     statusLabel: 'Due in 4mo',  variant: 'due' },
+        ],
+      },
+      disciplinary: {
+        title: 'Disciplinary record · clean',
+        detail: 'No formal warnings, PIPs, or HR-flagged incidents in 3 years 8 months of tenure.',
+      },
+    },
   },
 
   'spec-002': {
@@ -1222,37 +1573,37 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 52,
       clientsCount: 17,
       candidates: [
-        { id: 'cand-008', initials: 'MC', avatar: 5, name: 'Mariana Costa',
-          meta: '🇧🇷 BR · Operations Lead · 8 hires · $42K',
-          statusLabel: 'Live', action: 'open-candidate' },
         { id: 'cand-002', initials: 'CR', avatar: 1, name: 'Carlos Restrepo',
           meta: '🇨🇴 CO · Logistics Manager · 6 hires · $38K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'AP', avatar: 7, name: 'Anika Patel',
-          meta: '🇮🇳 IN · Process Analyst · 11 hires · $34K',
+        { id: 'cand-001', initials: 'AB', avatar: 2, name: 'Adesuwa Babatunde',
+          meta: '🇳🇬 NG · Senior Engineer · 12 hires · $48K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'DH', avatar: 2, name: 'Diego Hernandez',
-          meta: '🇲🇽 MX · Ops Coordinator · in IV-2',
+        { id: 'cand-006', initials: 'DK', avatar: 3, name: 'Deniz Kaya',
+          meta: '🇹🇷 TR · Ops Coordinator · 7 hires · $34K',
+          statusLabel: 'Live', action: 'open-candidate' },
+        { id: 'cand-008', initials: 'JO', avatar: 4, name: "James O'Brien",
+          meta: '🇮🇪 IE · Senior Engineer · in IV-2',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'CR', avatar: 5, name: 'Camila Rodríguez',
-          meta: '🇦🇷 AR · Supply Chain · in IV-1',
+        { id: 'cand-004', initials: 'MT', avatar: 5, name: 'Marcus Thompson',
+          meta: '🇺🇸 US · Process Analyst · in IV-1',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'AH', avatar: 4, name: 'Acme Holdings',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
           meta: '🇺🇸 US · 28 hires · $312K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
         { id: 'cl-004-medco', initials: 'LM', avatar: 12, name: 'Lighthouse Med Co.',
           meta: '🇨🇦 CA · 12 hires · $156K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'MV', avatar: 9, name: 'Mercado Vivo SA',
-          meta: '🇧🇷 BR · 9 hires · $88K · Trusted',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 9, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 9 hires · $88K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'PB', avatar: 6, name: 'PuertoBlu Logística',
-          meta: '🇨🇱 CL · 4 hires · $52K',
+        { id: 'cl-006-lagos', initials: 'LL', avatar: 6, name: 'The Lagos Loom',
+          meta: '🇳🇬 NG · 4 hires · $52K',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'NW', avatar: 11, name: 'Northwind Shipping',
-          meta: '🇳🇴 NO · 0 hires · onboarding',
+        { id: 'cl-003-quantum', initials: 'QR', avatar: 11, name: 'Quantum Robotics Pte. Ltd.',
+          meta: '🇸🇬 SG · 0 hires · onboarding',
           statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
@@ -1281,6 +1632,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Apr 22, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'at-risk',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 12, 2026',
+      managerComment: 'Sarah is one of the strongest LATAM operators on the team — but the caseload pressure is showing up in SLA. Q1 dipped to 92.1% (target 95%) directly tied to volume, not effort. Two disputes ran past SLA; both resolved with partial refunds. Redistribution plan agreed Apr 28; checkpoint May 15.',
+      adminComment: 'Concur — performance trajectory healthy modulo caseload. No HR concerns; compliance current; one stress-related sick day Mar 14 (not flagged). Recommend a "meets" rating with caseload remediation as the binding deliverable through Q2.',
+    }),
+    hr: buildHr({
+      hireDate: 'Sep 21, 2023',
+      tenure: '2y 7mo',
+      baseAndBonus: '$72,000 · 12% target performance bonus',
+      equity: '2,400 RSUs · 4-yr vesting (38% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Operations (primary)',
+      baseLocation: 'Mexico City · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 7 months of tenure. One stress-related sick day Mar 14, 2026 (not flagged).',
     }),
   },
 
@@ -1355,37 +1724,31 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 38,
       clientsCount: 11,
       candidates: [
-        { initials: 'FA', avatar: 4, name: 'Faisal Al-Mahmoud',
-          meta: '🇸🇦 SA · Finance Director · 7 hires · $96K',
+        { id: 'cand-007', initials: 'PS', avatar: 1, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Finance Analyst · 9 hires · $54K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'NK', avatar: 6, name: 'Noor Khalil',
-          meta: '🇱🇧 LB · KYC Analyst · 12 hires · $44K',
+        { id: 'cand-002', initials: 'CR', avatar: 2, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Treasury Lead · 7 hires · $42K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'OM', avatar: 9, name: 'Omar Mahfouz',
-          meta: '🇪🇬 EG · Risk Officer · 9 hires · $58K',
+        { id: 'cand-001', initials: 'AB', avatar: 3, name: 'Adesuwa Babatunde',
+          meta: '🇳🇬 NG · KYC Officer · 6 hires · $48K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'LB', avatar: 3, name: 'Layla Ben-Yousef',
-          meta: '🇲🇦 MA · Treasury Lead · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'YA', avatar: 7, name: 'Yusuf Aslan',
-          meta: '🇹🇷 TR · Audit Specialist · in IV-1',
+        { id: 'cand-008', initials: 'JO', avatar: 4, name: "James O'Brien",
+          meta: '🇮🇪 IE · Risk Specialist · in IV-1',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'QR', avatar: 11, name: 'Quantum Robotics Pte',
-          meta: '🇸🇬 SG · 6 hires · $182K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 14 hires · $264K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'GB', avatar: 4, name: 'Gulf Banking Holdings',
-          meta: '🇦🇪 AE · 14 hires · $264K · Top Client',
+        { id: 'cl-004-medco', initials: 'LM', avatar: 12, name: 'Lighthouse Med Co.',
+          meta: '🇨🇦 CA · 6 hires · $182K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'DM', avatar: 6, name: 'Doha Money Markets',
-          meta: '🇶🇦 QA · 5 hires · $94K · Trusted',
+        { id: 'cl-002-7e1b3f', initials: 'SB', avatar: 10, name: 'Studio Berlin GmbH',
+          meta: '🇩🇪 DE · 5 hires · $94K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'AC', avatar: 9, name: 'Atlas Capital MENA',
-          meta: '🇧🇭 BH · 3 hires · $48K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'KR', avatar: 12, name: 'Kuwait Reserve Co.',
-          meta: '🇰🇼 KW · 0 hires · onboarding',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 2, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 0 hires · onboarding',
           statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
@@ -1412,6 +1775,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 18, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'on-track',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 6, 2026',
+      managerComment: 'Jamal anchored the MENA finance build-out in Q1. SLA at 98.2%, KYC instinct clean across Riyadh/Doha/Dubai accounts. Mentoring Hassan (spec-010) through onboarding has freed cycles for the SOP draft. Promotion candidate for H2.',
+      adminComment: 'Concur — exemplary cycle. No HR notes; compliance current. Approved for the cross-border travel allowance to support Q3 expansion. Retention review on calendar for Jul 2026 (2.5y tenure milestone).',
+    }),
+    hr: buildHr({
+      hireDate: 'Jan 16, 2024',
+      tenure: '2y 4mo',
+      baseAndBonus: '$74,000 · 15% target performance bonus',
+      equity: '2,200 RSUs · 4-yr vesting (33% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Finance (primary)',
+      baseLocation: 'Dubai · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 4 months of tenure.',
     }),
   },
 
@@ -1491,37 +1872,37 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 41,
       clientsCount: 12,
       candidates: [
-        { initials: 'HS', avatar: 6, name: 'Hiroyuki Sato',
-          meta: '🇯🇵 JP · Backend Engineer · 9 hires · $72K',
+        { id: 'cand-003', initials: 'LW', avatar: 1, name: 'Lin Wei',
+          meta: '🇹🇼 TW · Backend Engineer · 9 hires · $72K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'AW', avatar: 9, name: 'Akira Watanabe',
-          meta: '🇯🇵 JP · ML Engineer · 6 hires · $84K',
+        { id: 'cand-005', initials: 'AB', avatar: 2, name: 'Aigerim Bekova',
+          meta: '🇰🇿 KZ · ML Engineer · 6 hires · $84K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'JK', avatar: 3, name: 'Ji-Hoon Kim',
-          meta: '🇰🇷 KR · Frontend Engineer · 11 hires · $58K',
+        { id: 'cand-007', initials: 'PS', avatar: 3, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Frontend Engineer · 11 hires · $58K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'CL', avatar: 7, name: 'Chen Lei',
-          meta: '🇨🇳 CN · DevOps · in IV-2',
+        { id: 'cand-008', initials: 'JO', avatar: 4, name: "James O'Brien",
+          meta: '🇮🇪 IE · DevOps · in IV-2',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'NS', avatar: 4, name: 'Nguyen Son',
-          meta: '🇻🇳 VN · Backend Engineer · in IV-1',
+        { id: 'cand-002', initials: 'CR', avatar: 5, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Backend Engineer · in IV-1',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'QR', avatar: 11, name: 'Quantum Robotics Pte',
+        { id: 'cl-003-quantum', initials: 'QR', avatar: 11, name: 'Quantum Robotics Pte. Ltd.',
           meta: '🇸🇬 SG · 8 hires · $220K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'SI', avatar: 8, name: 'Shibuya Innovate KK',
-          meta: '🇯🇵 JP · 12 hires · $168K · Trusted',
+        { id: 'cl-002-7e1b3f', initials: 'SB', avatar: 10, name: 'Studio Berlin GmbH',
+          meta: '🇩🇪 DE · 12 hires · $168K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'KA', avatar: 6, name: 'Kakao Apps Inc.',
-          meta: '🇰🇷 KR · 7 hires · $112K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 7 hires · $112K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'TL', avatar: 4, name: 'Taipei Labs',
-          meta: '🇹🇼 TW · 4 hires · $76K',
+        { id: 'cl-006-lagos', initials: 'LL', avatar: 6, name: 'The Lagos Loom',
+          meta: '🇳🇬 NG · 4 hires · $76K',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'MA', avatar: 12, name: 'Manila Apex',
-          meta: '🇵🇭 PH · 0 hires · onboarding',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 9, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 0 hires · onboarding',
           statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
@@ -1547,6 +1928,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 9, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'on-track',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 9, 2026',
+      managerComment: 'Maya is the most efficient sourcer on the APAC team — GitHub-driven pipelines have higher pass rates than the LinkedIn average. Tokyo office-hours initiative drew positive client feedback from Quantum Robotics and Studio Berlin. One coaching note: needs to self-advocate more — her impact is under-narrated internally.',
+      adminComment: 'Concur — strong Q1. No HR concerns; compliance current with Q1 merit pass. Considered for the Tokyo regional liaison role conversation in H2. Approaching 2y tenure milestone in June.',
+    }),
+    hr: buildHr({
+      hireDate: 'Jun 10, 2024',
+      tenure: '1y 11mo',
+      baseAndBonus: '$76,000 · 12% target performance bonus',
+      equity: '2,000 RSUs · 4-yr vesting (24% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Engineering (primary)',
+      baseLocation: 'Tokyo · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 11 months of tenure.',
     }),
   },
 
@@ -1633,6 +2032,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       ],
       adminLastEdited: 'Last edited Mar 18, 2026 by Aïsha Okafor (you)',
     }),
+    reviews: buildReviews({
+      pattern: 'inactive',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 18, 2026',
+      managerComment: 'Lukas closed Q1 strong before sabbatical handoff (Apr 22). 94.5% SLA, top-tier design sourcing through Dribbble + Behance + the warm referral network. Caseload redistribution to Yuki + Maya completed cleanly. Re-onboarding light caseload Jul, full ramp Aug.',
+      adminComment: 'Concur — clean cycle. Approved for the 8-week sabbatical per the 3-year tenure benefit (formalized Mar 5). No HR concerns. Compliance training renewed Apr 18 (pre-leave window). Returning Jun 28.',
+    }),
+    hr: buildHr({
+      hireDate: 'Apr 2, 2023',
+      tenure: '3y 1mo',
+      baseAndBonus: '$74,000 · 14% target performance bonus',
+      equity: '2,800 RSUs · 4-yr vesting (52% vested)',
+      employmentStatus: { text: 'On sabbatical · returning Jun 28, 2026', emphasisColor: 'warn' },
+      category: 'Design (primary)',
+      baseLocation: 'Singapore · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 3 years 1 month of tenure.',
+    }),
   },
 
   'spec-006': {
@@ -1707,38 +2124,29 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 44,
       clientsCount: 13,
       candidates: [
-        { initials: 'BC', avatar: 5, name: 'Beatriz Costa',
-          meta: '🇧🇷 BR · Clinical Researcher · 7 hires · $62K',
+        { id: 'cand-001', initials: 'AB', avatar: 1, name: 'Adesuwa Babatunde',
+          meta: '🇳🇬 NG · Clinical Researcher · 7 hires · $62K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'RM', avatar: 1, name: 'Rafael Moreira',
-          meta: '🇧🇷 BR · Hospital Operations · 10 hires · $48K',
+        { id: 'cand-006', initials: 'DK', avatar: 2, name: 'Deniz Kaya',
+          meta: '🇹🇷 TR · Hospital Operations · 10 hires · $48K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'CV', avatar: 7, name: 'Carmen Vega',
-          meta: '🇲🇽 MX · Pharma Liaison · 6 hires · $54K',
+        { id: 'cand-002', initials: 'CR', avatar: 3, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Pharma Liaison · 6 hires · $54K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'JA', avatar: 3, name: 'Joaquin Arias',
-          meta: '🇨🇱 CL · Clinical Data · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'LM', avatar: 6, name: 'Lucia Mendes',
-          meta: '🇵🇹 PT · Health Tech · in IV-1',
+        { id: 'cand-007', initials: 'PS', avatar: 4, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Health Tech · in IV-1',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'LM', avatar: 12, name: 'Lighthouse Med Co.',
+        { id: 'cl-004-medco', initials: 'LM', avatar: 12, name: 'Lighthouse Med Co.',
           meta: '🇨🇦 CA · 18 hires · $246K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'SP', avatar: 4, name: 'São Paulo Saúde',
-          meta: '🇧🇷 BR · 9 hires · $134K · Trusted',
+        { id: 'cl-006-lagos', initials: 'LL', avatar: 1, name: 'The Lagos Loom',
+          meta: '🇳🇬 NG · 9 hires · $134K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'CL', avatar: 9, name: 'Clínica Latina',
-          meta: '🇲🇽 MX · 6 hires · $98K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 6 hires · $98K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'AM', avatar: 6, name: 'AndesMed Group',
-          meta: '🇨🇴 CO · 4 hires · $66K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'SC', avatar: 11, name: 'Salud Caribe',
-          meta: '🇨🇺 CU · 0 hires · onboarding',
-          statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
     notes: buildNotes({
@@ -1763,6 +2171,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 14, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'on-track',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 10, 2026',
+      managerComment: 'Ana is the most empathetic candidate-facing operator on the team — her healthcare-network sourcing pattern is now being documented as a model for the LATAM playbook. SLA at 95.7%; one deferred candidate pending licensing verification. Lighthouse Med specifically called out her work in their Q1 client review.',
+      adminComment: 'Concur — strong cycle. No HR concerns; compliance current; Q1 merit pass. Approved as backup contact for LATAM regional emergency procedures. Retention review eligible Q4 (2y 5mo tenure).',
+    }),
+    hr: buildHr({
+      hireDate: 'Nov 28, 2023',
+      tenure: '2y 5mo',
+      baseAndBonus: '$73,000 · 13% target performance bonus',
+      equity: '2,200 RSUs · 4-yr vesting (40% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Healthcare (primary)',
+      baseLocation: 'São Paulo · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 5 months of tenure.',
     }),
   },
 
@@ -1838,38 +2264,32 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 42,
       clientsCount: 12,
       candidates: [
-        { initials: 'KY', avatar: 6, name: 'Kenji Yamaguchi',
-          meta: '🇯🇵 JP · Plant Operations · 8 hires · $74K',
+        { id: 'cand-005', initials: 'AB', avatar: 1, name: 'Aigerim Bekova',
+          meta: '🇰🇿 KZ · Plant Operations · 8 hires · $74K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'AS', avatar: 9, name: 'Aiko Suzuki',
-          meta: '🇯🇵 JP · Quality Engineer · 11 hires · $58K',
+        { id: 'cand-003', initials: 'LW', avatar: 2, name: 'Lin Wei',
+          meta: '🇹🇼 TW · Quality Engineer · 11 hires · $58K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'WH', avatar: 4, name: 'Wei Han',
-          meta: '🇨🇳 CN · Process Engineer · 9 hires · $52K',
+        { id: 'cand-008', initials: 'JO', avatar: 3, name: "James O'Brien",
+          meta: '🇮🇪 IE · Process Engineer · 9 hires · $52K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'PL', avatar: 7, name: 'Park Lee',
-          meta: '🇰🇷 KR · Robotics Tech · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'TT', avatar: 3, name: 'Tran Thanh',
-          meta: '🇻🇳 VN · Maintenance Lead · in IV-1',
+        { id: 'cand-007', initials: 'PS', avatar: 4, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Robotics Tech · in IV-2',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'AH', avatar: 6, name: 'Aichi Heavy Industries',
-          meta: '🇯🇵 JP · 15 hires · $228K · Top Client',
+        { id: 'cl-003-quantum', initials: 'QR', avatar: 11, name: 'Quantum Robotics Pte. Ltd.',
+          meta: '🇸🇬 SG · 15 hires · $228K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'OM', avatar: 9, name: 'Osaka Manufacturing Co.',
-          meta: '🇯🇵 JP · 11 hires · $164K · Trusted',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 9, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 11 hires · $164K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'SR', avatar: 3, name: 'Suzhou Robotics Ltd.',
-          meta: '🇨🇳 CN · 7 hires · $112K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 7 hires · $112K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'BP', avatar: 4, name: 'Busan Precision',
-          meta: '🇰🇷 KR · 4 hires · $74K',
+        { id: 'cl-002-7e1b3f', initials: 'SB', avatar: 10, name: 'Studio Berlin GmbH',
+          meta: '🇩🇪 DE · 4 hires · $74K',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'HV', avatar: 11, name: 'Hanoi Vehicle Group',
-          meta: '🇻🇳 VN · 0 hires · onboarding',
-          statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
     notes: buildNotes({
@@ -1894,6 +2314,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 11, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'on-track',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 11, 2026',
+      managerComment: 'Yuki built the strongest manufacturing-trade-group sourcing motion on the team — Aichi Heavy treats him like an in-house recruiter. Q1 SLA 96.9%, absorbed handoff caseload from Lukas with zero ramp friction. APAC industry-forum partnership proposal in motion for Q3.',
+      adminComment: 'Concur — strong cycle. No HR concerns; compliance current (Mar 30 renewal). Eligible for sourcing-coordinator track conversation in Q3. Approaching 2y tenure milestone.',
+    }),
+    hr: buildHr({
+      hireDate: 'Sep 11, 2024',
+      tenure: '1y 8mo',
+      baseAndBonus: '$72,000 · 12% target performance bonus',
+      equity: '1,800 RSUs · 4-yr vesting (21% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Manufacturing (primary)',
+      baseLocation: 'Osaka · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 8 months of tenure.',
     }),
   },
 
@@ -1959,38 +2397,29 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 36,
       clientsCount: 9,
       candidates: [
-        { initials: 'AO', avatar: 1, name: 'Adwoa Owusu',
-          meta: '🇬🇭 GH · Climate Analyst · 6 hires · $42K',
+        { id: 'cand-001', initials: 'AB', avatar: 1, name: 'Adesuwa Babatunde',
+          meta: '🇳🇬 NG · Climate Analyst · 6 hires · $42K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'TM', avatar: 7, name: 'Tunde Mensah',
-          meta: '🇳🇬 NG · ESG Reporter · 9 hires · $48K',
+        { id: 'cand-006', initials: 'DK', avatar: 2, name: 'Deniz Kaya',
+          meta: '🇹🇷 TR · ESG Reporter · 9 hires · $48K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'CD', avatar: 4, name: 'Chidi Diallo',
-          meta: '🇸🇳 SN · Sustainability Lead · 7 hires · $52K',
+        { id: 'cand-007', initials: 'PS', avatar: 3, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Sustainability Lead · 7 hires · $52K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'ZA', avatar: 9, name: 'Zara Adebayo',
-          meta: '🇰🇪 KE · Renewable PM · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'SK', avatar: 6, name: 'Samuel Kone',
-          meta: '🇨🇮 CI · Carbon Auditor · in IV-1',
+        { id: 'cand-002', initials: 'CR', avatar: 4, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Renewable PM · in IV-2',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'LL', avatar: 1, name: 'The Lagos Loom',
+        { id: 'cl-006-lagos', initials: 'LL', avatar: 1, name: 'The Lagos Loom',
           meta: '🇳🇬 NG · 14 hires · $98K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'GR', avatar: 4, name: 'Greenroots Africa',
-          meta: '🇰🇪 KE · 8 hires · $84K · Trusted',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 9, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 8 hires · $84K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'AC', avatar: 6, name: 'Accra Climate Trust',
-          meta: '🇬🇭 GH · 5 hires · $46K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 5 hires · $46K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'DC', avatar: 9, name: 'Dakar Coastal Co.',
-          meta: '🇸🇳 SN · 3 hires · $32K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'KW', avatar: 11, name: 'Kigali Wildlife Fund',
-          meta: '🇷🇼 RW · 0 hires · onboarding',
-          statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
     notes: buildNotes({
@@ -2015,6 +2444,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 7, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'perfect',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 5, 2026',
+      managerComment: 'Kofi has the cleanest SLA on the team — 99.1% — and the best candidate-NPS scores. Perfect 30-day adherence; community-network sourcing motion is now a documented playbook. Mentored 3 new hires informally this year. Long-term retention priority.',
+      adminComment: 'Concur — exemplary cycle. No HR concerns; full Q1 compliance marks. Approved for sustainability conference travel (May 2026). Retention bonus eligible at 3y milestone (Aug 2026).',
+    }),
+    hr: buildHr({
+      hireDate: 'Aug 22, 2023',
+      tenure: '2y 9mo',
+      baseAndBonus: '$74,000 · 16% target performance bonus',
+      equity: '2,400 RSUs · 4-yr vesting (44% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Sustainability (primary)',
+      baseLocation: 'Accra · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 9 months of tenure. Exemplary record across all categories.',
     }),
   },
 
@@ -2091,38 +2538,29 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 40,
       clientsCount: 11,
       candidates: [
-        { initials: 'NB', avatar: 5, name: 'Nika Beridze',
-          meta: '🇬🇪 GE · Ops Manager · 8 hires · $46K',
+        { id: 'cand-008', initials: 'JO', avatar: 1, name: "James O'Brien",
+          meta: '🇮🇪 IE · Ops Manager · 8 hires · $46K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'IK', avatar: 9, name: 'Irakli Kapanadze',
-          meta: '🇬🇪 GE · Logistics Lead · 11 hires · $42K',
+        { id: 'cand-002', initials: 'CR', avatar: 2, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Logistics Lead · 11 hires · $42K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'AG', avatar: 1, name: 'Alina Gevorgyan',
-          meta: '🇦🇲 AM · Process Analyst · 7 hires · $38K',
+        { id: 'cand-001', initials: 'AB', avatar: 3, name: 'Adesuwa Babatunde',
+          meta: '🇳🇬 NG · Process Analyst · 7 hires · $38K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'DR', avatar: 7, name: 'Dmitri Razin',
-          meta: '🇰🇿 KZ · Supply Chain · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'OM', avatar: 3, name: 'Oksana Marchenko',
-          meta: '🇺🇦 UA · Ops Coordinator · in IV-1',
+        { id: 'cand-006', initials: 'DK', avatar: 4, name: 'Deniz Kaya',
+          meta: '🇹🇷 TR · Supply Chain · in IV-2',
           statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'BF', avatar: 2, name: 'Black Sea Fintech',
-          meta: '🇬🇪 GE · 12 hires · $148K · Top Client',
+        { id: 'cl-002-7e1b3f', initials: 'SB', avatar: 10, name: 'Studio Berlin GmbH',
+          meta: '🇩🇪 DE · 12 hires · $148K · Top Client',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'CO', avatar: 9, name: 'Caucasus Operations',
-          meta: '🇦🇲 AM · 8 hires · $96K · Trusted',
+        { id: 'cl-005-tundra', initials: 'OT', avatar: 9, name: 'Open Tundra Ltd.',
+          meta: '🇮🇸 IS · 8 hires · $96K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'AL', avatar: 4, name: 'Almaty Logistics',
-          meta: '🇰🇿 KZ · 6 hires · $74K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 6 hires · $74K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'KS', avatar: 6, name: 'Kyiv Supply Group',
-          meta: '🇺🇦 UA · 3 hires · $48K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'BC', avatar: 12, name: 'Baku Coastal Co.',
-          meta: '🇦🇿 AZ · 0 hires · onboarding',
-          statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
     notes: buildNotes({
@@ -2147,6 +2585,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Mar 6, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'short-tenure',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 7, 2026',
+      managerComment: 'Elena built our CIS-region pipeline almost from scratch. Telegram-channel sourcing pattern is now a documented playbook. Caseload at 40 — exactly on target. Bilingual review capability (RU/EN) closes hiring loops faster than the team average.',
+      adminComment: 'Concur — solid Q1 with strong upward trajectory from Q4. Compliance current (Mar 22). No HR concerns. First-year retention milestone passed Dec 4, 2025. Approved as primary point-of-contact for CIS regional escalations.',
+    }),
+    hr: buildHr({
+      hireDate: 'Dec 4, 2024',
+      tenure: '1y 5mo',
+      baseAndBonus: '$70,000 · 12% target performance bonus',
+      equity: '1,600 RSUs · 4-yr vesting (10% vested)',
+      employmentStatus: { text: 'Active', emphasisColor: 'success' },
+      category: 'Operations (primary)',
+      baseLocation: 'Tbilisi · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 5 months of tenure.',
     }),
   },
 
@@ -2212,38 +2668,23 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       candidatesCount: 35,
       clientsCount: 9,
       candidates: [
-        { initials: 'AB', avatar: 4, name: 'Ahmed Bouazizi',
-          meta: '🇹🇳 TN · Risk Analyst · 5 hires · $52K',
+        { id: 'cand-007', initials: 'PS', avatar: 1, name: 'Priya Sharma',
+          meta: '🇮🇳 IN · Risk Analyst · 5 hires · $52K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'FS', avatar: 6, name: 'Fatima Salem',
-          meta: '🇰🇼 KW · Audit Lead · 8 hires · $68K',
+        { id: 'cand-002', initials: 'CR', avatar: 2, name: 'Carlos Restrepo',
+          meta: '🇨🇴 CO · Audit Lead · 8 hires · $68K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'KH', avatar: 1, name: 'Khalid Hassan',
-          meta: '🇸🇦 SA · Compliance Officer · 6 hires · $58K',
+        { id: 'cand-008', initials: 'JO', avatar: 3, name: "James O'Brien",
+          meta: '🇮🇪 IE · Compliance Officer · 6 hires · $58K',
           statusLabel: 'Live', action: 'open-candidate' },
-        { initials: 'MA', avatar: 9, name: 'Mona Al-Sabah',
-          meta: '🇶🇦 QA · Treasury Analyst · in IV-2',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
-        { initials: 'RB', avatar: 3, name: 'Rami Boutros',
-          meta: '🇱🇧 LB · Banking Tech · in IV-1',
-          statusLabel: 'Pipeline', statusVariant: 'warn', action: 'open-candidate' },
       ],
       clients: [
-        { initials: 'GB', avatar: 4, name: 'Gulf Banking Holdings',
-          meta: '🇦🇪 AE · 7 hires · $156K · Trusted',
+        { id: 'cl-001-acme', initials: 'AH', avatar: 4, name: 'Acme Holdings, Inc.',
+          meta: '🇺🇸 US · 7 hires · $156K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'RC', avatar: 6, name: 'Riyadh Capital Co.',
-          meta: '🇸🇦 SA · 5 hires · $98K · Trusted',
+        { id: 'cl-004-medco', initials: 'LM', avatar: 12, name: 'Lighthouse Med Co.',
+          meta: '🇨🇦 CA · 5 hires · $98K · Trusted',
           statusLabel: 'Active', action: 'open-client' },
-        { initials: 'JF', avatar: 9, name: 'Jeddah Finance Hub',
-          meta: '🇸🇦 SA · 3 hires · $54K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'KW', avatar: 12, name: 'Kuwait Wealth Group',
-          meta: '🇰🇼 KW · 2 hires · $36K',
-          statusLabel: 'Active', action: 'open-client' },
-        { initials: 'BG', avatar: 11, name: 'Bahrain Gateway Bank',
-          meta: '🇧🇭 BH · 0 hires · onboarding',
-          statusLabel: 'New', statusVariant: 'neutral', action: 'open-client' },
       ],
     }),
     notes: buildNotes({
@@ -2271,6 +2712,26 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Apr 18, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'probation',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 14, 2026',
+      q1Cycle: 'probation midpoint',
+      managerComment: "Hassan is the strongest probation hire on the team — picking up Saudi/Gulf finance pipelines with very little ramp friction. Jamal is doing the formal mentoring and the chemistry is excellent. Independent caseload at 35 ahead of plan. Probation graduation review scheduled May 15.",
+      adminComment: 'Concur — ramping well. Background check + KYC verification fully cleared; passed all probation modules. One pending: probation cert due May 15. No HR concerns; integrating well with MENA team.',
+    }),
+    hr: buildHr({
+      hireDate: 'Mar 17, 2025',
+      tenure: '1y 2mo',
+      baseAndBonus: '$68,000 · 10% probation performance bonus',
+      equity: '1,200 RSUs · 4-yr vesting (15% vested)',
+      employmentStatus: { text: 'Active · probation (graduates May 15, 2026)', emphasisColor: 'warn' },
+      category: 'Finance (primary)',
+      baseLocation: 'Riyadh · home · co-working',
+      compliance: 'one-due',
+      pendingProbationCert: true,
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 1 year 2 months of tenure (probation period).',
     }),
   },
 
@@ -2356,6 +2817,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ]},
       ],
       adminLastEdited: 'Last edited Apr 14, 2026 by Aïsha Okafor (you)',
+    }),
+    reviews: buildReviews({
+      pattern: 'inactive',
+      managerAuthor: 'Mateo Vargas',
+      q1DeliveredDate: 'Apr 14, 2026',
+      managerComment: "Olivia's output before leave was strong — 96% SLA, 144 reviews completed, fully ramped on the Vancouver design pipeline. We want her returning at her own pace: phased return with light caseload first (Jun 15-30), then full ramp Jul 1.",
+      adminComment: 'Concur — clean cycle pre-leave. Wellness leave approved Apr 9 (manager + HR sign-off). Compliance training renewed Apr 12 (pre-leave). Benefits + EAP coverage continuous through leave window. Return-to-work check-in scheduled for Jun 8.',
+    }),
+    hr: buildHr({
+      hireDate: 'Mar 3, 2024',
+      tenure: '2y 2mo',
+      baseAndBonus: '$73,000 · 13% target performance bonus',
+      equity: '2,000 RSUs · 4-yr vesting (28% vested)',
+      employmentStatus: { text: 'On leave · returning Jun 14, 2026', emphasisColor: 'warn' },
+      category: 'Design (primary)',
+      baseLocation: 'Vancouver · home · co-working',
+      compliance: 'all-current',
+      disciplinaryDetail: 'No formal warnings, PIPs, or HR-flagged incidents in 2 years 2 months of tenure.',
     }),
   },
 };
