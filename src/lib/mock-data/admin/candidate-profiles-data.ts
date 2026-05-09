@@ -70,7 +70,7 @@ export interface CommunicationThread {
   threadId: string;
   avatar: string; // av-1 to av-12 class
   name: string;
-  role: 'specialist' | 'client' | 'admin';
+  role: 'specialist' | 'client' | 'talent' | 'admin';
   initials: string; // 2-letter uppercase (DK, SB, LL, etc.)
   lastMessage: string;
   time: string;
@@ -83,12 +83,13 @@ export interface AuditEntry {
   verb: string;
   target: string;
   detail: string;
-  category: 'profile' | 'signin' | 'contract' | 'review' | 'flag' | 'decision' | 'interview' | 'created' | 'export' | 'refund' | 'dispute' | 'override';
+  category: 'profile' | 'signin' | 'contract' | 'review' | 'flag' | 'decision' | 'interview' | 'created' | 'export' | 'refund' | 'dispute' | 'override' | 'charge' | 'suspension';
   outcome?: {
     label: string; // e.g. 'Auto-approved', 'Verified · 2FA', 'Passed'
     variant: 'success' | 'partial' | 'escalated';
   };
   refId?: string;
+  tagLabel?: string; // optional override for the right-side tag display text (Phase 6m)
   dayGroup?: {
     label: string; // e.g. 'Today · April 30, 2026', 'Apr 22, 2026', 'Mar 12, 2024 — Mar 8, 2024 · earlier'
     count: number; // number of events in this day group

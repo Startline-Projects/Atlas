@@ -64,6 +64,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/users/clients/');
     }
 
+    // Special case for Specialists: also match /admin/users/specialists/[id] detail routes
+    if (itemPathname === '/admin/users/specialists') {
+      return pathname === '/admin/users/specialists'
+          || pathname.startsWith('/admin/users/specialists/');
+    }
+
     return pathname === itemPathname;
   };
 

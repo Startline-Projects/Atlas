@@ -64,7 +64,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'specialists',
           label: 'Talent Specialists',
-          pathname: '/admin/users#specialists',
+          pathname: '/admin/users/specialists',
           icon: TalentSpecialistsNavIcon,
           count: '11',
         },
