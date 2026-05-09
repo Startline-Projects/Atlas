@@ -33,7 +33,6 @@
   --r-md: var(--radius-md);
   --r-lg: var(--radius-lg);
   --r-xl: var(--radius-xl);
-
 }
 @theme {
   --color-cream: #f3eee3;
@@ -70,8 +69,8 @@
      yellow-priority urgent-card type label and lime-tinted badges. */
   --color-lime-text: #5a6b14;
 
-  --restricted: #8B1A1A;
-  --restricted-bg: #F5E2DD;
+  --restricted: #8b1a1a;
+  --restricted-bg: #f5e2dd;
 
   --logged: #6b6860;
   --logged-bg: rgba(14, 14, 12, 0.06);

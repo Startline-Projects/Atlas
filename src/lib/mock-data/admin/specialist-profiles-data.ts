@@ -51,8 +51,11 @@ export interface SpecialistProfile {
   // Section 02 — Workload & caseload (Phase 7d)
   workload?: WorkloadSection;
 
-  // Section data fields will be added in Phases 7e–7k:
-  // activity?, assignments?, notes?, reviews?, hr?, auditLog?, quickFacts?
+  // Section 03 — Daily activity audit (Phase 7e)
+  activity?: ActivitySection;
+
+  // Section data fields will be added in Phases 7f–7k:
+  // assignments?, notes?, reviews?, hr?, auditLog?, quickFacts?
 }
 
 // ============================================================
@@ -177,6 +180,42 @@ interface WorkloadSection {
   capacity: CapacityBar;
   attention?: AttentionList;
   emptyAttention?: { title: string; detail: string };
+}
+
+// ============================================================
+// SECTION 03 — Daily Activity Audit (Phase 7e) types
+// ============================================================
+
+interface ActivityDay {
+  status: 'submitted' | 'late' | 'missed' | 'excused' | 'future';
+  title: string;
+}
+
+interface ActivityLegendItem {
+  status: 'submitted' | 'late' | 'missed' | 'excused';
+  label: string;
+}
+
+type TodayBodySegment =
+  | { type: 'highlight'; text: string }
+  | { type: 'plain'; text: string };
+
+interface TodaySubmission {
+  dateLabel: string;
+  metaLabel: string;
+  body: TodayBodySegment[];
+}
+
+interface ActivitySection {
+  sectionStatus: { label: string; variant: 'success' | 'warn' | 'danger' | 'neutral' };
+  cardTitle: string;
+  adherencePct: string;
+  adherenceLabel: string;
+  adherenceColor?: string; // override for at-risk specialists (amber)
+  days: ActivityDay[];
+  legend: ActivityLegendItem[];
+  todaySubmission?: TodaySubmission;
+  emptyState?: { title: string; detail: string };
 }
 
 // ============================================================
@@ -463,6 +502,121 @@ function buildWorkload(input: WorkloadBuilderInput): WorkloadSection {
 }
 
 // ============================================================
+// ACTIVITY BUILDER (Phase 7e)
+// ============================================================
+
+interface ActivityBuilderInput {
+  status: 'healthy' | 'at-risk' | 'inactive' | 'new';
+  category: string;
+  region: string;
+  // Pattern overrides
+  lateDates?: number[];        // Apr-day numbers (1-30) that were late
+  missedDates?: number[];      // Apr-day numbers (1-30) that were missed
+  // Body lines for today's submission (highlights + plain text segments)
+  todayBody?: TodayBodySegment[];
+  // For "new" status — first activeDays Apr days are submitted, rest are future
+  activeDays?: number;
+  // For inactive
+  emptyTitle?: string;
+  emptyDetail?: string;
+}
+
+function buildActivity(input: ActivityBuilderInput): ActivitySection {
+  // Inactive specialists — empty state
+  if (input.status === 'inactive') {
+    return {
+      sectionStatus: { label: 'On leave · paused', variant: 'neutral' },
+      cardTitle: 'Last 30 days · submission compliance',
+      adherencePct: '—',
+      adherenceLabel: 'on leave',
+      days: [],
+      legend: [],
+      emptyState: {
+        title: input.emptyTitle ?? 'On leave · activity paused',
+        detail: input.emptyDetail ?? 'Activity paused during approved leave',
+      },
+    };
+  }
+
+  // Build 30-day pattern: weekend days (Apr 4,5,11,12,18,19,25,26 — Sat/Sun in Apr 2026) excused, weekdays submitted
+  // Apr 1 2026 = Wednesday. So weekends fall on Apr 4-5, 11-12, 18-19, 25-26 (8 days).
+  // BUT verbatim spec-001 uses Apr 3,4,10,11,17,18,24,25 as excused (8 days, Fri-Sat pattern). Match that for consistency.
+  const weekendDays = new Set([3, 4, 10, 11, 17, 18, 24, 25]);
+  const lateSet = new Set(input.lateDates ?? []);
+  const missedSet = new Set(input.missedDates ?? []);
+  const isNew = input.status === 'new';
+  const activeCutoff = input.activeDays ?? 30;
+
+  const days: ActivityDay[] = [];
+  for (let day = 1; day <= 30; day++) {
+    if (isNew && day > activeCutoff) {
+      days.push({ status: 'future', title: `Apr ${day} · upcoming` });
+    } else if (lateSet.has(day)) {
+      days.push({ status: 'late', title: `Apr ${day} · submitted late (after 5pm deadline)` });
+    } else if (missedSet.has(day)) {
+      days.push({ status: 'missed', title: `Apr ${day} · NOT submitted` });
+    } else if (weekendDays.has(day)) {
+      days.push({ status: 'excused', title: `Apr ${day} · weekend` });
+    } else {
+      const titleSuffix = day === 30 ? '· submitted 11:42 AM' : day === 1 ? '· submitted 11:42 AM' : '';
+      days.push({ status: 'submitted', title: `Apr ${day}${titleSuffix ? ' ' + titleSuffix : ''}` });
+    }
+  }
+
+  // Counts
+  const submittedCount = days.filter((d) => d.status === 'submitted').length;
+  const lateCount = days.filter((d) => d.status === 'late').length;
+  const missedCount = days.filter((d) => d.status === 'missed').length;
+  const excusedCount = days.filter((d) => d.status === 'excused').length;
+
+  // Adherence calc — submitted ÷ (submitted + late + missed) (excludes excused weekends + future)
+  const evaluable = submittedCount + lateCount + missedCount;
+  const adherencePct = evaluable === 0 ? '—' : `${((submittedCount / evaluable) * 100).toFixed(1)}%`;
+
+  // Section status
+  const isAtRisk = input.status === 'at-risk';
+  let sectionStatusLabel: string;
+  let sectionStatusVariant: 'success' | 'warn' | 'danger' | 'neutral';
+  if (isAtRisk) {
+    sectionStatusLabel = `${submittedCount}/${evaluable} submitted · ${lateCount + missedCount} flagged`;
+    sectionStatusVariant = 'warn';
+  } else if (isNew) {
+    sectionStatusLabel = `${submittedCount}/${evaluable} submitted · ramping up`;
+    sectionStatusVariant = 'success';
+  } else if (submittedCount === evaluable && evaluable > 0) {
+    sectionStatusLabel = `${submittedCount}/${evaluable} perfect adherence`;
+    sectionStatusVariant = 'success';
+  } else {
+    sectionStatusLabel = `${submittedCount}/${evaluable} submitted on time`;
+    sectionStatusVariant = 'success';
+  }
+
+  return {
+    sectionStatus: { label: sectionStatusLabel, variant: sectionStatusVariant },
+    cardTitle: 'Last 30 days · submission compliance',
+    adherencePct,
+    adherenceLabel: 'adherence rate',
+    ...(isAtRisk ? { adherenceColor: 'var(--amber)' } : {}),
+    days,
+    legend: [
+      { status: 'submitted', label: `Submitted on time (${submittedCount})` },
+      { status: 'late', label: `Late (${lateCount})` },
+      { status: 'missed', label: `Missed (${missedCount})` },
+      { status: 'excused', label: `Weekend / excused (${excusedCount})` },
+    ],
+    ...(input.todayBody
+      ? {
+          todaySubmission: {
+            dateLabel: "Today's submission · Apr 30, 2026",
+            metaLabel: 'Submitted 11:42 AM',
+            body: input.todayBody,
+          },
+        }
+      : {}),
+  };
+}
+
+// ============================================================
 // 11 SPECIALIST FIXTURES — match users-data.ts SPECIALISTS_ROWS
 // ============================================================
 
@@ -624,6 +778,69 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     },
+    // Activity — VERBATIM from admin.html lines 18712-18777
+    activity: {
+      sectionStatus: { label: '28/30 submitted on time', variant: 'success' },
+      cardTitle: 'Last 30 days · submission compliance',
+      adherencePct: '93.3%',
+      adherenceLabel: 'adherence rate',
+      days: [
+        { status: 'submitted', title: 'Apr 1 · submitted 11:42 AM' },
+        { status: 'submitted', title: 'Apr 2 · submitted 10:15 AM' },
+        { status: 'excused',   title: 'Apr 3 · weekend' },
+        { status: 'excused',   title: 'Apr 4 · weekend' },
+        { status: 'submitted', title: 'Apr 5' },
+        { status: 'submitted', title: 'Apr 6' },
+        { status: 'submitted', title: 'Apr 7' },
+        { status: 'late',      title: 'Apr 8 · submitted 6:48 PM (after 5pm deadline)' },
+        { status: 'submitted', title: 'Apr 9' },
+        { status: 'excused',   title: 'Apr 10 · weekend' },
+        { status: 'excused',   title: 'Apr 11 · weekend' },
+        { status: 'submitted', title: 'Apr 12' },
+        { status: 'submitted', title: 'Apr 13' },
+        { status: 'submitted', title: 'Apr 14' },
+        { status: 'submitted', title: 'Apr 15' },
+        { status: 'missed',    title: 'Apr 16 · NOT submitted' },
+        { status: 'excused',   title: 'Apr 17 · weekend' },
+        { status: 'excused',   title: 'Apr 18 · weekend' },
+        { status: 'submitted', title: 'Apr 19' },
+        { status: 'submitted', title: 'Apr 20' },
+        { status: 'submitted', title: 'Apr 21' },
+        { status: 'submitted', title: 'Apr 22' },
+        { status: 'submitted', title: 'Apr 23' },
+        { status: 'excused',   title: 'Apr 24 · weekend' },
+        { status: 'excused',   title: 'Apr 25 · weekend' },
+        { status: 'submitted', title: 'Apr 26' },
+        { status: 'submitted', title: 'Apr 27' },
+        { status: 'submitted', title: 'Apr 28' },
+        { status: 'submitted', title: 'Apr 29' },
+        { status: 'submitted', title: 'Today · submitted 11:42 AM' },
+      ],
+      legend: [
+        { status: 'submitted', label: 'Submitted on time (22)' },
+        { status: 'late',      label: 'Late (1)' },
+        { status: 'missed',    label: 'Missed (1)' },
+        { status: 'excused',   label: 'Weekend / excused (6)' },
+      ],
+      todaySubmission: {
+        dateLabel: "Today's submission · Apr 30, 2026",
+        metaLabel: 'Submitted 11:42 AM CET',
+        body: [
+          { type: 'highlight', text: '12 LinkedIn outreach messages' },
+          { type: 'plain', text: ' sent to Senior Backend candidates in EU · ' },
+          { type: 'highlight', text: '3 candidate calls' },
+          { type: 'plain', text: ' (1 first-round, 2 follow-ups) · ' },
+          { type: 'highlight', text: '2 candidate reviews completed' },
+          { type: 'plain', text: ' (1 approved Aigerim Bekova, 1 deferred Lin Wei pending IV-2) · ' },
+          { type: 'highlight', text: '1 dispute resolution' },
+          { type: 'plain', text: ' (DSP-2026-0156 partial refund $440) · ' },
+          { type: 'highlight', text: '2 client check-ins' },
+          { type: 'plain', text: ' (Studio Berlin re ENG-2026-184 mid-cycle, Quantum Robotics re Q3 backfill) · ' },
+          { type: 'highlight', text: '1 internal note' },
+          { type: 'plain', text: ' (escalated DSP-2026-0144 timeline concern to Mateo).' },
+        ],
+      },
+    },
   },
 
   'spec-002': {
@@ -695,6 +912,27 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     }),
+    activity: buildActivity({
+      status: 'at-risk',
+      category: 'Operations',
+      region: 'Mexico City',
+      lateDates: [8, 15, 22],
+      missedDates: [16],
+      todayBody: [
+        { type: 'highlight', text: '8 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Operations candidates in LATAM · ' },
+        { type: 'highlight', text: '2 candidate calls' },
+        { type: 'plain', text: ' (both follow-ups) · ' },
+        { type: 'highlight', text: '5 candidate reviews completed' },
+        { type: 'plain', text: ' (caseload above target, working through queue) · ' },
+        { type: 'highlight', text: '2 dispute resolutions' },
+        { type: 'plain', text: ' (DSP-2026-0118 + DSP-2026-0121 — both partial refunds) · ' },
+        { type: 'highlight', text: '1 client check-in' },
+        { type: 'plain', text: ' (Acme Holdings re Carlos Restrepo escalation) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (flagged caseload pressure to Mateo — redistribution requested).' },
+      ],
+    }),
   },
 
   'spec-003': {
@@ -745,6 +983,23 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
             time: 'SLA in 16h', action: 'open-review' },
         ],
       },
+    }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Finance',
+      region: 'Dubai',
+      todayBody: [
+        { type: 'highlight', text: '10 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Finance candidates in MENA · ' },
+        { type: 'highlight', text: '4 candidate calls' },
+        { type: 'plain', text: ' (2 first-round, 2 follow-ups) · ' },
+        { type: 'highlight', text: '3 candidate reviews completed' },
+        { type: 'plain', text: ' (all approved — strong Gulf banking pipeline) · ' },
+        { type: 'highlight', text: '1 client check-in' },
+        { type: 'plain', text: ' (Quantum Robotics re Series B finance lead) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (KYC verification pattern flagged for new region rollout).' },
+      ],
     }),
   },
 
@@ -801,6 +1056,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Engineering',
+      region: 'Tokyo',
+      missedDates: [16],
+      todayBody: [
+        { type: 'highlight', text: '14 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Engineering candidates in APAC · ' },
+        { type: 'highlight', text: '5 candidate calls' },
+        { type: 'plain', text: ' (3 first-round, 2 follow-ups) · ' },
+        { type: 'highlight', text: '4 candidate reviews completed' },
+        { type: 'plain', text: ' (all approved — strong Tokyo backend pipeline) · ' },
+        { type: 'highlight', text: '2 client check-ins' },
+        { type: 'plain', text: ' (Quantum Robotics re ML Engineer pipeline + new APAC client onboarding) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (proposed weekly Tokyo office hours for new candidates).' },
+      ],
+    }),
   },
 
   'spec-005': {
@@ -845,6 +1118,13 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       clientsCount: 0,
       disputes: 0,
       handoffNames: 'Yuki Tanaka and Maya Tanaka',
+    }),
+    activity: buildActivity({
+      status: 'inactive',
+      category: 'Design',
+      region: 'Singapore',
+      emptyTitle: 'On leave · activity paused',
+      emptyDetail: 'Activity paused since Apr 22, 2026 · returning Jun 28, 2026 · caseload handed off to Yuki Tanaka and Maya Tanaka',
     }),
   },
 
@@ -897,6 +1177,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Healthcare',
+      region: 'São Paulo',
+      lateDates: [22],
+      todayBody: [
+        { type: 'highlight', text: '11 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Healthcare candidates in LATAM · ' },
+        { type: 'highlight', text: '3 candidate calls' },
+        { type: 'plain', text: ' (1 first-round, 2 follow-ups) · ' },
+        { type: 'highlight', text: '3 candidate reviews completed' },
+        { type: 'plain', text: ' (2 approved, 1 deferred pending licensing verification) · ' },
+        { type: 'highlight', text: '2 client check-ins' },
+        { type: 'plain', text: ' (Lighthouse Med re Clinical Researcher pipeline, new São Paulo clinic onboarding) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (proposed regional licensing fast-track for healthcare specialists).' },
+      ],
+    }),
   },
 
   'spec-007': {
@@ -948,6 +1246,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Manufacturing',
+      region: 'Osaka',
+      lateDates: [9],
+      todayBody: [
+        { type: 'highlight', text: '13 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Manufacturing candidates in APAC · ' },
+        { type: 'highlight', text: '4 candidate calls' },
+        { type: 'plain', text: ' (2 first-round, 2 follow-ups) · ' },
+        { type: 'highlight', text: '3 candidate reviews completed' },
+        { type: 'plain', text: ' (all approved · strong Osaka manufacturing pipeline) · ' },
+        { type: 'highlight', text: '1 client check-in' },
+        { type: 'plain', text: ' (new Manufacturing client onboarding · Aichi Heavy Industries) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (industry trade group partnership proposal — APAC manufacturing forum).' },
+      ],
+    }),
   },
 
   'spec-008': {
@@ -988,6 +1304,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       clientsCount: 9,
       disputes: 0,
       // No attention list — all caught up (uses emptyAttention default)
+    }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Sustainability',
+      region: 'Accra',
+      // No late, no missed — perfect adherence
+      todayBody: [
+        { type: 'highlight', text: '9 community network outreach messages' },
+        { type: 'plain', text: ' sent to Sustainability candidates across West Africa · ' },
+        { type: 'highlight', text: '3 candidate calls' },
+        { type: 'plain', text: ' (all first-round) · ' },
+        { type: 'highlight', text: '2 candidate reviews completed' },
+        { type: 'plain', text: ' (both approved · strong Accra sustainability pipeline) · ' },
+        { type: 'highlight', text: '1 client check-in' },
+        { type: 'plain', text: ' (new sustainability client onboarding · Lagos Loom expansion) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (proposed NGO partnership for West African talent sourcing pipeline).' },
+      ],
     }),
   },
 
@@ -1040,6 +1374,25 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
         ],
       },
     }),
+    activity: buildActivity({
+      status: 'healthy',
+      category: 'Operations',
+      region: 'Tbilisi',
+      lateDates: [22],
+      missedDates: [9],
+      todayBody: [
+        { type: 'highlight', text: '10 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Operations candidates in CIS region · ' },
+        { type: 'highlight', text: '3 candidate calls' },
+        { type: 'plain', text: ' (2 first-round, 1 follow-up) · ' },
+        { type: 'highlight', text: '3 candidate reviews completed' },
+        { type: 'plain', text: ' (2 approved, 1 deferred) · ' },
+        { type: 'highlight', text: '1 client check-in' },
+        { type: 'plain', text: ' (regional ops onboarding · Tbilisi-based fintech) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (Telegram regional groups partnership renewed for Q3).' },
+      ],
+    }),
   },
 
   'spec-010': {
@@ -1080,6 +1433,24 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       clientsCount: 9,
       disputes: 0,
       // No attention list — all caught up (uses emptyAttention default)
+    }),
+    activity: buildActivity({
+      status: 'new',
+      category: 'Finance',
+      region: 'Riyadh',
+      activeDays: 24, // 24 days submitted, 6 days future (still ramping up)
+      todayBody: [
+        { type: 'highlight', text: '8 LinkedIn outreach messages' },
+        { type: 'plain', text: ' sent to Finance candidates in Gulf region · ' },
+        { type: 'highlight', text: '2 candidate calls' },
+        { type: 'plain', text: ' (both first-round) · ' },
+        { type: 'highlight', text: '2 candidate reviews completed' },
+        { type: 'plain', text: ' (both approved · ramp going well) · ' },
+        { type: 'highlight', text: '1 mentor sync' },
+        { type: 'plain', text: ' (with Daniel Kovács · onboarding ramp checkpoint) · ' },
+        { type: 'highlight', text: '1 internal note' },
+        { type: 'plain', text: ' (probation milestones tracked — on schedule for Q3 review).' },
+      ],
     }),
   },
 
@@ -1125,6 +1496,13 @@ export const SPECIALIST_PROFILES: Record<string, SpecialistProfile> = {
       clientsCount: 0,
       disputes: 0,
       handoffNames: 'Sarah Reyes and Daniel Kovács',
+    }),
+    activity: buildActivity({
+      status: 'inactive',
+      category: 'Design',
+      region: 'Vancouver',
+      emptyTitle: 'On leave · activity paused',
+      emptyDetail: 'Activity paused since Apr 18, 2026 · returning Jun 14, 2026 · caseload handed off to Sarah Reyes and Daniel Kovács',
     }),
   },
 };
