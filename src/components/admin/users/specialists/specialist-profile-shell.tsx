@@ -3,15 +3,15 @@ import { SpecialistBackRow } from './specialist-back-row';
 import { SpecialistSectionPerformance } from './sections/specialist-section-performance';
 import { SpecialistSectionWorkload } from './sections/specialist-section-workload';
 import { SpecialistSectionActivity } from './sections/specialist-section-activity';
+import { SpecialistSectionAssignments } from './sections/specialist-section-assignments';
+import { SpecialistSectionNotes } from './sections/specialist-section-notes';
 
 interface SpecialistProfileShellProps {
   profile: SpecialistProfile;
 }
 
-// Sections 01-03 are now built (Phases 7c, 7d, 7e). Sections 04–08 remain as placeholders.
+// Sections 01-05 are now built (Phases 7c, 7d, 7e, 7f, 7g). Sections 06–08 remain as placeholders.
 const PLACEHOLDER_SECTIONS = [
-  { num: '04', key: 'assignments',  title: 'Candidates & clients assigned', phase: '7f' },
-  { num: '05', key: 'notes',        title: 'Notes',                         phase: '7g' },
   { num: '06', key: 'reviews',      title: 'Performance review history',    phase: '7h' },
   { num: '07', key: 'hr',           title: 'HR record',                     phase: '7i' },
   { num: '08', key: 'audit',        title: 'Audit log',                     phase: '7j' },
@@ -286,7 +286,13 @@ export function SpecialistProfileShell({ profile }: SpecialistProfileShellProps)
       {/* Section 03 — Daily activity audit (Phase 7e — built) */}
       <SpecialistSectionActivity profile={profile} />
 
-      {/* Sections 04-08 — placeholders, replaced incrementally in Phases 7f-7j */}
+      {/* Section 04 — Candidates & clients assigned (Phase 7f — built) */}
+      <SpecialistSectionAssignments profile={profile} />
+
+      {/* Section 05 — Notes (Phase 7g — built) */}
+      <SpecialistSectionNotes profile={profile} />
+
+      {/* Sections 06-08 — placeholders, replaced incrementally in Phases 7h-7j */}
       <div>
         {PLACEHOLDER_SECTIONS.map((s) => (
           <section
