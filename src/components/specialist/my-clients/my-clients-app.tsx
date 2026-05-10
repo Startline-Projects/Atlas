@@ -2,6 +2,7 @@
 
 import { Download, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
 import {
   RosterActionButton,
   RosterAttentionStrip,
@@ -12,6 +13,7 @@ import {
   RosterShell,
   RosterSheet,
   RosterTable,
+  useQueuedFlash,
   type AttentionCardData,
   type ColumnDef,
 } from "@/components/specialist/people-shared";
@@ -24,8 +26,18 @@ import {
   managedClients,
   type ManagedClient,
 } from "@/lib/mock-data/specialist/my-clients";
+import {
+  WorkflowUnavailableModal,
+  type WorkflowKind,
+} from "@/components/specialist/shell/workflow-unavailable-modal";
 import { ClientRow } from "./client-row";
 import { ClientSheetContent } from "./client-sheet-content";
+
+/** Identifier for the open workflow modal — kind + subject. */
+type WorkflowModalState = { workflow: WorkflowKind; subjectName: string } | null;
+
+/** Body-less invite acknowledgement uses a generic subject. */
+const INVITE_SUBJECT = "the new client";
 
 const COLUMNS: ReadonlyArray<ColumnDef> = [
   { key: "client", label: "Client" },
@@ -88,6 +100,15 @@ export function MyClientsApp() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sheetId, setSheetId] = useState<string | null>(null);
 
+  /* Queued-flash trigger — used for BULK acknowledgements only here.
+     Single-entity workflow actions (sheet + kebab + Invite header)
+     use WorkflowUnavailableModal instead — see honesty-of-treatment
+     scaling rule in CONVERSION_LOG. */
+  const { flash, fireQueuedFlash } = useQueuedFlash();
+
+  /* Workflow modal state — null when closed; { workflow, subjectName } when open. */
+  const [workflowModal, setWorkflowModal] = useState<WorkflowModalState>(null);
+
   const cohortCounts = useMemo(() => {
     const counts: Record<string, number> = { all: managedClients.length };
     for (const c of CLIENT_COHORTS) {
@@ -130,6 +151,50 @@ export function MyClientsApp() {
   const sheetClient =
     sheetId !== null ? managedClients.find((c) => c.id === sheetId) : null;
 
+  /* Row + sheet workflow callbacks — all open WorkflowUnavailableModal
+     with the kind-specific copy + the client's company name. */
+  const openWorkflow = (workflow: WorkflowKind, subjectName: string) =>
+    setWorkflowModal({ workflow, subjectName });
+
+  const handleSendBrief = (c: ManagedClient) =>
+    openWorkflow("send-brief", c.companyName);
+  const handleSuggestTalent = (c: ManagedClient) =>
+    openWorkflow("suggest-talent", c.companyName);
+  const handleViewContracts = (c: ManagedClient) =>
+    openWorkflow("contracts", c.companyName);
+  const handleOpenBriefs = (c: ManagedClient) =>
+    openWorkflow("briefs", c.companyName);
+  const handleTagClient = (c: ManagedClient) =>
+    openWorkflow("tag-client", c.companyName);
+  const handlePauseClient = (c: ManagedClient) =>
+    openWorkflow("pause-client", c.companyName);
+
+  const rowCallbacks = {
+    onSendBrief: handleSendBrief,
+    onSuggestTalent: handleSuggestTalent,
+    onViewContracts: handleViewContracts,
+    onTagClient: handleTagClient,
+    onPauseClient: handlePauseClient,
+  };
+  const sheetCallbacks = {
+    onViewContracts: handleViewContracts,
+    onOpenBriefs: handleOpenBriefs,
+    onSuggestTalent: handleSuggestTalent,
+    onPauseClient: handlePauseClient,
+  };
+
+  /* Bulk-action handlers — fire flash with N-clients copy + clear selection.
+     Multi-target acknowledgement (no specific entity) → flash, not modal. */
+  const fireBulkFlash = (verb: string) => {
+    fireQueuedFlash(`${verb} queued for ${selected.size} clients`);
+    setSelected(new Set());
+  };
+
+  /* Header "Invite client" handler — opens WorkflowUnavailableModal.
+     Workflow-style action that warrants drilling into a feature surface,
+     not just a flash acknowledgement. */
+  const handleInviteClient = () => openWorkflow("invite-client", INVITE_SUBJECT);
+
   const attentionCardData: ReadonlyArray<AttentionCardData> = useMemo(
     () =>
       clientAttentionCards
@@ -169,7 +234,10 @@ export function MyClientsApp() {
               <RosterActionButton
                 variant="primary"
                 icon={<Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />}
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleInviteClient();
+                }}
               >
                 Invite client
               </RosterActionButton>
@@ -236,7 +304,7 @@ export function MyClientsApp() {
           onToggleAll={toggleAll}
           allSelected={allSelected}
           someSelected={someSelected}
-          renderRow={(c) => <ClientRow c={c} />}
+          renderRow={(c) => <ClientRow c={c} callbacks={rowCallbacks} />}
           onRowOpen={setSheetId}
           empty={{
             title: "No clients match your filters",
@@ -251,23 +319,23 @@ export function MyClientsApp() {
           {
             key: "brief",
             label: "Send brief request",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Send brief request"),
           },
           {
             key: "list",
             label: "Add to list",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Add to list"),
           },
           {
             key: "tag",
             label: "Tag",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Tag"),
           },
           {
             key: "pause",
             label: "Pause",
             tone: "danger",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Pause"),
           },
         ]}
         onClear={() => setSelected(new Set())}
@@ -278,8 +346,19 @@ export function MyClientsApp() {
         onClose={() => setSheetId(null)}
         ariaLabel="Client detail"
       >
-        {sheetClient ? <ClientSheetContent c={sheetClient} /> : null}
+        {sheetClient ? (
+          <ClientSheetContent c={sheetClient} callbacks={sheetCallbacks} />
+        ) : null}
       </RosterSheet>
+
+      <WorkflowUnavailableModal
+        open={workflowModal !== null}
+        workflow={workflowModal?.workflow ?? "contracts"}
+        subjectName={workflowModal?.subjectName ?? ""}
+        onClose={() => setWorkflowModal(null)}
+      />
+
+      <ApprovedFlash {...flash} />
     </>
   );
 }

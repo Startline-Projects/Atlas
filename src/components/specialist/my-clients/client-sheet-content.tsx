@@ -18,6 +18,17 @@ import type {
 } from "@/lib/mock-data/specialist/my-clients";
 import { cn } from "@/lib/utils/cn";
 
+export type ClientSheetCallbacks = {
+  /** Fire a queued flash for "Open contracts". */
+  onViewContracts: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Open briefs". */
+  onOpenBriefs: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Suggest new talent". */
+  onSuggestTalent: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Pause client" (danger tone). */
+  onPauseClient: (c: ManagedClient) => void;
+};
+
 const TIMELINE_BULLET: Record<ClientTimelineEvent["kind"], string> = {
   hire: "bg-success",
   "brief-sent": "bg-ink",
@@ -52,7 +63,13 @@ const HIRE_STATUS_PILL: Record<ClientHireSummary["status"], string> = {
   paused: "bg-amber/14 text-amber",
 };
 
-export function ClientSheetContent({ c }: { c: ManagedClient }) {
+export function ClientSheetContent({
+  c,
+  callbacks,
+}: {
+  c: ManagedClient;
+  callbacks: ClientSheetCallbacks;
+}) {
   return (
     <>
       <SheetHero
@@ -172,22 +189,26 @@ export function ClientSheetContent({ c }: { c: ManagedClient }) {
             key: "contracts",
             label: "View contracts",
             icon: <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onViewContracts(c),
           },
           {
             key: "briefs",
             label: "Open briefs",
             icon: <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onOpenBriefs(c),
           },
           {
             key: "suggest",
             label: "Suggest new talent",
             icon: <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onSuggestTalent(c),
           },
           {
             key: "pause",
             label: "Pause client",
             icon: <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />,
             variant: "danger",
+            onClick: () => callbacks.onPauseClient(c),
           },
         ]}
       />

@@ -2822,3 +2822,366 @@ Bounded: single-pass sweep, no component changes.
 All four extractions share the **"build pre-emptively at the 2nd-consumer threshold"** convention from CONVERSION_LOG. None broke a Sessions 1-6 layer.
 
 ---
+
+## Post-conversion polish — My-clients tab interactions (commit pending)
+
+End-to-end audit of `/specialist/my-clients` (12-client roster with
+cohort tabs, search, sort, attention strip, table, bulk action bar,
+and slide-over client sheet). The shared people-shared layer matures
+post-my-candidates; this commit is mostly **consuming** the primitives
+extracted in `39359bf` rather than building new ones.
+
+This is the polish series' **first follow-on consumer commit** — it
+validates the 2-consumer extraction rule for both `RowOverflowMenu`
+and `useQueuedFlash`.
+
+### Files modified (3)
+
+| File | Change |
+|---|---|
+| `components/specialist/my-clients/client-row.tsx` | Removed inert "Open hiring history" arrow button (no `/specialist/clients/[id]` route exists). Replaced inert "More" button with `<RowOverflowMenu>` (2nd consumer, after my-candidates row). New `ClientRowCallbacks` type — 5 workflow callbacks (Send brief / Suggest talent / View contracts / Tag client / Pause client). 7-item menu shape: 1 link + 5 actions + 1 divider. |
+| `components/specialist/my-clients/client-sheet-content.tsx` | New `ClientSheetCallbacks` type — 4 workflow callbacks (View contracts / Open briefs / Suggest talent / Pause client). Wired `onClick` on all 4 inert sheet actions. |
+| `components/specialist/my-clients/my-clients-app.tsx` | Imported `useQueuedFlash` + `ApprovedFlash` (2nd consumer). 6 named handlers (Send brief / Suggest talent / View contracts / Open briefs / Tag client / Pause client). Wired bulk-action handlers to `fireBulkFlash` helper. Wired A3 "Invite client" header button to a queued flash. Renders `<ApprovedFlash {...flash} />` at the orchestrator root. |
+
+### Wired (10 sites in this commit)
+
+| # | Site | Treatment |
+|---|---|---|
+| 1 | A3 "Invite client" header button | `fireQueuedFlash("Invite link queued for new client")` |
+| 2 | D6 row 3-dot kebab | `<RowOverflowMenu>` with 7 items (Message client link + Send brief / Suggest talent / View contracts / Tag client / divider / Pause client danger) |
+| 3 | E2 "Send brief request" bulk | `fireQueuedFlash("Send brief request queued for N clients")` |
+| 4 | E3 "Add to list" bulk | `fireQueuedFlash("Add to list queued for N clients")` |
+| 5 | E4 "Tag" bulk | `fireQueuedFlash("Tag queued for N clients")` |
+| 6 | E5 "Pause" bulk (danger) | `fireQueuedFlash("Pause queued for N clients")` |
+| 7 | F12 sheet "View contracts" | `fireQueuedFlash("Open contracts for {companyName}")` |
+| 8 | F13 sheet "Open briefs" | `fireQueuedFlash("Open briefs for {companyName}")` |
+| 9 | F14 sheet "Suggest new talent" | `fireQueuedFlash("Suggest talent for {companyName}")` |
+| 10 | F15 sheet "Pause client" (danger) | `fireQueuedFlash("Pause queued for {companyName}")` |
+
+### Removed (1 misleading affordance)
+
+**D5 "Open hiring history" arrow button** — `<button>` with no onClick
+on every row, aria-label promised navigation to a hiring-history view
+but no `/specialist/clients/[id]` route exists. Same precedent as the
+dashboard "Filter" span (`8016b7d`), review-queue work-sample buttons
+(`6241650`), and the misleading affordance test established earlier.
+
+Sheet click already handles drill-into-client; the row's action
+cluster is now Message link + RowOverflowMenu kebab — cleaner UX,
+honest affordances.
+
+### Niche-action split rule (Q4) — formally locked
+
+Two niche backend-blocked header actions on this view, treated
+differently:
+
+| Action | Treatment | Rule |
+|---|---|---|
+| A2 "Export" | **Leave silent + document** | Rare administrative action — users don't reasonably attempt this in a normal week's work |
+| A3 "Invite client" | **Wire to `fireQueuedFlash`** | Workflow action users regularly attempt — dead click would actively confuse |
+
+**Locked rule:** *"Workflow actions that users regularly attempt
+(Invite, Send brief, Pause, Schedule, Suggest) get `useQueuedFlash`
+acknowledgement. Rare administrative actions (Export, advanced
+reporting, batch generation) get silent leave-inert + document."*
+
+**Test:** Would a user reasonably attempt this in a normal week's
+work? **Yes** → flash. **Rare** → silent.
+
+This complements (not replaces) the existing rule from `39359bf`:
+"reserve flash treatment for high-traffic interactions where dead
+clicks would actively confuse users." That rule defines the
+threshold; this rule splits the threshold further between regular-
+workflow vs rare-admin within the niche-but-blocked bucket.
+
+### `RowOverflowMenu` — 2nd consumer validated
+
+Same shape as `candidate-row.tsx` (1st consumer in `39359bf`).
+**Zero API changes** required. Confirms the discriminated-union item
+shape (`link` / `action` / `divider`) and `triggerId` /
+`triggerLabel` / `items` props handle a different domain (clients vs
+candidates) without extension.
+
+| Consumer | Items | Status |
+|---|---|---|
+| `candidate-row.tsx` | 6 (link+link+4 action+divider+danger action) | 1st (39359bf) |
+| `client-row.tsx` | 7 (link+4 action+divider+danger action) | 2nd (this commit) |
+| `chat-shared/chat-header.tsx` | TBD — uses `renderTrigger` for `ActionIconButton` styling | Pending |
+
+The portal opacity-cascade fix (the `createPortal(menu, document.body)`
+approach from `39359bf`) carries cleanly — client-row's action cluster
+also uses `opacity-40 group-hover:opacity-100`, so the menu would have
+been invisible without the portal. Visual verification: menu opens
+fully opaque with row data correctly hidden behind it.
+
+### `useQueuedFlash` — 2nd-major consumer validated
+
+Same hook shape (`{ flash, fireQueuedFlash }`). My-clients adds 9
+distinct callsites (1 header + 4 bulk + 4 sheet) plus a `fireBulkFlash`
+helper. My-candidates had 8 sites + `fireBulkFlash`. **No hook
+changes** needed — the message-string + opts shape adapts cleanly to
+client-side copy ("Pause queued for **{companyName}**" vs
+"Mark-unavailable queued for **{fullName}**").
+
+| Consumer | Callsites | Helper | Status |
+|---|---|---|---|
+| `my-candidates-app.tsx` | 8 | `fireBulkFlash` | 1st (39359bf) |
+| `my-clients-app.tsx` | 9 | `fireBulkFlash` | 2nd (this commit) |
+
+### Cross-session ID gap status: **clean** (1st of any view)
+
+All 12 `managedClients` IDs have matching `clientChats` threads —
+100% coverage. Logged: my-clients is the cleanest data surface so
+far (vs 3 missing chat threads in my-candidates and various
+non-canonical names in dashboard / recert).
+
+### Polish-data items (cross-session ID backfill sweep)
+
+The following items are gathered for a single dedicated future polish
+step. Bounded scope; each is a mock-data backfill, not a component
+change.
+
+1. `Engagement.clientId` (recert-queue + my-candidates sheet)
+2. `FeedbackQuote.clientId` (recert-queue feedback section)
+3. Add Hana / Kanya / Linh chat threads to `candidate-chats.ts`
+4. **`ClientHireSummary` rows on the my-clients sheet** —
+   `candidateId` already exists on the type; need to wrap row in
+   `<Link>` to `/specialist/candidate-chat?id=...` (or
+   `/specialist/candidates/[id]`)
+5. Other hardcoded names without IDs found during the sweep
+
+### Carryover verifications
+
+| Component | My-clients use | Status |
+|---|---|---|
+| `RowOverflowMenu` (built `39359bf`, portaled) | ✓ Wired (2nd consumer) — kebab opens fully opaque, escapes `opacity-40` cascade | ✓ |
+| `useQueuedFlash` (built `39359bf`) | ✓ Wired (2nd-major consumer, 9 sites) | ✓ |
+| `SchedulingModal` (built `39359bf`) | NOT used here — sheet has no Schedule action; chat-header is a separate consumer | ✓ Confirmed not needed |
+| `PreviewUnavailableModal` (built `6241650`) | NOT used here — Export niche-rule applies | ✓ |
+| `RosterShell` / `RosterHeader` / `RosterCohorts` / `RosterFilters` / `RosterAttentionStrip` / `RosterTable` / `RosterBulkBar` / `RosterSheet` / `RosterSheetParts` | All 9 used | ✓ Mature consumer |
+| my-candidates surface | NOT touched | ✓ Verified — same primitives consumed in both views, no regression |
+
+### What's left for future polish
+
+- `chat-shared/chat-header.tsx` — 3rd consumer of both `RowOverflowMenu` (More button) and `SchedulingModal` (Schedule button). Single file, 2 thread kinds (candidate-chat + client-chat).
+- `candidate-profile/profile-hero.tsx` — 2nd consumer of `SchedulingModal` (Schedule check-in hero action).
+- Cross-session ID backfill sweep (5 items above).
+
+---
+
+## Post-conversion polish — Two bug fixes (commit pending)
+
+Two bugs surfaced in user testing of the prior polish work. Both
+required structural fixes (not class tweaks) and surfaced new
+patterns now locked as conventions.
+
+### Bug 1 — Topbar popovers clipped on scroll
+
+**Symptom:** Topbar bell / messages / user-menu popovers (built in
+`dd2d450`) opened with their bottom rows cut off; "Sign out" was
+half-visible with page content showing through. Bug visible across
+all specialist routes when the sticky topbar's ancestor had
+`overflow:hidden`.
+
+**Root cause:** Same shape as the kebab opacity-cascade bug fixed in
+`39359bf`. The 3 popovers used `absolute top-full right-0` positioning
+inside the topbar's stacking context — clipping ancestors silently
+truncated the panel's lower edge.
+
+**Fix:** Portal all 3 popovers to `document.body` using the same
+pattern locked in `RowOverflowMenu`:
+- `useLayoutEffect` queries the trigger by `data-topbar-trigger="<key>"`
+  data-attribute and computes position from `getBoundingClientRect()`
+- Position applied via `position: fixed` + style `top` / `right`
+- Renders via `createPortal(panel, document.body)`
+- Window resize + capture-phase scroll listeners close the panel
+- z-[5] (popover floats below the topbar but above page content;
+  topbar's z-[6] never overlaps the panel because the panel is
+  positioned at `triggerRect.bottom + 8`)
+
+**Lint workaround locked:** the codebase's
+`react-hooks/set-state-in-effect` rule fires on synchronous setState
+in effects following a `document.querySelector()` call, but accepts
+the same pattern when reading from a `useRef.current`. Documented
+inline in each panel: cache the queried element in a `triggerRef` on
+first open, then read from it. This makes the effect's setState path
+look guarded-by-ref to the linter (matching `RowOverflowMenu`'s
+shape that already passes), while preserving the runtime behavior.
+
+**Files modified:** `topbar-notifications-panel.tsx` /
+`topbar-messages-panel.tsx` / `topbar-user-menu.tsx`. Each gets the
+same portal + triggerRef + resize/scroll-close treatment.
+
+### Bug 2 — Sheet workflow buttons fired flash, expected modal
+
+**Symptom:** Clicking "View contracts" / "Open briefs" / "Suggest
+talent" / "Pause client" on the my-clients sheet (and equivalents on
+my-candidates) fired a small warn-tone flash overlay. User reported
+expecting actual UI to drill into a feature surface, not a
+fire-and-dismiss acknowledgement.
+
+**Diagnosis:** The flash treatment from `useQueuedFlash` (built in
+`39359bf`) was honest but underwhelming for **single-entity** workflow
+buttons. Bulk actions correctly use flash (multi-target
+acknowledgement), but a click on a specific Vertex / Marie /
+[entity] should give the user a sense of the eventual product
+surface — what the feature WILL do when wired.
+
+**New shared primitive: `WorkflowUnavailableModal`**
+
+Lives at `src/components/specialist/shell/workflow-unavailable-modal.tsx`.
+Wraps `queue-shared/ReviewModal` for shell inheritance (Esc /
+backdrop / scroll-lock / aesthetic). Same wrapping pattern as
+`PreviewUnavailableModal` (commit `6241650`) and `SchedulingModal`
+(commit `39359bf`).
+
+**API:**
+
+```tsx
+type WorkflowKind =
+  | "contracts" | "briefs" | "send-brief" | "suggest-talent"
+  | "tag-client" | "invite-client" | "pause-client"
+  | "suggest-for-client" | "flag-recert" | "mark-unavailable";
+
+<WorkflowUnavailableModal
+  open={isOpen}
+  workflow={kind}
+  subjectName="Vertex Health" | "Marie Okonkwo" | ...
+  onClose={() => setOpen(false)}
+/>
+```
+
+Body content interpolates `subjectName` and describes what the feature
+WILL do (not just "backend pending"):
+
+- contracts → "Contract list lands when the contracts service is wired. This will show all active and past contracts for {subjectName}, with status, hire counts, and renewal dates."
+- briefs → "Brief library lands when the briefs service is wired. …"
+- send-brief → "Brief composer lands when the briefs service is wired. …"
+- suggest-talent → "Talent matching lands when the matching service is wired. …"
+- tag-client → "Client tagging lands when the tagging service is wired. …"
+- invite-client → "Client invite flow lands when the auth service is wired. …"
+- pause-client → "Client pause lands when the engagements service is wired. …"
+- suggest-for-client → "Client matching lands when the matching service is wired. …"
+- flag-recert → "Re-cert flagging lands when the lifecycle service is wired. …"
+- mark-unavailable → "Availability toggle lands when the engagements service is wired. …"
+
+Single "Got it" CTA closes the modal.
+
+### Honesty-of-treatment scaling — formal rule (locked)
+
+**Backend-blocked actions get one of three treatments:**
+
+| Treatment | Use when | Examples |
+|---|---|---|
+| `useQueuedFlash` | Bulk acknowledgement (multi-target) | "Pause queued for 4 clients", "Bulk message queued for 8 candidates" |
+| `WorkflowUnavailableModal` | Single-entity workflow (user clicked a specific entity, expects feature surface) | View contracts for Acme · Suggest for client match · Pause Vertex |
+| Silent (leave inert + document) | Niche admin action (rare in normal work week) | Export · advanced reporting · batch generation |
+
+**Test for which to use:**
+1. Did the user click on a specific entity (Vertex / Marie / DSP-2026-04-12)? → modal
+2. Did the user click on a multi-select group? → flash
+3. Is this an action a typical user attempts in a normal work week? **No** → silent.
+
+**Decision precedence:** The earlier "niche-action split" rule
+(commit `39359bf`) was a special case of this scaling — it split
+between flash (Invite client) and silent (Export) within the
+single-entity bucket. With `WorkflowUnavailableModal` available,
+single-entity actions on a Roster header / Sheet / Kebab now
+upgrade from flash to modal. Bulk actions stay as flash.
+
+### Wired (replaced 11 fireQueuedFlash calls with modal)
+
+| Surface | Sites | Wired now |
+|---|---|---|
+| my-clients header | 1 (Invite client) | modal |
+| my-clients row kebab | 5 (Send brief / Suggest talent / View contracts / Tag client / Pause client) | modal |
+| my-clients sheet | 4 (Contracts / Briefs / Suggest talent / Pause client) | modal |
+| my-candidates row kebab | 3 (Suggest for client / Flag for re-cert / Mark unavailable) | modal |
+| my-candidates sheet | 2 (Suggest for client match / Flag for re-cert) | modal |
+
+**Bulk actions kept as `fireQueuedFlash`** in both views — multi-target acknowledgement, not "show me the thing":
+
+| Surface | Sites | Treatment unchanged |
+|---|---|---|
+| my-clients bulk bar | 4 (Send brief request / Add to list / Tag / Pause) | flash |
+| my-candidates bulk bar | 4 (Bulk message / Add-to-list / Bulk re-cert flag / Pause) | flash |
+
+**SchedulingModal kept** for my-candidates Schedule check-in (sheet + kebab) — it has real date+time picker UI, not a "feature in development" placeholder. Workflow modal would dilute that experience.
+
+### `WorkflowUnavailableModal` — 4-file consumer adoption at extraction time
+
+| Consumer file | Workflow kinds used |
+|---|---|
+| `my-clients/my-clients-app.tsx` | 7 (contracts / briefs / send-brief / suggest-talent / tag-client / invite-client / pause-client) |
+| `my-candidates/my-candidates-app.tsx` | 3 (suggest-for-client / flag-recert / mark-unavailable) |
+
+10 of the 10 declared kinds are wired at this commit. Anticipated future consumers: `candidate-profile/profile-hero.tsx` (hero workflow buttons), `chat-shared/chat-header.tsx` (More menu items).
+
+### `useQueuedFlash` scope reduced
+
+After this commit, `useQueuedFlash` consumers are scoped to:
+- Bulk-action bars (my-candidates × 4, my-clients × 4 = 8 sites)
+- `SchedulingModal` confirm flash (my-candidates × 1)
+
+Single-entity workflow actions migrated to the modal. The hook
+remains useful — bulk acknowledgements and the schedule-confirm flash
+still benefit from the transient, non-blocking flash UX.
+
+### Files modified (5) + 1 added
+
+| File | Change |
+|---|---|
+| `shell/workflow-unavailable-modal.tsx` | NEW shared primitive (~165 lines) |
+| `shell/topbar-notifications-panel.tsx` | Portaled to body via `createPortal`; added `triggerRef` + `useLayoutEffect` positioning + resize/scroll close |
+| `shell/topbar-messages-panel.tsx` | Same portal treatment |
+| `shell/topbar-user-menu.tsx` | Same portal treatment |
+| `my-clients/my-clients-app.tsx` | 6 single-entity handlers (was flash) → `setWorkflowModal({ workflow, subjectName })`. Mounted `<WorkflowUnavailableModal>`. Bulk handlers untouched. |
+| `my-candidates/my-candidates-app.tsx` | 3 single-entity handlers (was flash) → `setWorkflowModal({...})`. Mounted `<WorkflowUnavailableModal>`. Schedule + bulk untouched. |
+
+### What's left for future polish
+
+Same as before:
+- `chat-shared/chat-header.tsx` — 3rd consumer of both `RowOverflowMenu` and `SchedulingModal`, plus a likely `WorkflowUnavailableModal` consumer for any "More" menu workflow items
+- `candidate-profile/profile-hero.tsx` — 2nd consumer of `SchedulingModal`, likely a `WorkflowUnavailableModal` consumer for hero workflow buttons (Suggest / Flag / Pause analogs)
+- Cross-session ID backfill sweep
+
+---
+
+### Sticky-stack convention — z-index for portaled popovers (clarified)
+
+The portal-to-`document.body` pattern (locked in `39359bf` for
+`RowOverflowMenu` and extended to topbar popovers in this fix series)
+removes ancestor clipping but does NOT remove z-index conflicts.
+**The trigger's anchoring context determines the right z-index for
+the panel.**
+
+| Popover anchor context | z-index | Reason |
+|---|---|---|
+| In-page contextual menu (trigger inside content) | `z-[5]` | Sits BELOW topbar (z-[6]), ABOVE page content. Topbar correctly paints over the trigger area on scroll. |
+| Topbar-anchored popover (trigger inside topbar) | `z-[20]` | Sits ABOVE the topbar. The trigger is part of the topbar; the panel extends visually past the topbar bottom edge but must outrank it during render so the topbar doesn't paint over the panel's top edge. |
+| Modal with backdrop overlay | `z-[40+]` | Sits above everything; backdrop is also at this level. |
+
+**Test for which to use:** *"Where is my trigger? Inside content
+→ `z-[5]`. Inside topbar → `z-[20]`. Backdrop overlay → `z-[40+]`."*
+
+The first portal extraction (`RowOverflowMenu`) hit only the in-page
+case and used `z-[5]`; the topbar popover portal refactor copied that
+value verbatim, which produced a subtle painting bug where the
+topbar (z-[6]) covered the popover's top edge during scroll/render
+transitions. Locked in this fix: `z-[20]` for all three topbar
+popovers (notifications · messages · user menu). RowOverflowMenu
+remains at `z-[5]` (correct for its anchor context).
+
+**Files at this z-index level after the fix:**
+
+| z-index | Element | File |
+|---|---|---|
+| z-[5] | RowOverflowMenu (in-page contextual menu) | `people-shared/row-overflow-menu.tsx` |
+| z-[6] | Topbar | `shell/topbar.tsx` |
+| z-[7] | Cohort tabs (in-page sticky) | `people-shared/roster-cohorts.tsx` |
+| z-[20] | Notifications popover | `shell/topbar-notifications-panel.tsx` |
+| z-[20] | Messages popover | `shell/topbar-messages-panel.tsx` |
+| z-[20] | User menu popover | `shell/topbar-user-menu.tsx` |
+| z-[40+] | Modal overlays (ReviewModal, etc.) | `queue-shared/review-modal.tsx` |
+
+---

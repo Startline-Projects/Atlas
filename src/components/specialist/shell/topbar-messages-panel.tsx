@@ -22,7 +22,8 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   TOPBAR_MESSAGE_TABS,
   TOPBAR_VIEW_ALL_HREF,
@@ -33,6 +34,11 @@ import {
 } from "@/lib/mock-data/specialist/topbar-feed";
 import { AVATAR_GRADIENTS } from "@/lib/mock-data/specialist/queue-types";
 import { cn } from "@/lib/utils/cn";
+
+const TRIGGER_KEY = "messages";
+const PANEL_GAP = 8;
+
+type Position = { top: number; right: number };
 
 const CLIENT_LOGO_TONE: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
   1: "bg-navy/10 text-navy",
@@ -52,8 +58,31 @@ export function TopbarMessagesPanel({
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<TopbarMessageTab>("candidates");
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const [position, setPosition] = useState<Position | null>(null);
 
-  /* Click-outside + Esc to close. */
+  /* Compute viewport-fixed position from the trigger's bounding rect.
+     Same portal pattern as RowOverflowMenu (39359bf) and the
+     notifications panel — escapes ancestor overflow:hidden clipping.
+     Trigger ref caches the queried element to avoid the linter false
+     positive on setState-after-querySelector (see notifications panel
+     comment for full rationale). */
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    if (!triggerRef.current) {
+      triggerRef.current = document.querySelector<HTMLElement>(
+        `[data-topbar-trigger="${TRIGGER_KEY}"]`,
+      );
+    }
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPosition({
+      top: rect.bottom + PANEL_GAP,
+      right: window.innerWidth - rect.right,
+    });
+  }, [isOpen]);
+
+  /* Click-outside + Esc + resize/scroll to close. */
   useEffect(() => {
     if (!isOpen) return;
     function onDown(e: MouseEvent) {
@@ -62,7 +91,7 @@ export function TopbarMessagesPanel({
       if (ref.current.contains(target)) return;
       if (
         target instanceof HTMLElement &&
-        target.closest('[data-topbar-trigger="messages"]')
+        target.closest(`[data-topbar-trigger="${TRIGGER_KEY}"]`)
       ) {
         return;
       }
@@ -71,25 +100,33 @@ export function TopbarMessagesPanel({
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
+    function onScrollOrResize() {
+      onClose();
+    }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !position) return null;
 
   const rows =
     activeTab === "candidates" ? topbarRecentCandidates : topbarRecentClients;
 
-  return (
+  const panel = (
     <div
       ref={ref}
       role="dialog"
       aria-label="Recent messages"
-      className="border-line bg-paper absolute top-full right-0 z-[30] mt-1.5 w-[360px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
+      style={{ top: position.top, right: position.right }}
+      className="border-line bg-paper fixed z-[20] w-[360px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
     >
       {/* Header */}
       <header className="border-line-soft border-b">
@@ -162,6 +199,8 @@ export function TopbarMessagesPanel({
       </footer>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }
 
 function MessageRow({

@@ -8,10 +8,27 @@
  *             icon (kind-keyed) + title + detail + when + unread dot
  *   Footer  · "View all notifications →" (e.preventDefault)
  *
- * Closes on Esc, click outside, item click. Outside-click is detected
- * via mousedown on document — same precedent as chat-shared/templates-
- * popover. The trigger button in topbar.tsx carries the
- * `data-topbar-trigger` attribute so we ignore mousedowns on it.
+ * Closes on Esc, click outside, item click, window resize, window scroll.
+ *
+ * **Portaled to document.body** — same precedent as RowOverflowMenu
+ * (commit 39359bf). The popover renders OUTSIDE the topbar's stacking
+ * context to escape any ancestor `overflow:hidden` clipping (which
+ * was hiding the panel's bottom rows on scroll). Position is computed
+ * from the trigger's `getBoundingClientRect()` via `useLayoutEffect`
+ * and applied as `position: fixed` viewport coords. The trigger lives
+ * in topbar.tsx with `data-topbar-trigger="notifications"` — we
+ * `querySelector` it on open. Click-outside detection still uses the
+ * same data-attribute exclusion to avoid closing on the trigger fire.
+ *
+ * z-[20] sits ABOVE the topbar (z-[6]) — required because the
+ * trigger is anchored INSIDE the topbar; even though the panel
+ * positions below the topbar visually (`top: triggerRect.bottom + 8`),
+ * the topbar's higher z-index would otherwise paint over the panel's
+ * top edge during scroll/render transitions. RowOverflowMenu uses
+ * z-[5] (correctly below topbar) because its trigger is in page
+ * content. Rule: popover z-index follows the trigger's context —
+ * trigger in content → z-[5]; trigger in topbar → z-[20]; modal
+ * backdrop → z-[40+]. See CONVERSION_LOG.
  *
  * Visual-only: "Mark all as read" + "View all notifications" do not
  * mutate state — they're pending services. Item rows DO navigate when
@@ -21,7 +38,8 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Bell,
@@ -36,6 +54,11 @@ import {
   type TopbarNotificationKind,
 } from "@/lib/mock-data/specialist/topbar-feed";
 import { cn } from "@/lib/utils/cn";
+
+const TRIGGER_KEY = "notifications";
+const PANEL_GAP = 8;
+
+type Position = { top: number; right: number };
 
 const KIND_ICON: Record<TopbarNotificationKind, LucideIcon> = {
   review: Bell,
@@ -61,8 +84,34 @@ export function TopbarNotificationsPanel({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  /* Cache the trigger element in a ref so the useLayoutEffect can read
+     it without re-querying. Mirrors the ref-based shape of
+     RowOverflowMenu's wrapperRef (which the lint rule
+     `react-hooks/set-state-in-effect` accepts), avoiding the false
+     positive that fires when setState follows a `document.querySelector`
+     call in the same effect. */
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const [position, setPosition] = useState<Position | null>(null);
 
-  /* Click-outside + Esc to close. */
+  /* Compute viewport-fixed position from the trigger's bounding rect.
+     Trigger lives in topbar.tsx — found via data-attribute on first
+     open and cached in `triggerRef`. */
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    if (!triggerRef.current) {
+      triggerRef.current = document.querySelector<HTMLElement>(
+        `[data-topbar-trigger="${TRIGGER_KEY}"]`,
+      );
+    }
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPosition({
+      top: rect.bottom + PANEL_GAP,
+      right: window.innerWidth - rect.right,
+    });
+  }, [isOpen]);
+
+  /* Click-outside + Esc + resize/scroll to close. */
   useEffect(() => {
     if (!isOpen) return;
     function onDown(e: MouseEvent) {
@@ -71,7 +120,7 @@ export function TopbarNotificationsPanel({
       if (ref.current.contains(target)) return;
       if (
         target instanceof HTMLElement &&
-        target.closest('[data-topbar-trigger="notifications"]')
+        target.closest(`[data-topbar-trigger="${TRIGGER_KEY}"]`)
       ) {
         return;
       }
@@ -80,22 +129,31 @@ export function TopbarNotificationsPanel({
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
+    function onScrollOrResize() {
+      onClose();
+    }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onScrollOrResize);
+    /* Capture-phase scroll catches nested scroll containers too. */
+    window.addEventListener("scroll", onScrollOrResize, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !position) return null;
 
-  return (
+  const panel = (
     <div
       ref={ref}
       role="dialog"
       aria-label="Notifications"
-      className="border-line bg-paper absolute top-full right-0 z-[30] mt-1.5 w-[360px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
+      style={{ top: position.top, right: position.right }}
+      className="border-line bg-paper fixed z-[20] w-[360px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
     >
       {/* Header */}
       <header className="border-line-soft flex items-center justify-between gap-3 border-b px-4 py-3">
@@ -138,6 +196,8 @@ export function TopbarNotificationsPanel({
       </footer>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }
 
 function NotificationRow({

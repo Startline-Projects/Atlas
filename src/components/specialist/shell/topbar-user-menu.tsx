@@ -18,9 +18,15 @@
  */
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { LifeBuoy, LogOut, Settings, UserCircle2 } from "lucide-react";
 import { currentUser } from "@/lib/mock-data/specialist/current-user";
+
+const TRIGGER_KEY = "user";
+const PANEL_GAP = 8;
+
+type Position = { top: number; right: number };
 
 export function TopbarUserMenu({
   isOpen,
@@ -30,8 +36,31 @@ export function TopbarUserMenu({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const [position, setPosition] = useState<Position | null>(null);
 
-  /* Click-outside + Esc to close. */
+  /* Compute viewport-fixed position from the trigger's bounding rect.
+     Same portal pattern as RowOverflowMenu (39359bf) and the
+     notifications + messages panels — escapes ancestor overflow:hidden
+     clipping that was cutting off the bottom of the menu (Sign out
+     row was being clipped on scroll). Trigger ref caches the queried
+     element (see notifications panel comment for lint rationale). */
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    if (!triggerRef.current) {
+      triggerRef.current = document.querySelector<HTMLElement>(
+        `[data-topbar-trigger="${TRIGGER_KEY}"]`,
+      );
+    }
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPosition({
+      top: rect.bottom + PANEL_GAP,
+      right: window.innerWidth - rect.right,
+    });
+  }, [isOpen]);
+
+  /* Click-outside + Esc + resize/scroll to close. */
   useEffect(() => {
     if (!isOpen) return;
     function onDown(e: MouseEvent) {
@@ -40,7 +69,7 @@ export function TopbarUserMenu({
       if (ref.current.contains(target)) return;
       if (
         target instanceof HTMLElement &&
-        target.closest('[data-topbar-trigger="user"]')
+        target.closest(`[data-topbar-trigger="${TRIGGER_KEY}"]`)
       ) {
         return;
       }
@@ -49,22 +78,30 @@ export function TopbarUserMenu({
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
+    function onScrollOrResize() {
+      onClose();
+    }
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("scroll", onScrollOrResize, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !position) return null;
 
-  return (
+  const panel = (
     <div
       ref={ref}
       role="menu"
       aria-label="Account menu"
-      className="border-line bg-paper absolute top-full right-0 z-[30] mt-1.5 w-[260px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
+      style={{ top: position.top, right: position.right }}
+      className="border-line bg-paper fixed z-[20] w-[260px] overflow-hidden rounded-xl border shadow-[0_8px_24px_rgba(14,14,12,0.12)]"
     >
       {/* Header — avatar + display name + role caption */}
       <header className="border-line-soft flex items-center gap-3 border-b px-4 py-3">
@@ -129,6 +166,8 @@ export function TopbarUserMenu({
       </footer>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }
 
 /* ============================================================

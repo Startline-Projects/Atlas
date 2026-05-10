@@ -23,6 +23,10 @@ import {
   type SchedulePayload,
 } from "@/components/specialist/shell/scheduling-modal";
 import {
+  WorkflowUnavailableModal,
+  type WorkflowKind,
+} from "@/components/specialist/shell/workflow-unavailable-modal";
+import {
   MANAGED_COHORTS,
   MANAGED_HEADER_SUBTITLE,
   MANAGED_SORT_OPTIONS,
@@ -33,6 +37,9 @@ import {
 } from "@/lib/mock-data/specialist/my-candidates";
 import { CandidateRow } from "./candidate-row";
 import { CandidateSheetContent } from "./candidate-sheet-content";
+
+/** Identifier for the open workflow modal — kind + subject. */
+type WorkflowModalState = { workflow: WorkflowKind; subjectName: string } | null;
 
 const COLUMNS: ReadonlyArray<ColumnDef> = [
   { key: "candidate", label: "Candidate" },
@@ -100,8 +107,13 @@ export function MyCandidatesApp() {
   const [schedulingFor, setSchedulingFor] = useState<ManagedCandidate | null>(
     null,
   );
+  /** Workflow modal state — null when closed; { workflow, subjectName } when open. */
+  const [workflowModal, setWorkflowModal] = useState<WorkflowModalState>(null);
 
-  /* Queued-flash trigger — single source of truth for warn-tone overlays. */
+  /* Queued-flash trigger — used for BULK acknowledgements + Schedule
+     confirm. Single-entity workflow actions (Suggest for client / Flag
+     for re-cert / Mark unavailable) use WorkflowUnavailableModal —
+     see honesty-of-treatment scaling rule in CONVERSION_LOG. */
   const { flash, fireQueuedFlash } = useQueuedFlash();
 
   /** Counts used by the cohort chips — derive from the full mock list. */
@@ -152,14 +164,20 @@ export function MyCandidatesApp() {
       ? managedCandidates.find((c) => c.id === sheetId)
       : null;
 
-  /* Row + sheet workflow callbacks. All visual-only — backend wired later. */
+  /* Row + sheet workflow callbacks. Single-entity actions open
+     WorkflowUnavailableModal with kind-specific copy. Schedule remains
+     a SchedulingModal (it has real date+time picker UI, not a
+     "feature in development" placeholder). */
   const openSchedule = (c: ManagedCandidate) => setSchedulingFor(c);
+  const openWorkflow = (workflow: WorkflowKind, subjectName: string) =>
+    setWorkflowModal({ workflow, subjectName });
+
   const handleSuggestForClient = (c: ManagedCandidate) =>
-    fireQueuedFlash(`Suggest-for-client queued for ${c.fullName}`);
+    openWorkflow("suggest-for-client", c.fullName);
   const handleFlagForRecert = (c: ManagedCandidate) =>
-    fireQueuedFlash(`Re-cert flag queued for ${c.fullName}`);
+    openWorkflow("flag-recert", c.fullName);
   const handleMarkUnavailable = (c: ManagedCandidate) =>
-    fireQueuedFlash(`Mark-unavailable queued for ${c.fullName}`);
+    openWorkflow("mark-unavailable", c.fullName);
 
   const rowCallbacks = {
     onSchedule: openSchedule,
@@ -370,6 +388,13 @@ export function MyCandidatesApp() {
         subjectName={schedulingFor?.fullName ?? ""}
         onClose={() => setSchedulingFor(null)}
         onSchedule={handleScheduleConfirm}
+      />
+
+      <WorkflowUnavailableModal
+        open={workflowModal !== null}
+        workflow={workflowModal?.workflow ?? "suggest-for-client"}
+        subjectName={workflowModal?.subjectName ?? ""}
+        onClose={() => setWorkflowModal(null)}
       />
 
       <ApprovedFlash {...flash} />

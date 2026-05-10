@@ -1,7 +1,31 @@
-import { ArrowUpRight, MessageSquare, MoreHorizontal } from "lucide-react";
+import {
+  Calendar,
+  FileText,
+  MessageSquare,
+  Pause,
+  Sparkles,
+  Tag,
+} from "lucide-react";
 import Link from "next/link";
 import type { ManagedClient } from "@/lib/mock-data/specialist/my-clients";
 import { cn } from "@/lib/utils/cn";
+import {
+  RowOverflowMenu,
+  type OverflowMenuItem,
+} from "@/components/specialist/people-shared/row-overflow-menu";
+
+export type ClientRowCallbacks = {
+  /** Fire a queued flash for "Send brief". */
+  onSendBrief: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Suggest talent". */
+  onSuggestTalent: (c: ManagedClient) => void;
+  /** Fire a queued flash for "View contracts". */
+  onViewContracts: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Tag client". */
+  onTagClient: (c: ManagedClient) => void;
+  /** Fire a queued flash for "Pause client" (danger tone). */
+  onPauseClient: (c: ManagedClient) => void;
+};
 
 const HEALTH_PILL: Record<string, string> = {
   Strong: "bg-success-bg text-success",
@@ -33,7 +57,60 @@ function briefText(label: string, days: number): string {
   return label;
 }
 
-export function ClientRow({ c }: { c: ManagedClient }) {
+export function ClientRow({
+  c,
+  callbacks,
+}: {
+  c: ManagedClient;
+  callbacks: ClientRowCallbacks;
+}) {
+  const overflowItems: ReadonlyArray<OverflowMenuItem> = [
+    {
+      kind: "link",
+      key: "message",
+      label: "Message client",
+      href: `/specialist/client-chat?id=${c.id}`,
+      icon: <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "brief",
+      label: "Send brief",
+      onClick: () => callbacks.onSendBrief(c),
+      icon: <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "suggest",
+      label: "Suggest talent",
+      onClick: () => callbacks.onSuggestTalent(c),
+      icon: <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "contracts",
+      label: "View contracts",
+      onClick: () => callbacks.onViewContracts(c),
+      icon: <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "tag",
+      label: "Tag client",
+      onClick: () => callbacks.onTagClient(c),
+      icon: <Tag className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    { kind: "divider", key: "div" },
+    {
+      kind: "action",
+      key: "pause",
+      label: "Pause client",
+      onClick: () => callbacks.onPauseClient(c),
+      icon: <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      tone: "danger",
+    },
+  ];
+
   return (
     <>
       <td className="text-ink-soft min-w-[220px]">
@@ -103,7 +180,18 @@ export function ClientRow({ c }: { c: ManagedClient }) {
         </span>
       </td>
       <td className="w-[92px] text-right align-middle">
-        <div className="inline-flex gap-0.5 opacity-40 group-hover:opacity-100">
+        {/*
+          Action cluster — Message link + RowOverflowMenu kebab. The
+          inert "Open hiring history" ArrowUpRight button was removed:
+          no `/specialist/clients/[id]` route exists, so it had no
+          destination. Sheet click already handles drill-into-client.
+          Same misleading-affordance precedent as 8016b7d (dashboard
+          Filter span) and 6241650 (review-queue work-sample buttons).
+        */}
+        <div
+          className="inline-flex gap-0.5 opacity-40 group-hover:opacity-100"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Link
             href={`/specialist/client-chat?id=${c.id}`}
             onClick={(e) => e.stopPropagation()}
@@ -112,22 +200,11 @@ export function ClientRow({ c }: { c: ManagedClient }) {
           >
             <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
           </Link>
-          <button
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`Open hiring history for ${c.companyName}`}
-            className="text-ink-mute hover:bg-paper hover:border-line hover:text-ink grid h-7 w-7 cursor-pointer place-items-center rounded-md border border-transparent transition-colors"
-          >
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="More actions"
-            className="text-ink-mute hover:bg-paper hover:border-line hover:text-ink grid h-7 w-7 cursor-pointer place-items-center rounded-md border border-transparent transition-colors"
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          </button>
+          <RowOverflowMenu
+            triggerId={`row-${c.id}`}
+            triggerLabel={`More actions for ${c.companyName}`}
+            items={overflowItems}
+          />
         </div>
       </td>
     </>
