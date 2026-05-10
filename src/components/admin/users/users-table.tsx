@@ -126,6 +126,8 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
       router.push(`/admin/users/clients/${rowId}`);
     } else if (activeTab === 'specialists' && 'caseload' in row && rowId.indexOf('spec-') === 0) {
       router.push(`/admin/users/specialists/${rowId}`);
+    } else if (activeTab === 'admins' && 'twoFa' in row && rowId.indexOf('admin-') === 0) {
+      router.push(`/admin/users/admins/profile#${rowId}`, { scroll: false });
     }
   };
 
@@ -177,11 +179,12 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
               const isCandidateRow = activeTab === 'candidates' && 'hiresCount' in row;
               const isClientRow = activeTab === 'clients' && 'spendCount' in row;
               const isSpecialistRow = activeTab === 'specialists' && 'caseload' in row;
+              const isAdminRow = activeTab === 'admins' && 'twoFa' in row;
               return (
               <div
                 key={row.id}
                 onClick={(e) => handleRowClick(e, row.id, row)}
-                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow || isClientRow || isSpecialistRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? 'bg-[rgba(214,242,77,0.10)] selected' : 'hover:bg-[#FCF9F1]'}`}
+                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow || isClientRow || isSpecialistRow || isAdminRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? 'bg-[rgba(214,242,77,0.10)] selected' : 'hover:bg-[#FCF9F1]'}`}
                 style={{ gridTemplateColumns: tableConfig.gridCols }}
                 role="row"
                 data-user-id={row.id}

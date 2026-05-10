@@ -76,6 +76,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/users/managers/');
     }
 
+    // Special case for Admins: master-detail at /admin/users/admins (no descendant routes — selectedAdminId is local state)
+    if (itemPathname === '/admin/users/admins') {
+      return pathname === '/admin/users/admins'
+          || pathname.startsWith('/admin/users/admins/');
+    }
+
     return pathname === itemPathname;
   };
 

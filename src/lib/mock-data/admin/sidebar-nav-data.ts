@@ -78,7 +78,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'admins',
           label: 'Other Admins',
-          pathname: '/admin/users#admins',
+          pathname: '/admin/users/admins',
           icon: OtherAdminsNavIcon,
           count: '5',
         },

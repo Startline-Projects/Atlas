@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { UsersHeader } from '@/components/admin/users/users-header';
 import { UsersTabs } from '@/components/admin/users/users-tabs';
@@ -17,10 +17,19 @@ interface UsersShellProps {
   initialTab?: TabName;
 }
 
+// Searchable string fields per tab — applied case-insensitively against searchQuery
+const SEARCHABLE_FIELDS: Record<Exclude<TabName, 'manager'>, string[]> = {
+  candidates: ['name', 'email', 'country', 'title'],
+  clients: ['name', 'email', 'industry', 'country'],
+  specialists: ['name', 'email', 'region', 'category'],
+  admins: ['name', 'email', 'role'],
+};
+
 export function UsersShell({ initialTab }: UsersShellProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabName>(initialTab ?? 'candidates');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Read hash on mount to set initial activeTab, and listen for hash changes
   // Only sync from hash if NO initialTab was provided (real route takes precedence)
@@ -45,14 +54,34 @@ export function UsersShell({ initialTab }: UsersShellProps) {
     return () => window.removeEventListener('hashchange', updateTabFromHash);
   }, [initialTab]);
 
-  // Tab change handler: update state, clear selection, and navigate
+  // Filtered rows: applies searchQuery against tab-specific searchable fields
+  const filteredRows = useMemo(() => {
+    if (activeTab === 'manager') return [];
+    const tabData = USERS_DATA[activeTab];
+    if (!tabData || !('rows' in tabData)) return [];
+    if (!searchQuery.trim()) return tabData.rows;
+    const q = searchQuery.toLowerCase();
+    const fields = SEARCHABLE_FIELDS[activeTab] ?? [];
+    return tabData.rows.filter((row) =>
+      fields.some((field) => {
+        const value = (row as unknown as Record<string, unknown>)[field];
+        return typeof value === 'string' && value.toLowerCase().includes(q);
+      })
+    );
+  }, [activeTab, searchQuery]);
+
+  // Tab change handler: update state, clear selection + search, and navigate
   const handleTabChange = (tab: TabName) => {
     setActiveTab(tab);
     setSelectedRows(new Set());
+    setSearchQuery('');
 
-    // Candidates and Clients use real routes; others use hash-based routing for now
-    if (tab === 'candidates' || tab === 'clients') {
+    // Real routes for candidates / clients / specialists. Manager tab uses 'managers' route segment.
+    // Admins tab stays inline on /admin/users — row click navigates to /admin/users/admins#{rowId}.
+    if (tab === 'candidates' || tab === 'clients' || tab === 'specialists') {
       router.push(`/admin/users/${tab}`);
+    } else if (tab === 'manager') {
+      router.push('/admin/users/managers');
     } else {
       router.push('/admin/users#' + tab);
     }
@@ -69,13 +98,10 @@ export function UsersShell({ initialTab }: UsersShellProps) {
     setSelectedRows(newSelection);
   };
 
-  // Select all handler: select or deselect all rows
+  // Select all handler: selects only currently filtered (visible) rows
   const handleSelectAll = (selectAll: boolean) => {
     if (selectAll) {
-      const tabData = USERS_DATA[activeTab];
-      if ('rows' in tabData && Array.isArray(tabData.rows)) {
-        setSelectedRows(new Set(tabData.rows.map((r) => r.id)));
-      }
+      setSelectedRows(new Set(filteredRows.map((r) => r.id)));
     } else {
       setSelectedRows(new Set());
     }
@@ -99,6 +125,8 @@ export function UsersShell({ initialTab }: UsersShellProps) {
             filters={USERS_DATA[activeTab].filters}
             searchPlaceholder={USERS_DATA[activeTab].tableConfig.searchPlaceholder}
             {...(USERS_DATA[activeTab].tableConfig.exportLabel ? { exportLabel: USERS_DATA[activeTab].tableConfig.exportLabel } : {})}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
           {selectedRows.size > 0 && (
             <BulkActionBar
@@ -108,7 +136,7 @@ export function UsersShell({ initialTab }: UsersShellProps) {
             />
           )}
           <UsersTable
-            rows={USERS_DATA[activeTab].rows}
+            rows={filteredRows as typeof USERS_DATA[typeof activeTab]['rows']}
             tableConfig={USERS_DATA[activeTab].tableConfig}
             selectedRows={selectedRows}
             onSelectionChange={handleRowSelect}
@@ -121,17 +149,18 @@ export function UsersShell({ initialTab }: UsersShellProps) {
       {/* Manager Tab: Singleton card */}
       {activeTab === 'manager' && <ManagerTab />}
 
-      {/* Admins Tab: Stats + Toolbar + Table (no bulk bar) */}
+      {/* Admins tab: inline list view. Row click navigates to /admin/users/admins#{rowId}. */}
       {activeTab === 'admins' && (
         <>
           <UsersStats stats={USERS_DATA.admins.stats} />
           <UsersToolbar
             filters={USERS_DATA.admins.filters}
             searchPlaceholder={USERS_DATA.admins.tableConfig.searchPlaceholder}
-            primaryCta={USERS_DATA.admins.tableConfig.primaryCta}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
           <UsersTable
-            rows={USERS_DATA.admins.rows}
+            rows={filteredRows as typeof USERS_DATA.admins.rows}
             tableConfig={USERS_DATA.admins.tableConfig}
             selectedRows={selectedRows}
             onSelectionChange={handleRowSelect}
