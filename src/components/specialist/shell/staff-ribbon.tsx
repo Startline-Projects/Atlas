@@ -10,9 +10,13 @@
  *
  * z-[20] is above the entire page-chrome sticky stack:
  *   ribbon z-[20] > profile-tabs z-[8] > roster-cohorts z-[7] >
- *   topbar z-[6] > review-header z-[5] > review-tabs z-[5] >
- *   queue-rail-inner z-[2]
+ *   topbar z-[6] > review-tabs z-[5] > queue-rail-inner z-[2]
  * and below modals (z-[89]+) and approved-flash (z-[300]).
+ *
+ * Review-header is intentionally NOT sticky — it scrolls away cleanly
+ * (Option B per the queue-detail scroll hotfix), and the review-tabs
+ * pin directly under the topbar+ribbon at top-[calc(36px+57px)] once
+ * the identity row has scrolled past.
  */
 export function StaffRibbon() {
   return (

@@ -77,7 +77,7 @@ export function ReviewHeader({
     : { from: "#FFD6A5", to: "#FFA07A" };
 
   return (
-    <header className="bg-cream/90 border-line-soft sticky top-[calc(36px+57px)] z-[5] border-b px-6 pt-5 pb-4 backdrop-blur-md backdrop-saturate-[140%] sm:px-9">
+    <header className="bg-cream border-line-soft border-b px-6 pt-5 pb-4 sm:px-9">
       <div className="mb-4 flex items-center justify-between gap-3">
         <nav
           aria-label="Breadcrumb"
