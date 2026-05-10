@@ -1,50 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ADMIN_PROFILES, ADMINS_PAGE_DATA } from '@/lib/mock-data/admin/admin-profiles-data';
+import type { AdminFilterRoleKey } from '@/lib/mock-data/admin/admin-profiles-data';
 import { AdminRosterCard } from './admin-roster-card';
 import { AdminDetailHead } from './admin-detail-head';
 import { AdminSubProfile } from './sections/admin-sub-profile';
+import { AdminSubPermissions } from './sections/admin-sub-permissions';
+import { AdminSubIpAllowlist } from './sections/admin-sub-ip-allowlist';
 import { AdminSubActivity } from './sections/admin-sub-activity';
-
-// Sub-section placeholder (Phase 9b will replace 02 + 03)
-function AdminSubPlaceholder({
-  num,
-  title,
-  phase,
-  isLast,
-}: {
-  num: string;
-  title: string;
-  phase: string;
-  isLast?: boolean;
-}) {
-  return (
-    <div
-      className={`mb-[22px] pb-[22px] ${isLast ? '' : 'border-b border-dashed border-[var(--line-soft)]'}`}
-    >
-      <div className="flex items-baseline justify-between gap-[12px] mb-[12px] flex-wrap">
-        <h3 className="font-display text-[17px] font-medium tracking-[-0.01em] m-0 flex items-center gap-[10px]">
-          <span className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--ink-mute)] font-semibold">
-            {num}
-          </span>
-          {title}
-        </h3>
-      </div>
-      <div className="bg-[var(--paper)] border border-dashed border-[var(--line)] rounded-[var(--r-md)] p-[40px] text-center">
-        <div className="font-mono text-[11px] text-[var(--ink-mute)] tracking-[0.06em] uppercase">
-          Phase {phase} will build this section
-        </div>
-      </div>
-    </div>
-  );
-}
+import { AdminStatsRow } from './admin-stats-row';
+import { AdminToolbar } from './admin-toolbar';
+import { AdminActionsRow } from './admin-actions-row';
 
 export function AdminsShell() {
   // Default to admin-001 on both server (SSG) and first client render — prevents
   // hydration mismatch. The useEffect below syncs selectedId with the URL hash
   // after mount, and continues to listen for hashchange events.
   const [selectedId, setSelectedId] = useState<string>('admin-001');
+  const [selectedRole, setSelectedRole] = useState<AdminFilterRoleKey>('all');
+  const [roleSearchQuery, setRoleSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const updateFromHash = () => {
@@ -62,6 +37,22 @@ export function AdminsShell() {
     window.addEventListener('hashchange', updateFromHash);
     return () => window.removeEventListener('hashchange', updateFromHash);
   }, []);
+
+  // Filter roster by selectedRole + roleSearchQuery (does NOT affect selected detail panel)
+  const filteredProfiles = useMemo(() => {
+    const q = roleSearchQuery.trim().toLowerCase();
+    return ADMINS_PAGE_DATA.profiles.filter((p) => {
+      const roleMatch = selectedRole === 'all' || p.role === selectedRole;
+      if (!roleMatch) return false;
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) ||
+        p.email.toLowerCase().includes(q) ||
+        p.role.toLowerCase().includes(q) ||
+        p.roleLabel.toLowerCase().includes(q)
+      );
+    });
+  }, [selectedRole, roleSearchQuery]);
 
   const selected = ADMIN_PROFILES[selectedId] ?? ADMIN_PROFILES['admin-001']!;
 
@@ -99,20 +90,29 @@ export function AdminsShell() {
         </button>
       </div>
 
-      {/* Stats row — DEFERRED to Phase 9b */}
-      {/* Toolbar (search + filter chips) — DEFERRED to Phase 9b */}
+      {/* Phase 9b — Stats row */}
+      <AdminStatsRow stats={ADMINS_PAGE_DATA.stats} />
+
+      {/* Phase 9b — Toolbar (search + 6 role filter chips) */}
+      <AdminToolbar
+        searchQuery={roleSearchQuery}
+        onSearchChange={setRoleSearchQuery}
+        selectedRole={selectedRole}
+        onRoleChange={setSelectedRole}
+        filterChips={ADMINS_PAGE_DATA.filterChips}
+      />
 
       {/* admin.html line 8615: adm-section-label "Admin roster" */}
       <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--ink-mute)] font-semibold mt-[22px] mb-[12px] pb-[6px] border-b border-dashed border-[var(--line-soft)] flex items-center justify-between gap-[8px]">
         <span>Admin roster</span>
         <span className="font-body normal-case tracking-[0.02em] text-[var(--ink-soft)] text-[11.5px] font-medium">
-          Showing 5 of 5 · click to view detail
+          Showing {filteredProfiles.length} of {ADMINS_PAGE_DATA.profiles.length} · click to view detail
         </span>
       </div>
 
       {/* admin.html line 8640: adm-roster 2-col grid */}
       <div className="grid grid-cols-2 gap-[12px] mb-[8px] max-[720px]:grid-cols-1">
-        {ADMINS_PAGE_DATA.profiles.map((profile) => (
+        {filteredProfiles.map((profile) => (
           <AdminRosterCard
             key={profile.id}
             profile={profile}
@@ -134,20 +134,18 @@ export function AdminsShell() {
       <section className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] mt-[14px] overflow-hidden">
         <AdminDetailHead profile={selected} />
         <div className="pt-[22px] px-[26px] pb-0 max-[720px]:px-[18px] max-[720px]:pt-[18px]">
-          {/* Sub 1 — Profile & status (Phase 9a built) */}
+          {/* Sub 1 — Profile & status (Phase 9a) */}
           <AdminSubProfile profile={selected} />
-
-          {/* Sub 2 — Permissions matrix (Phase 9b placeholder) */}
-          <AdminSubPlaceholder num="02 · 04" title="Permissions matrix" phase="9b" />
-
-          {/* Sub 3 — IP allowlist (Phase 9b placeholder) */}
-          <AdminSubPlaceholder num="03 · 04" title="IP allowlist" phase="9b" />
-
-          {/* Sub 4 — Recent activity (Phase 9a built) */}
+          {/* Sub 2 — Permissions matrix (Phase 9b) */}
+          <AdminSubPermissions profile={selected} />
+          {/* Sub 3 — IP allowlist (Phase 9b) */}
+          <AdminSubIpAllowlist profile={selected} />
+          {/* Sub 4 — Recent activity (Phase 9a) */}
           <AdminSubActivity profile={selected} />
         </div>
 
-        {/* Action buttons row — DEFERRED to Phase 9b */}
+        {/* Phase 9b — Action buttons row */}
+        <AdminActionsRow profile={selected} />
       </section>
 
       {/* Create-new-admin form — DEFERRED to Phase 9c (hidden by default per admin.html) */}

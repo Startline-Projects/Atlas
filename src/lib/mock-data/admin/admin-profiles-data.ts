@@ -108,14 +108,88 @@ export interface AdminProfile {
     auditLinkAction: string;
   };
 
-  // Sub 2 / Sub 3 forward-declared as optional (Phase 9b)
-  // permissions?: AdminPermissionsMatrix;
-  // ipAllowlist?: AdminIpEntry[];
+  // Sub 2 — Permissions matrix (Phase 9b)
+  permissions: AdminPermissionsMatrix;
+  // Sub 3 — IP allowlist (Phase 9b)
+  ipAllowlist: AdminIpAllowlist;
+}
+
+// ============================================================
+// PHASE 9b — STATS / TOOLBAR / SUB 2 / SUB 3 / ACTIONS
+// ============================================================
+
+// Stats row (admin.html lines 20652-20673)
+export interface AdminStatTile {
+  label: string;
+  value: string;
+  vSuffix?: string;
+  delta?: { variant: 'up' | 'down' | 'flat'; text: string };
+  meta: string;
+  metaVariant?: 'warn' | 'danger';
+}
+
+// Toolbar (admin.html lines 20676-20689)
+export type AdminFilterRoleKey = 'all' | 'super' | 'ops' | 'trust' | 'finance' | 'compliance';
+export interface AdminFilterChip {
+  key: AdminFilterRoleKey;
+  label: string;
+  count: number;
+}
+
+// Sub 2 — Permissions matrix (admin.html lines 20931-21056)
+export type AdminPermStatus = 'allow' | 'deny' | 'deny-locked';
+export interface AdminPermRow {
+  id: string;
+  label: string;
+  reason: string;
+  status: AdminPermStatus;
+  statusLabel: string; // "Allowed" | "Super only" | "Immutable"
+}
+export interface AdminPermGroup {
+  title: string;
+  rows: AdminPermRow[];
+}
+export interface AdminPermissionsMatrix {
+  meta: string;
+  groups: AdminPermGroup[];
+}
+
+// Sub 3 — IP allowlist (admin.html lines 21058-21125)
+export type AdminIpIconVariant = 'home' | 'building' | 'mobile';
+export interface AdminIpRow {
+  id: string;
+  addr: string;
+  label: string;
+  lastUsed: string;
+  fresh?: boolean;
+  iconVariant: AdminIpIconVariant;
+}
+export interface AdminIpAllowlist {
+  meta: string;
+  rows: AdminIpRow[];
+  warningText: string;
+}
+
+// Action buttons row (admin.html lines 21266-21296)
+export type AdminActionKey =
+  | 'modify-role'
+  | 'modify-permissions'
+  | 'reset-2fa'
+  | 'force-logout'
+  | 'suspend'
+  | 'terminate';
+export interface AdminActionBtn {
+  key: AdminActionKey;
+  label: string;
+  variant?: 'default' | 'danger';
+  superOnly?: boolean;
 }
 
 export interface AdminsPageData {
   pageMeta: string;
   profiles: AdminProfile[];
+  stats: AdminStatTile[];
+  filterChips: AdminFilterChip[];
 }
 
 // ============================================================
@@ -136,6 +210,252 @@ export const AV_GRADIENTS: Record<number, string> = {
   11: 'linear-gradient(135deg, #DD9F70, #8B5C3C)',
   12: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
 };
+
+// ============================================================
+// PHASE 9b — PERMISSIONS MATRICES (per profile)
+// ============================================================
+
+// Aïsha — verbatim from admin.html lines 20931-21056 (10 rows, "7 of 10" meta)
+const PERMS_AISHA: AdminPermissionsMatrix = {
+  meta: '7 of 10 actions allowed · scoped to Operations role',
+  groups: [
+    {
+      title: 'User management',
+      rows: [
+        { id: 'view-users', label: 'View all users (candidates, clients, specialists)', reason: 'Read-only access to all user records on Atlas', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'suspend-accounts', label: 'Suspend or ban accounts', reason: 'Temporary or permanent · all suspensions are audited', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'create-admins', label: 'Create / terminate other admins', reason: 'Reserved for Super Admin role only', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Finance',
+      rows: [
+        { id: 'issue-refunds', label: 'Issue refunds & adjustments', reason: 'Up to $5,000 · larger refunds need Finance Admin co-sign', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'access-financial', label: 'Access financial data & reports', reason: 'Transactions, fees, payouts · read-only', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-fees', label: 'Modify platform fees', reason: 'Reserved for Super Admin · all changes are audited', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Platform & compliance',
+      rows: [
+        { id: 'modify-platform', label: 'Modify platform settings', reason: 'Categories, integrations, email templates · Super only', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'handle-legal', label: 'Handle legal & data subject rights requests', reason: 'GDPR, CCPA, subpoenas · co-signed by Compliance Admin', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'read-incidents', label: 'Read incident reports & security events', reason: 'Read-only access to T&S investigations', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-audit', label: 'Modify audit logs', reason: 'Audit logs are immutable by design — no admin can edit', status: 'deny', statusLabel: 'Immutable' },
+      ],
+    },
+  ],
+};
+
+// Dario (Super) — all 10 allow
+const PERMS_DARIO: AdminPermissionsMatrix = {
+  meta: '10 of 10 actions allowed · scoped to Super Admin · unrestricted',
+  groups: [
+    {
+      title: 'User management',
+      rows: [
+        { id: 'view-users', label: 'View all users (candidates, clients, specialists)', reason: 'Full directory access', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'suspend-accounts', label: 'Suspend or ban accounts', reason: 'No co-sign required for Super Admin', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'create-admins', label: 'Create / terminate other admins', reason: 'Super Admin authority — all such actions audited', status: 'allow', statusLabel: 'Allowed' },
+      ],
+    },
+    {
+      title: 'Finance',
+      rows: [
+        { id: 'issue-refunds', label: 'Issue refunds & adjustments', reason: 'Unlimited amount — Super Admin override', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'access-financial', label: 'Access financial data & reports', reason: 'Full read/write on financial records', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-fees', label: 'Modify platform fees', reason: 'Super Admin can adjust commission tiers', status: 'allow', statusLabel: 'Allowed' },
+      ],
+    },
+    {
+      title: 'Platform & compliance',
+      rows: [
+        { id: 'modify-platform', label: 'Modify platform settings', reason: 'Categories, integrations, email templates · full control', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'handle-legal', label: 'Handle legal & data subject rights requests', reason: 'GDPR, CCPA, subpoenas · primary owner', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'read-incidents', label: 'Read incident reports & security events', reason: 'Full visibility on T&S queue', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-audit', label: 'Modify audit logs', reason: 'Audit logs are immutable — even Super Admin cannot edit', status: 'deny', statusLabel: 'Immutable' },
+      ],
+    },
+  ],
+};
+
+// Wei (Trust & Safety) — moderation focus
+const PERMS_WEI: AdminPermissionsMatrix = {
+  meta: '4 of 10 actions allowed · scoped to Trust & Safety',
+  groups: [
+    {
+      title: 'User management',
+      rows: [
+        { id: 'view-users', label: 'View all users (candidates, clients, specialists)', reason: 'Required for moderation triage', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'suspend-accounts', label: 'Suspend or ban accounts', reason: 'Trust & Safety primary action', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'create-admins', label: 'Create / terminate other admins', reason: 'Reserved for Super Admin role only', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Finance',
+      rows: [
+        { id: 'issue-refunds', label: 'Issue refunds & adjustments', reason: 'Finance Admin scope — escalate via ticket', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'access-financial', label: 'Access financial data & reports', reason: 'Out of T&S scope', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'modify-fees', label: 'Modify platform fees', reason: 'Reserved for Super Admin', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Platform & compliance',
+      rows: [
+        { id: 'modify-platform', label: 'Modify platform settings', reason: 'Super only', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'handle-legal', label: 'Handle legal & data subject rights requests', reason: 'Compliance Admin scope', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'read-incidents', label: 'Read incident reports & security events', reason: 'Primary T&S work-surface', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-audit', label: 'Modify audit logs', reason: 'Audit logs are immutable by design', status: 'deny', statusLabel: 'Immutable' },
+      ],
+    },
+  ],
+};
+
+// Henrietta (Finance) — money + reporting
+const PERMS_HENRIETTA: AdminPermissionsMatrix = {
+  meta: '3 of 10 actions allowed · scoped to Finance',
+  groups: [
+    {
+      title: 'User management',
+      rows: [
+        { id: 'view-users', label: 'View all users (candidates, clients, specialists)', reason: 'Finance only sees billing entities', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'suspend-accounts', label: 'Suspend or ban accounts', reason: 'T&S scope, not Finance', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'create-admins', label: 'Create / terminate other admins', reason: 'Reserved for Super Admin role only', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Finance',
+      rows: [
+        { id: 'issue-refunds', label: 'Issue refunds & adjustments', reason: 'Finance primary action — all amounts', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'access-financial', label: 'Access financial data & reports', reason: 'Full read/write on transactions, fees, payouts', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-fees', label: 'Modify platform fees', reason: 'Reserved for Super Admin · all changes are audited', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Platform & compliance',
+      rows: [
+        { id: 'modify-platform', label: 'Modify platform settings', reason: 'Super only', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'handle-legal', label: 'Handle legal & data subject rights requests', reason: 'Compliance Admin scope', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'read-incidents', label: 'Read incident reports & security events', reason: 'Read-only access for billing-fraud reviews', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-audit', label: 'Modify audit logs', reason: 'Audit logs are immutable by design', status: 'deny', statusLabel: 'Immutable' },
+      ],
+    },
+  ],
+};
+
+// Hiroshi (Compliance) — legal + audit
+const PERMS_HIROSHI: AdminPermissionsMatrix = {
+  meta: '4 of 10 actions allowed · scoped to Compliance',
+  groups: [
+    {
+      title: 'User management',
+      rows: [
+        { id: 'view-users', label: 'View all users (candidates, clients, specialists)', reason: 'Required for DSR / legal investigations', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'suspend-accounts', label: 'Suspend or ban accounts', reason: 'T&S primary scope — Compliance can co-sign', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'create-admins', label: 'Create / terminate other admins', reason: 'Reserved for Super Admin role only', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Finance',
+      rows: [
+        { id: 'issue-refunds', label: 'Issue refunds & adjustments', reason: 'Finance Admin scope', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'access-financial', label: 'Access financial data & reports', reason: 'Read-only — required for tax / regulatory reports', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-fees', label: 'Modify platform fees', reason: 'Reserved for Super Admin', status: 'deny-locked', statusLabel: 'Super only' },
+      ],
+    },
+    {
+      title: 'Platform & compliance',
+      rows: [
+        { id: 'modify-platform', label: 'Modify platform settings', reason: 'Super only', status: 'deny-locked', statusLabel: 'Super only' },
+        { id: 'handle-legal', label: 'Handle legal & data subject rights requests', reason: 'GDPR, CCPA, subpoenas · primary Compliance work-surface', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'read-incidents', label: 'Read incident reports & security events', reason: 'Required for incident regulatory disclosure', status: 'allow', statusLabel: 'Allowed' },
+        { id: 'modify-audit', label: 'Modify audit logs', reason: 'Audit logs are immutable by design — Compliance enforces', status: 'deny', statusLabel: 'Immutable' },
+      ],
+    },
+  ],
+};
+
+const ADMIN_PERMISSIONS_MATRICES: Record<string, AdminPermissionsMatrix> = {
+  'admin-001': PERMS_AISHA,
+  'admin-002': PERMS_DARIO,
+  'admin-003': PERMS_WEI,
+  'admin-004': PERMS_HENRIETTA,
+  'admin-005': PERMS_HIROSHI,
+};
+
+// ============================================================
+// PHASE 9b — IP ALLOWLISTS (per profile)
+// ============================================================
+
+const IPS_AISHA: AdminIpAllowlist = {
+  meta: '3 trusted IPs · sign-in blocked from any other IP',
+  rows: [
+    { id: 'ip-aisha-1', addr: '102.89.41.214', label: 'Lagos · home (primary)', lastUsed: 'used today, 9:15 AM', fresh: true, iconVariant: 'home' },
+    { id: 'ip-aisha-2', addr: '102.89.41.220', label: 'Lagos · co-working office', lastUsed: 'used Apr 24', iconVariant: 'building' },
+    { id: 'ip-aisha-3', addr: '154.66.18.92', label: 'Mobile · backup hotspot', lastUsed: 'used Apr 18', iconVariant: 'mobile' },
+  ],
+  warningText: '⚠ removing your active IP will lock you out · admin reaccess requires Super Admin',
+};
+
+const IPS_DARIO: AdminIpAllowlist = {
+  meta: '2 trusted IPs · sign-in blocked from any other IP',
+  rows: [
+    { id: 'ip-dario-1', addr: '85.214.118.32', label: 'Berlin · home (primary)', lastUsed: 'used today, 11:42 AM', fresh: true, iconVariant: 'home' },
+    { id: 'ip-dario-2', addr: '212.45.78.11', label: 'London · HQ office', lastUsed: 'used Apr 28', iconVariant: 'building' },
+  ],
+  warningText: '⚠ Super Admin IP changes require dual-control approval · cannot self-remove last IP',
+};
+
+const IPS_WEI: AdminIpAllowlist = {
+  meta: '4 trusted IPs · sign-in blocked from any other IP',
+  rows: [
+    { id: 'ip-wei-1', addr: '203.116.42.18', label: 'Singapore · home (primary)', lastUsed: 'used today, 2:08 PM', fresh: true, iconVariant: 'home' },
+    { id: 'ip-wei-2', addr: '203.116.42.45', label: 'Singapore · T&S ops office', lastUsed: 'used Apr 27', iconVariant: 'building' },
+    { id: 'ip-wei-3', addr: '210.140.81.7', label: 'Tokyo · travel hotel', lastUsed: 'used Apr 16', iconVariant: 'building' },
+    { id: 'ip-wei-4', addr: '14.192.55.203', label: 'Mobile · LTE hotspot', lastUsed: 'used Apr 09', iconVariant: 'mobile' },
+  ],
+  warningText: '⚠ removing your active IP will lock you out · admin reaccess requires Super Admin',
+};
+
+const IPS_HENRIETTA: AdminIpAllowlist = {
+  meta: '2 trusted IPs · sign-in blocked from any other IP',
+  rows: [
+    { id: 'ip-henr-1', addr: '67.190.22.14', label: 'NYC · home (primary)', lastUsed: 'used yesterday, 6:34 PM', fresh: true, iconVariant: 'home' },
+    { id: 'ip-henr-2', addr: '67.190.22.18', label: 'NYC · finance ops office', lastUsed: 'used Apr 26', iconVariant: 'building' },
+  ],
+  warningText: '⚠ removing your active IP will lock you out · admin reaccess requires Super Admin',
+};
+
+const IPS_HIROSHI: AdminIpAllowlist = {
+  meta: '3 trusted IPs · sign-in blocked from any other IP',
+  rows: [
+    { id: 'ip-hir-1', addr: '126.118.45.92', label: 'Tokyo · home (primary)', lastUsed: 'used Apr 28, 4:22 PM', fresh: true, iconVariant: 'home' },
+    { id: 'ip-hir-2', addr: '126.118.45.108', label: 'Tokyo · compliance ops office', lastUsed: 'used Apr 24', iconVariant: 'building' },
+    { id: 'ip-hir-3', addr: '64.225.13.78', label: 'NYC · regulatory bureau (visiting)', lastUsed: 'used Apr 02', iconVariant: 'building' },
+  ],
+  warningText: '⚠ removing your active IP will lock you out · admin reaccess requires Super Admin',
+};
+
+const ADMIN_IP_ALLOWLISTS: Record<string, AdminIpAllowlist> = {
+  'admin-001': IPS_AISHA,
+  'admin-002': IPS_DARIO,
+  'admin-003': IPS_WEI,
+  'admin-004': IPS_HENRIETTA,
+  'admin-005': IPS_HIROSHI,
+};
+
+// ============================================================
+// PHASE 9b — SHARED ACTION BUTTONS (admin.html lines 21266-21296)
+// ============================================================
+
+export const ADMIN_ACTIONS: AdminActionBtn[] = [
+  { key: 'modify-role', label: 'Modify role', superOnly: true },
+  { key: 'modify-permissions', label: 'Modify permissions' },
+  { key: 'reset-2fa', label: 'Reset 2FA' },
+  { key: 'force-logout', label: 'Force log out' },
+  { key: 'suspend', label: 'Suspend', variant: 'danger' },
+  { key: 'terminate', label: 'Terminate', variant: 'danger', superOnly: true },
+];
 
 // ============================================================
 // 5 ADMIN PROFILES
@@ -279,6 +599,8 @@ export const ADMIN_PROFILES: Record<string, AdminProfile> = {
       auditLinkLabel: 'Open full audit log →',
       auditLinkAction: 'open-full-audit',
     },
+    permissions: ADMIN_PERMISSIONS_MATRICES['admin-001']!,
+    ipAllowlist: ADMIN_IP_ALLOWLISTS['admin-001']!,
   },
 
   // Dario Mensah — Super Admin (role-coherent fixture)
@@ -421,6 +743,8 @@ export const ADMIN_PROFILES: Record<string, AdminProfile> = {
       auditLinkLabel: 'Open full audit log →',
       auditLinkAction: 'open-full-audit',
     },
+    permissions: ADMIN_PERMISSIONS_MATRICES['admin-002']!,
+    ipAllowlist: ADMIN_IP_ALLOWLISTS['admin-002']!,
   },
 
   // Wei Zhang — Trust & Safety (role-coherent fixture)
@@ -561,6 +885,8 @@ export const ADMIN_PROFILES: Record<string, AdminProfile> = {
       auditLinkLabel: 'Open full audit log →',
       auditLinkAction: 'open-full-audit',
     },
+    permissions: ADMIN_PERMISSIONS_MATRICES['admin-003']!,
+    ipAllowlist: ADMIN_IP_ALLOWLISTS['admin-003']!,
   },
 
   // Henrietta Lopez — Finance Admin (role-coherent fixture)
@@ -701,6 +1027,8 @@ export const ADMIN_PROFILES: Record<string, AdminProfile> = {
       auditLinkLabel: 'Open full audit log →',
       auditLinkAction: 'open-full-audit',
     },
+    permissions: ADMIN_PERMISSIONS_MATRICES['admin-004']!,
+    ipAllowlist: ADMIN_IP_ALLOWLISTS['admin-004']!,
   },
 
   // Hiroshi Tanaka — Compliance Admin (role-coherent fixture)
@@ -843,6 +1171,8 @@ export const ADMIN_PROFILES: Record<string, AdminProfile> = {
       auditLinkLabel: 'Open full audit log →',
       auditLinkAction: 'open-full-audit',
     },
+    permissions: ADMIN_PERMISSIONS_MATRICES['admin-005']!,
+    ipAllowlist: ADMIN_IP_ALLOWLISTS['admin-005']!,
   },
 };
 
@@ -854,5 +1184,21 @@ export const ADMINS_PAGE_DATA: AdminsPageData = {
     ADMIN_PROFILES['admin-003']!,
     ADMIN_PROFILES['admin-004']!,
     ADMIN_PROFILES['admin-005']!,
+  ],
+  // admin.html lines 20652-20673
+  stats: [
+    { label: 'Total admins', value: '5', vSuffix: 'accounts', meta: '1 super · 4 specialized' },
+    { label: '2FA coverage', value: '5', vSuffix: 'of 5', delta: { variant: 'up', text: '✓' }, meta: '100% TOTP enrolled' },
+    { label: 'Active today', value: '3', vSuffix: 'of 5', meta: 'last 24 hours' },
+    { label: 'Pending requests', value: '1', vSuffix: 'request', meta: 'permission change · Aïsha (you)', metaVariant: 'warn' },
+  ],
+  // admin.html lines 20681-20688
+  filterChips: [
+    { key: 'all', label: 'All', count: 5 },
+    { key: 'super', label: 'Super', count: 1 },
+    { key: 'ops', label: 'Ops', count: 1 },
+    { key: 'trust', label: 'Trust & Safety', count: 1 },
+    { key: 'finance', label: 'Finance', count: 1 },
+    { key: 'compliance', label: 'Compliance', count: 1 },
   ],
 };
