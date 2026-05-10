@@ -115,6 +115,8 @@ export function PauseModal({
   const toggle = (key: string) =>
     setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
 
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+
   return (
     <ReviewModal
       open={open}
@@ -199,7 +201,8 @@ export function PauseModal({
               e.preventDefault();
               onConfirm();
             }}
-            className="border-amber text-amber hover:bg-amber hover:text-paper rounded-full border px-4 py-2 text-[13px] font-medium transition-colors"
+            disabled={checkedCount === 0}
+            className="border-amber text-amber hover:bg-amber hover:text-paper rounded-full border px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-amber"
           >
             Pause & send action items
           </button>

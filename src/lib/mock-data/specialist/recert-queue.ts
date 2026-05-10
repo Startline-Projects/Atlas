@@ -165,6 +165,14 @@ export type ProfileDiff = {
   /** Only set for `kind: "changed"`. */
   oldValue?: string;
   newValue?: string;
+  /**
+   * When true, the row renders a "View diff" link after the body text
+   * that opens `<PreviewUnavailableModal kind="document">` — honest
+   * treatment for the source-HTML "View diff" affordance backed by no
+   * actual diff content yet. See `recert-queue/sections.tsx`
+   * `ChangesSection`. Currently only set on bio-refresh rows.
+   */
+  viewDiff?: boolean;
 };
 
 export type RecertOverviewStripe = {
@@ -412,6 +420,7 @@ const anand: RecertCandidate = {
       field: "Bio refresh",
       body:
         "Lightly rewritten Mar 2 — added \"engineering operations\" focus, removed older Word/Excel emphasis.",
+      viewDiff: true,
     },
   ],
   recertInterview: {

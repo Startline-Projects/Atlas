@@ -2482,3 +2482,133 @@ formally on the FA table (these surfaced during the audit):
    used `<button>`. Now reverted.
 
 ---
+
+## Post-conversion polish — Recert-queue tab interactions (commit pending)
+
+End-to-end audit of `/specialist/recert-queue` (5 candidates × 9
+sections × 3 decision modals). Most of the surface inherits cleanly
+from the queue-shared layer polished in earlier commits — the audit
+identified **2 fixes**, **2 documented decisions** (build-extends-source +
+deferred future polish), and **1 new precedent** (PreviewUnavailableModal
+2nd-consumer validation).
+
+### Files modified (3)
+
+| File | Change |
+|---|---|
+| `lib/mock-data/specialist/recert-queue.ts` | Added optional `viewDiff?: boolean` to `ProfileDiff` type. Set `viewDiff: true` on Anand's bio-refresh row (only diff carrying the source-HTML "View diff" affordance). |
+| `components/specialist/recert-queue/sections.tsx` | `"use client"` (modal state in ChangesSection); imports + uses `PreviewUnavailableModal`; renders inline "View diff" button on rows where `viewDiff` is true; passes dynamic `subjectName` derived from `firstName + field` (e.g. "Anand's bio refresh"). |
+| `components/specialist/recert-queue/modals.tsx` | `PauseModal` confirm button: `disabled={checkedCount === 0}` — symmetric with the `RevisionsModal` fix from `6241650`. |
+
+### `PreviewUnavailableModal` — 2nd consumer validated
+
+The shared primitive built in `6241650` for review-queue's video +
+transcript buttons now serves the recert-queue "View diff" link
+without any API extension. Confirmed the convention is reusable as
+designed:
+
+- Same shell (`ReviewModal`) inheritance — Esc / backdrop /
+  scroll-lock all work
+- Same kind set (this consumer uses `kind="document"`)
+- Same `subjectName` pattern, just dynamically computed per row
+- Zero additions to the modal's API
+
+**Remaining planned consumer:** disputes evidence ledger (each
+evidence row's `View` button) — kind would resolve to `"document"` /
+`"audio"` / `"video"` based on evidence kind. Will validate the 3rd
+consumer when the disputes polish step lands.
+
+**Standing rule (re-affirmed):** when a button advertises a
+preview/play/download action and the underlying data is
+backend-blocked, render `<PreviewUnavailableModal>` rather than
+removing the button or leaving it inert.
+
+### `PauseModal` confirm-disabled — symmetric with revisions
+
+Now: `disabled={checkedCount === 0}`. Matches the precedent
+established in `6241650` for the review-queue `RevisionsModal`. The
+behavior should be identical: cancel always available, confirm
+locked until the user has selected at least one action item. Source
+HTML allows zero-check submission for both modals; build enforces
+the discipline in both.
+
+This pattern is now locked across **3 modals** with checklist UX:
+review-queue's RevisionsModal, recert-queue's PauseModal, and the
+RejectModal/OffboardModal pair (which use the analogous
+`disabled={!reason}` rule for their reason-chip selectors). Future
+multi-checkbox / multi-chip modals should follow the same rule.
+
+### `ProfileDiff.viewDiff?: boolean` — additive prop
+
+Backwards-compatible: optional, no other diff in the recert mock
+data sets it. The 4 other Anand diffs (rate change + 3 added skills)
+have `viewDiff` undefined → no link rendered. Other recert candidates
+with profile changes (`Wei Lin`, etc.) also default to no link.
+
+The choice to encode this as a per-row flag (rather than detecting
+the bio-refresh row by `field === "Bio refresh"`) makes the data
+declarative and easy to extend: any future diff that earns a "View
+diff" affordance can opt in by setting the flag in mock data.
+
+### Build extends source — bulk-approve CTA (Q4 logged)
+
+`recert-queue` rail's bulk-approve CTA ("Approve N clean re-certs")
+is visible when `recertBulkApprovableCount >= RECERT_BULK_APPROVE_MIN`
+and triggers a flash overlay. **Source HTML has no equivalent.** Build
+adds it as a quality-of-life feature for the recert specialist
+workflow. Working as designed — already wired in the Session 2
+build, no regression.
+
+**Pattern:** build may extend source for genuinely-useful workflow
+features when the extension doesn't misrepresent product capabilities.
+The bulk-approve CTA is consistent with the spec PDF's mention of
+batch-recert workflows; the source HTML simply didn't render it.
+Logged here as a deliberate divergence rather than a fidelity gap.
+
+### Deferred future polish (Q3 logged)
+
+**Recert engagement rows + feedback quote attributions display
+client names but mock types (`Engagement`, `FeedbackQuote`) don't
+carry `clientId`.**
+
+Future polish session: backfill `clientId` on both types using
+canonical `client-*` IDs (Acme Co → `client-acme-co`, etc.), then
+wire engagement rows + quote attribution `<strong>` elements to
+`/specialist/client-chat?id=client-...`. Same backfill pattern as
+the dashboard `candidateActions.href` / `clientActions.href` work
+in commit `8016b7d`.
+
+Sites:
+- D-2 Engagement history (8 rows × candidate)
+- D-3 Client feedback quote attributions (4 quotes × candidate)
+- Same shape applies if any future surface displays client names
+  without a click target
+
+The work is bounded — single mock-data backfill pass + 2 line-level
+component changes (wrap row / `<strong>` in `<Link>`).
+
+### Future-polish items inherited from review-queue audit
+
+All 5 still apply equally to recert-queue:
+
+| # | Site | Polish |
+|---|---|---|
+| 1 | Tab-strip (review + recert) | IntersectionObserver scroll-spy |
+| 2 | (Review only — recert has no Profile section) | Post-approval profile edit |
+| 3 | References (review + recert) | Resend outreach / mark unreachable |
+| 4 | Anti-cheat (review + recert) | Investigate / clear-flag |
+| 5 | AI assessment (review + recert) | Re-run assessment |
+| 6 | Notes (review + recert) | Chip-input add-tag UX + click-to-remove |
+
+### Carryover verifications (no regression)
+
+| Shared component | Recert use | Result |
+|---|---|---|
+| `IvCard.transcriptToggle` (added in 6241650) | Recert never passes `true` | ✓ No transcript toggle on recert interview or AI assessment cards |
+| `NotesCard` static placeholder (revert in 6241650) | D-9 Notes | ✓ Renders source-shape "+ Add tag" chip with no behavior |
+| `ReviewModal` shell (Esc/backdrop/scroll-lock) | All 3 recert modals | ✓ Verified post-build |
+| `PreviewUnavailableModal` | 2nd consumer (D-4 View diff) | ✓ Same API, zero changes |
+| `decision-bar.tsx` icon variants | `destructiveIcon="arrow-right"` + `neutralIcon="pause"` | ✓ |
+| Review-queue's `IntroVideoSection` (1st consumer of PreviewUnavailableModal) | Untouched | ✓ Still renders correctly |
+
+---

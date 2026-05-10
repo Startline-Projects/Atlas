@@ -1,14 +1,25 @@
+"use client";
+
 /**
  * All recert-queue section components — same pattern as review-queue's
  * `sections.tsx`. Sections receive only the data they need; no global
- * state. Server Components throughout.
+ * state.
+ *
+ * "use client" is required because ChangesSection owns modal state for
+ * the PreviewUnavailableModal triggered by per-row "View diff" links.
+ * Same precedent as review-queue/sections.tsx (which became Client to
+ * support the IntroVideoSection modal in commit 6241650). Bundle impact:
+ * zero — these sections are imported into detail-pane.tsx which is
+ * already a Client Component.
  */
+import { useState } from "react";
 import { Lock } from "lucide-react";
 import { IvCard } from "@/components/specialist/queue-shared/iv-card";
 import { IdentityGrid } from "@/components/specialist/queue-shared/identity-grid";
 import { NotesCard } from "@/components/specialist/queue-shared/notes-card";
 import { RefList } from "@/components/specialist/queue-shared/ref-list";
 import { SectionFrame } from "@/components/specialist/queue-shared/section-frame";
+import { PreviewUnavailableModal } from "@/components/specialist/shell/preview-unavailable-modal";
 import type {
   ClientFeedback,
   Engagement,
@@ -350,6 +361,9 @@ const DIFF_TAG: Record<ProfileDiff["kind"], string> = {
 };
 
 export function ChangesSection({ c }: { c: RecertCandidate }) {
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffField, setDiffField] = useState<string>("");
+
   if (c.profileChanges.length === 0) {
     return (
       <SectionFrame
@@ -365,6 +379,16 @@ export function ChangesSection({ c }: { c: RecertCandidate }) {
       </SectionFrame>
     );
   }
+
+  const openDiff = (field: string) => {
+    setDiffField(field);
+    setDiffOpen(true);
+  };
+  // Subject heading for the modal — first-name + lower-cased field
+  // (e.g. "Anand's bio refresh"). Falls back to fullName if firstName
+  // is somehow absent.
+  const subjectName = `${c.firstName ?? c.fullName}'s ${diffField.toLowerCase()}`;
+
   return (
     <SectionFrame
       id="rcs-changes"
@@ -410,11 +434,30 @@ export function ChangesSection({ c }: { c: RecertCandidate }) {
                   </span>
                 ) : null}
                 {d.body}
+                {d.viewDiff ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      onClick={() => openDiff(d.field)}
+                      className="text-ink hover:text-ink-soft border-current underline underline-offset-2 transition-colors"
+                    >
+                      View diff
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      <PreviewUnavailableModal
+        open={diffOpen}
+        kind="document"
+        subjectName={subjectName}
+        onClose={() => setDiffOpen(false)}
+      />
     </SectionFrame>
   );
 }
