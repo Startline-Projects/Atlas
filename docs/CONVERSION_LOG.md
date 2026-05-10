@@ -2194,3 +2194,149 @@ aesthetic: cream/paper backgrounds, line borders, mono-uppercase
 eyebrows for sections, body-font sentence-case for content.
 
 ---
+
+## Post-conversion polish — Dashboard tab interactions (commit pending)
+
+Audit of `/specialist/dashboard` surfaced **22 interactive elements
+that were inert** (no handler / no Link wrapper / styled clickable
+but non-functional). Wired 21 of them; 4 documented as backend-
+blocked; 1 removed; 7 confirmed display-only.
+
+### Files modified (5)
+
+| File | Change |
+|---|---|
+| `lib/mock-data/specialist/dashboard-cards.ts` | Added hrefs to 5 missing urgent-card actions; added `href: string` to `CandidateActionItem`; added `href?: string` to `ClientActionItem`; populated rows; wired the last-remaining `quickActions[0]` ("Source candidate") to `/specialist/sourcing` |
+| `components/specialist/dashboard/snapshot-section.tsx` | All 6 SnapCard / SnapStatusCard now render as `<Link>` (was `<article>`) — added required `href` prop, kept all visual styling identical |
+| `components/specialist/dashboard/active-items-section.tsx` | Candidate rows always Link (every row has an href, with chat fallback for non-canonical names); client rows Link when `href` present, inert `<li>` otherwise (Northbeam); column "View all" header is now a `<Link>`; activity-feed footer repointed from self-loop (`/dashboard`) to `/specialist/daily-activity`; activity-feed "Filter" header span removed (was non-functional) |
+| `components/specialist/dashboard/daily-activity-card.tsx` | "Submit now" / "View today's log" button → `<Link>` to `/specialist/daily-activity` |
+
+`urgent-card.tsx`, `quick-actions-card.tsx`, `dashboard-rail.tsx`,
+`dashboard-header.tsx`, `performance-section.tsx`, `on-call-card.tsx`,
+`section-header.tsx` — **untouched**. All wiring lives in mock data
+(via `href` fields) consumed by the existing component tree.
+
+### Wired (21 elements, 9 distinct destinations)
+
+| Section | Element | Destination |
+|---|---|---|
+| Urgent | "Message both" (Acme × Sofia dispute) | `/specialist/client-chat?id=client-acme-co` |
+| Urgent | "Sort by oldest" (review-queue SLA) | `/specialist/review-queue` |
+| Urgent | "Source candidates" (Mercer shortlist) | `/specialist/sourcing` |
+| Urgent | "Build shortlist" (Northbeam) | `/specialist/sourcing` |
+| Urgent | "Start sourcing sprint" (pool VA) | `/specialist/sourcing` |
+| Urgent | "View pool" (pool VA) | `/specialist/pool-health` |
+| Snapshot | Review queue card | `/specialist/review-queue` |
+| Snapshot | Active disputes card | `/specialist/disputes` |
+| Snapshot | My candidates card | `/specialist/my-candidates` |
+| Snapshot | Sourcing requests card | `/specialist/sourcing` |
+| Snapshot | Pool health card | `/specialist/pool-health` |
+| Snapshot | Daily activity card | `/specialist/daily-activity` |
+| Active items | Marie row (canonical, has profile) | `/specialist/candidates/cand-marie-okonkwo` |
+| Active items | Kenji row (non-canonical fallback) | `/specialist/candidate-chat` (default thread) |
+| Active items | Priya row (non-canonical fallback) | `/specialist/candidate-chat` (default thread) |
+| Active items | Mercer row | `/specialist/client-chat?id=client-mercer-capital` |
+| Active items | Acme row (active dispute) | `/specialist/disputes` |
+| Active items | Candidates "View all" header | `/specialist/my-candidates` |
+| Active items | Clients "View all" header | `/specialist/my-clients` |
+| Active items | Activity feed footer (was self-loop) | `/specialist/daily-activity` |
+| Rail | "Source candidate" quick action | `/specialist/sourcing` |
+| Rail | "Submit now" daily activity CTA | `/specialist/daily-activity` |
+
+### Backend-blocked (4 elements — no code changes, documented)
+
+1. **Urgent: "View role" (Mercer shortlist secondary)** — needs
+   `/specialist/clients/[id]/roles/[roleId]` route. Stays as inert
+   button.
+2. **Active items: Northbeam row** — Northbeam has no canonical
+   client-chat thread or profile in the existing mock-data inventory.
+   Synthesizing one would mean inventing a chat history; cleaner to
+   leave inert until a sourcing-brief detail page exists. Row has
+   `href` undefined → renders as static `<li>`, no cursor pointer.
+3. **On-call: "Mute" / "End call"** — needs WebRTC session state
+   from a real videoconferencing integration. Card doesn't render
+   today (`currentUser.onCall: false`).
+
+### Removed (1 element)
+
+- **Activity-feed "Filter" header span** — non-functional in source
+  HTML, styled with `cursor-pointer` despite no behavior. Misleading
+  affordance. Removed entirely. If filter chips become a real feature,
+  rebuild as a popover with kind chips (All / Hires / Disputes /
+  Signups / Reviews).
+
+### Left as-is (display-only, matches source)
+
+- 3 quick-stat pills in `dashboard-header.tsx` (In queue / Disputes /
+  Reviews · wk) — display only, source HTML uses `<div>` not `<a>`
+- 5 activity-feed rows — true read-only event feed, source HTML
+  doesn't link them either
+- 6 performance metric tiles — source HTML doesn't link them
+
+### Mock-data backfill
+
+`CandidateActionItem.href` is now **required** (`href: string`); every
+row provides a destination. Resolution rule:
+
+- **Canonical candidate WITH profile** → `/specialist/candidates/[id]`
+  (Marie Okonkwo)
+- **Canonical candidate WITHOUT profile** → `/specialist/candidate-chat?id=...`
+- **Non-canonical name** → `/specialist/candidate-chat` (no `?id=`,
+  hits the default first thread cleanly — no fake-deep-link URL that
+  routes to a fallback)
+
+`ClientActionItem.href` is **optional** (`href?: string`); rows without
+href render inert. The Northbeam case is the precedent — wired the
+type to support it explicitly rather than synthesizing fake data.
+
+### Polish-data items (future cleanup)
+
+1. **`candidateActions` rows for Kenji Watanabe + Priya Sundaram are
+   non-canonical.** They appear in `dashboard-cards.ts` but not in
+   `candidate-profile.ts` or `candidate-chats.ts`. Their dashboard rows
+   route to `/specialist/candidate-chat` (default thread) rather than
+   to a real candidate's profile/chat. Future polish: either canonicalize
+   them with full profile + chat data, or replace with existing canonical
+   candidates (Carmen, Hana, Carlos, Jomari, Aaliyah, Mei, Tomas, Sofia)
+   to give every row a dedicated destination.
+2. **Northbeam client row** — same issue from the client side.
+   No `client-northbeam` thread; row stays inert (see backend-blocked).
+
+### Filter-param routing — future polish (5+ sites)
+
+Filter-param routing (e.g. `?sort=oldest`, `?filter=urgent`) is **not
+implemented anywhere in the conversion**. The "Sort by oldest" button
+on the urgent panel routes to `/specialist/review-queue` (base, no
+filter); the queue's default sort already shows oldest at top, so the
+visible behavior is correct. A future polish session should introduce
+a consistent filter-param pattern. Sites that would benefit:
+
+| Site | Param shape (proposed) |
+|---|---|
+| `/specialist/review-queue` | `?sort=oldest \| newest \| sla` |
+| `/specialist/recert-queue` | `?sort=oldest \| due-soonest` |
+| `/specialist/sourcing` | `?role=[id]` (deep-link to a client brief) |
+| `/specialist/my-candidates` | `?status=[ManagedStatus]`, `?tier=[T]` |
+| `/specialist/my-clients` | `?cohort=[ManagedCohort]` |
+| `/specialist/disputes` | `?status=open \| closed` |
+
+The pattern would mirror the `?id=` deep-link pattern already used
+by `/specialist/candidate-chat`, `/specialist/client-chat`,
+`/specialist/candidates/[id]`, and `/specialist/reviews`.
+
+### Visual fidelity
+
+- Snapshot cards: `<Link>` replaces `<article>`; styling identical
+  (`hover:bg-cream rounded-md p-3.5 transition-colors`). The `block`
+  display is added so anchors honor the same intrinsic layout as the
+  prior `<article>` blocks.
+- Active-items rows: `<Link>` replaces `<li>` content (the `<li>` stays
+  as the list-item wrapper); padding/spacing identical.
+- Daily activity CTA: `<Link>` replaces `<button>`; `block` added so
+  the full-width pill shape stays.
+- Activity-feed footer: link text unchanged, only the `href` differs
+  (was `/specialist/dashboard` self-loop, now `/specialist/daily-activity`).
+- "View all" column-header action: `<Link>` replaces `<span>`; cursor
+  styling now actually reflects a real click target.
+
+---

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Clock } from "lucide-react";
 import { snapshot } from "@/lib/mock-data/specialist/dashboard-kpis";
 
@@ -38,12 +39,12 @@ export function DailyActivityCard() {
           </span>
         </div>
       </div>
-      <button
-        type="button"
-        className="bg-ink text-paper hover:bg-black w-full cursor-pointer rounded-full px-4 py-2.5 text-center text-[13px] font-medium transition-colors"
+      <Link
+        href="/specialist/daily-activity"
+        className="bg-ink text-paper hover:bg-black block w-full cursor-pointer rounded-full px-4 py-2.5 text-center text-[13px] font-medium transition-colors"
       >
         {SUBMITTED ? "View today's log" : "Submit now"}
-      </button>
+      </Link>
     </div>
   );
 }

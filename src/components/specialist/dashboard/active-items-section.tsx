@@ -40,7 +40,7 @@ function ColumnShell({
 }: {
   title: string;
   count?: { value: string | number; tone?: "live" };
-  action: string;
+  action?: { label: string; href: string };
   footerHref?: string;
   footerLabel?: string;
   children: React.ReactNode;
@@ -69,9 +69,14 @@ function ColumnShell({
             </span>
           ) : null}
         </h3>
-        <span className="text-ink-mute hover:bg-cream-deep hover:text-ink cursor-pointer rounded px-1.5 py-0.5 text-[12px] transition-colors">
-          {action}
-        </span>
+        {action ? (
+          <Link
+            href={action.href}
+            className="text-ink-mute hover:bg-cream-deep hover:text-ink rounded px-1.5 py-0.5 text-[12px] transition-colors"
+          >
+            {action.label}
+          </Link>
+        ) : null}
       </div>
       <ul className="flex flex-1 flex-col">{children}</ul>
       {footerHref && footerLabel ? (
@@ -88,6 +93,13 @@ function ColumnShell({
   );
 }
 
+/* ============================================================
+   Row primitives — Link when href present, static <li> otherwise.
+   The static fallback is for non-canonical rows (e.g. Northbeam)
+   that have no in-app destination — backend-blocked, logged in
+   CONVERSION_LOG.
+   ============================================================ */
+
 function CandidateActionsColumn({
   items,
 }: {
@@ -97,38 +109,51 @@ function CandidateActionsColumn({
     <ColumnShell
       title="Candidates need you"
       count={{ value: items.length }}
-      action="View all"
+      action={{ label: "View all", href: "/specialist/my-candidates" }}
       footerHref="/specialist/my-candidates"
       footerLabel="See all 47 candidates →"
     >
-      {items.map((item) => (
-        <li
-          key={item.id}
-          className="border-line-soft hover:bg-cream flex items-start gap-2.5 border-b px-4 py-3 last:border-0 cursor-pointer transition-colors"
-        >
-          <div
-            aria-hidden="true"
-            className="font-display text-paper grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full text-[12px] font-medium"
-            style={{
-              background: `linear-gradient(135deg, ${item.avatarFrom}, ${item.avatarTo})`,
-            }}
-          >
-            {item.initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-ink mb-0.5 flex items-center gap-1.5 text-[13.5px] font-medium">
-              {item.candidateName}
-            </div>
-            <div className="text-ink-soft text-[12.5px] leading-[1.4]">
-              {item.needs}
-            </div>
-          </div>
-          <span className="text-ink-mute mt-px flex-shrink-0 font-mono text-[10.5px] tracking-[0.04em] whitespace-nowrap">
-            {item.becameActionable}
-          </span>
-        </li>
-      ))}
+      {items.map((item) => {
+        const inner = <CandidateRowInner item={item} />;
+        return (
+          <li key={item.id} className="border-line-soft border-b last:border-0">
+            <Link
+              href={item.href}
+              className="hover:bg-cream flex items-start gap-2.5 px-4 py-3 transition-colors"
+            >
+              {inner}
+            </Link>
+          </li>
+        );
+      })}
     </ColumnShell>
+  );
+}
+
+function CandidateRowInner({ item }: { item: CandidateActionItem }) {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="font-display text-paper grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full text-[12px] font-medium"
+        style={{
+          background: `linear-gradient(135deg, ${item.avatarFrom}, ${item.avatarTo})`,
+        }}
+      >
+        {item.initials}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-ink mb-0.5 flex items-center gap-1.5 text-[13.5px] font-medium">
+          {item.candidateName}
+        </div>
+        <div className="text-ink-soft text-[12.5px] leading-[1.4]">
+          {item.needs}
+        </div>
+      </div>
+      <span className="text-ink-mute mt-px flex-shrink-0 font-mono text-[10.5px] tracking-[0.04em] whitespace-nowrap">
+        {item.becameActionable}
+      </span>
+    </>
   );
 }
 
@@ -141,38 +166,63 @@ function ClientActionsColumn({
     <ColumnShell
       title="Clients need you"
       count={{ value: items.length }}
-      action="View all"
+      action={{ label: "View all", href: "/specialist/my-clients" }}
       footerHref="/specialist/my-clients"
       footerLabel="See all 12 clients →"
     >
       {items.map((item) => {
-        const initial = item.clientName.charAt(0);
+        const inner = <ClientRowInner item={item} />;
+        if (item.href) {
+          return (
+            <li
+              key={item.id}
+              className="border-line-soft border-b last:border-0"
+            >
+              <Link
+                href={item.href}
+                className="hover:bg-cream flex items-start gap-2.5 px-4 py-3 transition-colors"
+              >
+                {inner}
+              </Link>
+            </li>
+          );
+        }
+        // Backend-blocked row (e.g. Northbeam) — render inert.
         return (
           <li
             key={item.id}
-            className="border-line-soft hover:bg-cream flex items-start gap-2.5 border-b px-4 py-3 last:border-0 cursor-pointer transition-colors"
+            className="border-line-soft flex items-start gap-2.5 border-b px-4 py-3 last:border-0"
           >
-            <div
-              aria-hidden="true"
-              className="font-display text-paper grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#4F6FA8] to-[#233458] text-[12px] font-medium"
-            >
-              {initial}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-ink mb-0.5 text-[13.5px] font-medium">
-                {item.clientName}
-              </div>
-              <div className="text-ink-soft text-[12.5px] leading-[1.4]">
-                {item.request}
-              </div>
-            </div>
-            <span className="text-ink-mute mt-px flex-shrink-0 font-mono text-[10.5px] tracking-[0.04em] whitespace-nowrap">
-              {item.timeElapsed}
-            </span>
+            {inner}
           </li>
         );
       })}
     </ColumnShell>
+  );
+}
+
+function ClientRowInner({ item }: { item: ClientActionItem }) {
+  const initial = item.clientName.charAt(0);
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="font-display text-paper grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#4F6FA8] to-[#233458] text-[12px] font-medium"
+      >
+        {initial}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-ink mb-0.5 text-[13.5px] font-medium">
+          {item.clientName}
+        </div>
+        <div className="text-ink-soft text-[12.5px] leading-[1.4]">
+          {item.request}
+        </div>
+      </div>
+      <span className="text-ink-mute mt-px flex-shrink-0 font-mono text-[10.5px] tracking-[0.04em] whitespace-nowrap">
+        {item.timeElapsed}
+      </span>
+    </>
   );
 }
 
@@ -185,8 +235,9 @@ function ActivityFeedColumn({
     <ColumnShell
       title="Recent activity"
       count={{ value: "live", tone: "live" }}
-      action="Filter"
-      footerHref="/specialist/dashboard"
+      // No header action — source HTML's "Filter" span was non-functional.
+      // Removed rather than synthesizing a feature not in source.
+      footerHref="/specialist/daily-activity"
       footerLabel="View full activity feed →"
       extraClass="md:col-span-2 lg:col-span-1"
     >

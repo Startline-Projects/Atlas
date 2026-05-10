@@ -67,7 +67,14 @@ export const urgentCards: ReadonlyArray<UrgentCard> = [
       },
     ],
     primaryAction: { label: "Open dispute", href: "/specialist/disputes" },
-    secondaryAction: { label: "Message both" },
+    secondaryAction: {
+      label: "Message both",
+      // "Both parties" multi-thread isn't a real feature yet — link to Acme
+      // (the client side of the dispute). Sofia (candidate) is reachable via
+      // the dispute detail. Future polish: synthesize a multi-recipient
+      // composer when services land.
+      href: "/specialist/client-chat?id=client-acme-co",
+    },
   },
   {
     id: "uc-review-sla",
@@ -81,7 +88,9 @@ export const urgentCards: ReadonlyArray<UrgentCard> = [
       { kind: "text", value: " at 22h — SLA breach risk." },
     ],
     primaryAction: { label: "Open queue", href: "/specialist/review-queue" },
-    secondaryAction: { label: "Sort by oldest" },
+    // Filter-param routing (?sort=oldest) isn't wired in any list view.
+    // Routes to base for now; logged in CONVERSION_LOG as future polish.
+    secondaryAction: { label: "Sort by oldest", href: "/specialist/review-queue" },
   },
   {
     id: "uc-shortlist-mercer",
@@ -98,7 +107,9 @@ export const urgentCards: ReadonlyArray<UrgentCard> = [
         value: " role — 1 of 5 matched. Need 4 more with QuickBooks & Spanish.",
       },
     ],
-    primaryAction: { label: "Source candidates" },
+    primaryAction: { label: "Source candidates", href: "/specialist/sourcing" },
+    // "View role" needs a /clients/[id]/roles/[roleId] route that doesn't
+    // exist. Backend-blocked — logged in CONVERSION_LOG. No href → button.
     secondaryAction: { label: "View role" },
   },
   {
@@ -112,7 +123,7 @@ export const urgentCards: ReadonlyArray<UrgentCard> = [
       { kind: "em", value: "Operations VA" },
       { kind: "text", value: " role posted 3 days ago." },
     ],
-    primaryAction: { label: "Build shortlist" },
+    primaryAction: { label: "Build shortlist", href: "/specialist/sourcing" },
   },
   {
     id: "uc-pool-alert-va",
@@ -124,8 +135,8 @@ export const urgentCards: ReadonlyArray<UrgentCard> = [
       { kind: "strong", value: "Virtual Assistants" },
       { kind: "text", value: " has 18 active candidates (threshold 15)." },
     ],
-    primaryAction: { label: "Start sourcing sprint" },
-    secondaryAction: { label: "View pool" },
+    primaryAction: { label: "Start sourcing sprint", href: "/specialist/sourcing" },
+    secondaryAction: { label: "View pool", href: "/specialist/pool-health" },
   },
 ];
 
@@ -145,6 +156,14 @@ export type CandidateActionItem = {
   becameActionable: string;
   /** Initials shown inside the avatar circle. */
   initials: string;
+  /**
+   * In-app destination for clicking the row. Resolution rule:
+   *   - Canonical candidate with profile  → `/specialist/candidates/[id]`
+   *   - Canonical candidate without profile → `/specialist/candidate-chat?id=...`
+   *   - Non-canonical (Kenji/Priya here) → `/specialist/candidate-chat`
+   *     (no `?id=` so the rail's default first thread loads cleanly)
+   */
+  href: string;
 };
 
 export const candidateActions: ReadonlyArray<CandidateActionItem> = [
@@ -156,6 +175,8 @@ export const candidateActions: ReadonlyArray<CandidateActionItem> = [
     avatarFrom: "#FFD6A5",
     avatarTo: "#FFA07A",
     becameActionable: "22h ago",
+    // Marie has a canonical profile in candidate-profile.ts.
+    href: "/specialist/candidates/cand-marie-okonkwo",
   },
   {
     id: "ca-kenji",
@@ -165,6 +186,10 @@ export const candidateActions: ReadonlyArray<CandidateActionItem> = [
     avatarFrom: "#A8C8FF",
     avatarTo: "#6A8EFF",
     becameActionable: "4h ago",
+    // Kenji is non-canonical (no profile, no chat thread). Falls back to
+    // the candidate-chat default-first-thread rail. Logged in
+    // CONVERSION_LOG as a polish-data item.
+    href: "/specialist/candidate-chat",
   },
   {
     id: "ca-priya",
@@ -174,6 +199,8 @@ export const candidateActions: ReadonlyArray<CandidateActionItem> = [
     avatarFrom: "#D6F24D",
     avatarTo: "#A8D821",
     becameActionable: "1d ago",
+    // Priya is non-canonical — same fallback as Kenji.
+    href: "/specialist/candidate-chat",
   },
 ];
 
@@ -183,6 +210,12 @@ export type ClientActionItem = {
   /** "Shortlist request" / "Dispute opened" / "Market rate question". */
   request: string;
   timeElapsed: string;
+  /**
+   * Optional in-app destination for clicking the row. Absent for non-
+   * canonical clients (e.g. Northbeam — no thread in client-chats.ts);
+   * those rows render inert with a "polish-data" note in CONVERSION_LOG.
+   */
+  href?: string;
 };
 
 export const clientActions: ReadonlyArray<ClientActionItem> = [
@@ -191,18 +224,25 @@ export const clientActions: ReadonlyArray<ClientActionItem> = [
     clientName: "Mercer Capital",
     request: "Shortlist incomplete · Bilingual VA",
     timeElapsed: "5h ago",
+    href: "/specialist/client-chat?id=client-mercer-capital",
   },
   {
     id: "cl-northbeam",
     clientName: "Northbeam",
     request: "Shortlist not yet sent · Operations VA",
     timeElapsed: "3d ago",
+    // Northbeam is non-canonical — no client-chats thread, no profile.
+    // Backend-blocked: a row click should open a sourcing-brief detail
+    // page that doesn't exist. Stays inert.
   },
   {
     id: "cl-acme",
     clientName: "Acme Co",
     request: "Dispute open · billing week of Apr 21",
     timeElapsed: "58h ago",
+    // Acme has the active dispute DSP-2026-04-12 — disputes is the
+    // most relevant destination (vs the chat thread).
+    href: "/specialist/disputes",
   },
 ];
 
@@ -261,7 +301,7 @@ export type QuickAction = {
 };
 
 export const quickActions: ReadonlyArray<QuickAction> = [
-  { key: "source", label: "Source candidate", iconKey: "plus" },
+  { key: "source", label: "Source candidate", iconKey: "plus", href: "/specialist/sourcing" },
   { key: "view-pool", label: "View pool", iconKey: "pool", href: "/specialist/pool-health" },
   { key: "submit-daily", label: "Submit daily activity", iconKey: "calendar", href: "/specialist/daily-activity" },
   { key: "msg-candidate", label: "Message a candidate", iconKey: "candidate-msg", href: "/specialist/candidate-chat" },

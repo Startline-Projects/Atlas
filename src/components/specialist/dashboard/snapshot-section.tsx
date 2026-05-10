@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { snapshot } from "@/lib/mock-data/specialist/dashboard-kpis";
 import { POOL_DEPLETION_THRESHOLD } from "@/lib/mock-data/specialist/pool-health";
 import { SectionHeader } from "./section-header";
@@ -22,6 +23,7 @@ export function SnapshotSection() {
       />
       <div className="bg-paper border-line grid grid-cols-2 gap-3 rounded-lg border p-1.5 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         <SnapCard
+          href="/specialist/review-queue"
           label="Review queue"
           numTone="attn"
           num={snapshot.reviewQueue.count}
@@ -36,6 +38,7 @@ export function SnapshotSection() {
           }
         />
         <SnapCard
+          href="/specialist/disputes"
           label="Active disputes"
           numTone="urgent"
           num={snapshot.disputes.open}
@@ -50,6 +53,7 @@ export function SnapshotSection() {
           }
         />
         <SnapCard
+          href="/specialist/my-candidates"
           label="My candidates"
           num={snapshot.myCandidates.live}
           suffix="live"
@@ -63,11 +67,13 @@ export function SnapshotSection() {
           }
         />
         <SnapCard
+          href="/specialist/sourcing"
           label="Sourcing requests"
           num={snapshot.sourcingRequests}
           detail={<>from clients</>}
         />
         <SnapStatusCard
+          href="/specialist/pool-health"
           label="Pool health"
           pillClass={POOL_PILL[snapshot.poolHealth]}
           pillLabel={snapshot.poolHealth}
@@ -82,6 +88,7 @@ export function SnapshotSection() {
           }
         />
         <SnapStatusCard
+          href="/specialist/daily-activity"
           label="Daily activity"
           pillClass={DAILY_PILL[snapshot.dailySubmission]}
           pillLabel={snapshot.dailySubmission}
@@ -105,12 +112,14 @@ const NUM_TONE: Record<Exclude<NumTone, undefined>, string> = {
 };
 
 function SnapCard({
+  href,
   label,
   num,
   numTone,
   suffix,
   detail,
 }: {
+  href: string;
   label: string;
   num: number;
   numTone?: NumTone;
@@ -118,7 +127,10 @@ function SnapCard({
   detail: React.ReactNode;
 }) {
   return (
-    <article className="hover:bg-cream relative rounded-md p-3.5 transition-colors">
+    <Link
+      href={href}
+      className="hover:bg-cream relative block rounded-md p-3.5 transition-colors"
+    >
       <span className="text-ink-mute mb-2 block font-mono text-[9.5px] tracking-[0.16em] uppercase">
         {label}
       </span>
@@ -139,23 +151,28 @@ function SnapCard({
       <span className="text-ink-mute block text-[11.5px] leading-[1.45]">
         {detail}
       </span>
-    </article>
+    </Link>
   );
 }
 
 function SnapStatusCard({
+  href,
   label,
   pillLabel,
   pillClass,
   detail,
 }: {
+  href: string;
   label: string;
   pillLabel: string;
   pillClass: string;
   detail: React.ReactNode;
 }) {
   return (
-    <article className="hover:bg-cream relative rounded-md p-3.5 transition-colors">
+    <Link
+      href={href}
+      className="hover:bg-cream relative block rounded-md p-3.5 transition-colors"
+    >
       <span className="text-ink-mute mb-2 block font-mono text-[9.5px] tracking-[0.16em] uppercase">
         {label}
       </span>
@@ -173,6 +190,6 @@ function SnapStatusCard({
       <span className="text-ink-mute block text-[11.5px] leading-[1.45]">
         {detail}
       </span>
-    </article>
+    </Link>
   );
 }
