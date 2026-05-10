@@ -256,12 +256,14 @@ export type QuickAction = {
   label: string;
   /** Stable icon key — Sidebar/Rail components own the SVG mapping. */
   iconKey: "plus" | "pool" | "calendar" | "candidate-msg" | "client-msg";
+  /** Optional Next.js route — when present the card renders as a <Link>. */
+  href?: string;
 };
 
 export const quickActions: ReadonlyArray<QuickAction> = [
   { key: "source", label: "Source candidate", iconKey: "plus" },
-  { key: "view-pool", label: "View pool", iconKey: "pool" },
-  { key: "submit-daily", label: "Submit daily activity", iconKey: "calendar" },
-  { key: "msg-candidate", label: "Message a candidate", iconKey: "candidate-msg" },
-  { key: "msg-client", label: "Message a client", iconKey: "client-msg" },
+  { key: "view-pool", label: "View pool", iconKey: "pool", href: "/specialist/pool-health" },
+  { key: "submit-daily", label: "Submit daily activity", iconKey: "calendar", href: "/specialist/daily-activity" },
+  { key: "msg-candidate", label: "Message a candidate", iconKey: "candidate-msg", href: "/specialist/candidate-chat" },
+  { key: "msg-client", label: "Message a client", iconKey: "client-msg", href: "/specialist/client-chat" },
 ];
