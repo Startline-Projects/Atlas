@@ -2086,3 +2086,111 @@ items + avatar primitive + avatar-menu dropdown), Phase 2 (Manager /
 Admin / Talent surfaces).
 
 ---
+
+## Post-conversion polish — Topbar interactivity (commit pending)
+
+The specialist topbar (Atlas logo + search + notifications bell +
+messages icon + user avatar) renders on every specialist surface.
+Three of those triggers had no behavior post-conversion. This polish
+pass wires them up as **visual-only-but-polished** popovers — same
+design pattern as composer in chats, savebar in settings, decision
+modals across the queues.
+
+### Files added (4) + 1 file rewired
+
+| File | Lines | Type |
+|---|---|---|
+| `src/lib/mock-data/specialist/topbar-feed.ts` | ~210 | Server-importable mock data |
+| `src/components/specialist/shell/topbar-notifications-panel.tsx` | ~190 | Client popover |
+| `src/components/specialist/shell/topbar-messages-panel.tsx` | ~225 | Client popover |
+| `src/components/specialist/shell/topbar-user-menu.tsx` | ~175 | Client popover |
+| `src/components/specialist/shell/topbar.tsx` | ~155 (was ~107) | Server → **Client** (state plumbing) |
+
+`mock-data/specialist/index.ts` extended to re-export `topbar-feed`.
+
+### Design pattern — visual-only but polished
+
+- Real popover panels anchored to their trigger via `relative` wrapper
+  + `absolute top-full right-0` panel
+- Real content from new mock data (`topbarNotifications`,
+  `topbarRecentCandidates`, `topbarRecentClients`) — no placeholders
+- All interactions feel alive: Esc closes, click-outside closes, item
+  click navigates + closes
+- Item rows that route into the app DO navigate (existing target
+  routes are real). Item rows without an in-app target (e.g. system
+  notifications without a relevant page) use buttons + close
+- Action buttons that would mutate server state on real backend
+  (`Mark all as read`, `View all notifications`, `Sign out`) are
+  `e.preventDefault()` pending services
+- Page reload resets popover state (consistent with the rest of the
+  prototype — no localStorage persistence)
+
+### Cross-session IDs referenced
+
+- **Candidates:** `cand-marie-okonkwo`, `cand-anand-patel`,
+  `cand-marcus-bauer`, `cand-sofia-reyes`
+- **Clients:** `client-acme-co`, `client-quill-co`,
+  `client-mercer-capital`
+- **Disputes:** `DSP-2026-04-12` (Acme × Sofia, referenced in
+  notifications copy — the row routes to `/specialist/disputes`)
+- **Categories:** Virtual Assistants (referenced in pool-depletion
+  notification copy)
+
+All IDs match the canonical inventory in `queue-types.ts` /
+`candidate-chats.ts` / `client-chats.ts` / `disputes.ts`.
+
+### Click-outside detection — locked precedent
+
+Each popover registers a single document-level `mousedown` listener
+when open and inspects `event.target.closest('[data-topbar-trigger=
+"<panel>"]')` to avoid closing when its own trigger fires (the
+trigger owns its toggle). Same precedent as
+`chat-shared/templates-popover.tsx`. Esc handling is added alongside
+via `keydown`. The `data-topbar-trigger` attribute is the
+discriminator — one trigger per panel so the panels don't interfere.
+
+### Badge counts now read from data
+
+The bell + message-icon badges previously hardcoded "5" and "3".
+Replaced with `topbarUnreadNotificationCount` (4 unread of 5 total)
+and `topbarUnreadMessageCount` (5 threads with unread = sum of
+candidate and client tabs). Both compute at module load — the
+panels and the badges stay in sync automatically.
+
+### Topbar sticky stack — unchanged
+
+The topbar element itself stays at `top-9 z-[6]` (per the source
+HTML spec). Popovers anchor at `z-[30]` — above the topbar+ribbon
+sticky stack but below modals (`z-[89]+`) and approved-flash
+(`z-[300]`). Popover backdrop click is detected before the click
+reaches any underlying content (mousedown listener fires first).
+
+### What's deferred to the canonical avatar primitive
+
+The user-menu avatar tile + the messages-panel avatar tiles all use
+the same gradient-disc-with-flag-overlay pattern that lives in 5
+sites today (RosterHeader, ReviewHeader, conv-list-row, sidebar
+profile, now this menu). When the canonical Avatar primitive is
+extracted in the polish session, the user-menu + messages-panel
+should consume it. Until then, the inline pattern is acceptable —
+the styles are character-identical to the established sites.
+
+### "My profile" placeholder
+
+The user-menu surfaces "My profile" as a row-level placeholder.
+There is no `/specialist/me` route today — the route would be a
+talent-facing self-view of the specialist (bio + tenure + city —
+data already in `currentUser`). Logged here for future polish.
+"My profile" is rendered as a `<button>` with `e.preventDefault()`
+(visually identical to the Settings link adjacent to it).
+
+### Source-fidelity caveat
+
+Source HTML at lines 13847–13894 shows the topbar visually but
+never built any of the popover panels. The popovers are
+**behavioral additions, not source-fidelity items**. Visual choices
+(width, padding, shadow, border-radius) match the existing topbar
+aesthetic: cream/paper backgrounds, line borders, mono-uppercase
+eyebrows for sections, body-font sentence-case for content.
+
+---

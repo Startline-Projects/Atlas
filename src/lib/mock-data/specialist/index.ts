@@ -29,3 +29,4 @@ export * from "./performance";
 export * from "./reviews-approvals";
 export * from "./settings";
 export * from "./help";
+export * from "./topbar-feed";

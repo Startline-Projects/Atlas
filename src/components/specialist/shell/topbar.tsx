@@ -1,16 +1,44 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Bell, MessageSquare, Search, ChevronDown } from "lucide-react";
 import { currentUser } from "@/lib/mock-data/specialist/current-user";
+import {
+  topbarUnreadNotificationCount,
+  topbarUnreadMessageCount,
+} from "@/lib/mock-data/specialist/topbar-feed";
+import { TopbarNotificationsPanel } from "./topbar-notifications-panel";
+import { TopbarMessagesPanel } from "./topbar-messages-panel";
+import { TopbarUserMenu } from "./topbar-user-menu";
 
 /**
- * Specialist console topbar. Server Component for now — the dropdowns
- * (notifications, messages, avatar menu) are interactive features that
- * future sessions will wire to a popover client component. For Session 1
- * the buttons are visual.
+ * Specialist console topbar.
  *
- * Source HTML: lines 13847–13894.
+ * Ships three popovers as siblings of their triggers (notifications,
+ * messages, user menu). Only one panel is open at a time — opening one
+ * closes the others. Each popover handles its own Esc + click-outside
+ * via a document-level listener (see chat-shared/templates-popover for
+ * the precedent).
+ *
+ * Badge counts read live from `topbar-feed.ts` so they stay in sync
+ * with the data the panels display (no more hardcoded "5" / "3").
+ *
+ * Source HTML: lines 13847–13894 (visual). The popovers themselves are
+ * post-conversion polish — source HTML never built them.
+ *
+ * Client Component (popover state).
  */
+
+type OpenPanel = "notifications" | "messages" | "user" | null;
+
 export function Topbar() {
+  const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
+
+  const toggle = (panel: Exclude<OpenPanel, null>) =>
+    setOpenPanel((prev) => (prev === panel ? null : panel));
+  const close = () => setOpenPanel(null);
+
   return (
     <header className="bg-cream/90 border-line-soft sticky top-9 z-[6] flex items-center justify-between gap-4 border-b px-4 py-2.5 backdrop-blur-md backdrop-saturate-[140%] sm:px-6">
       <div className="flex flex-shrink-0 items-center gap-2.5">
@@ -47,59 +75,95 @@ export function Topbar() {
       </label>
 
       <div className="flex flex-shrink-0 items-center gap-1.5">
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="text-ink-mute hover:bg-cream-deep hover:text-ink relative flex h-9 w-9 items-center justify-center rounded-md transition-colors"
-        >
-          <Bell className="h-[18px] w-[18px]" strokeWidth={1.6} aria-hidden="true" />
-          <span
-            aria-hidden="true"
-            className="bg-danger text-paper absolute -top-0.5 -right-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 font-mono text-[9px] font-semibold"
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            type="button"
+            data-topbar-trigger="notifications"
+            aria-label="Notifications"
+            aria-expanded={openPanel === "notifications"}
+            aria-haspopup="dialog"
+            onClick={() => toggle("notifications")}
+            className="text-ink-mute hover:bg-cream-deep hover:text-ink relative flex h-9 w-9 items-center justify-center rounded-md transition-colors"
           >
-            5
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label="Messages"
-          className="text-ink-mute hover:bg-cream-deep hover:text-ink relative flex h-9 w-9 items-center justify-center rounded-md transition-colors"
-        >
-          <MessageSquare
-            className="h-[18px] w-[18px]"
-            strokeWidth={1.6}
-            aria-hidden="true"
+            <Bell className="h-[18px] w-[18px]" strokeWidth={1.6} aria-hidden="true" />
+            {topbarUnreadNotificationCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="bg-danger text-paper absolute -top-0.5 -right-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 font-mono text-[9px] font-semibold"
+              >
+                {topbarUnreadNotificationCount}
+              </span>
+            ) : null}
+          </button>
+          <TopbarNotificationsPanel
+            isOpen={openPanel === "notifications"}
+            onClose={close}
           />
-          <span
-            aria-hidden="true"
-            className="bg-lime-deep text-ink absolute -top-0.5 -right-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 font-mono text-[9px] font-semibold"
+        </div>
+
+        {/* Messages */}
+        <div className="relative">
+          <button
+            type="button"
+            data-topbar-trigger="messages"
+            aria-label="Messages"
+            aria-expanded={openPanel === "messages"}
+            aria-haspopup="dialog"
+            onClick={() => toggle("messages")}
+            className="text-ink-mute hover:bg-cream-deep hover:text-ink relative flex h-9 w-9 items-center justify-center rounded-md transition-colors"
           >
-            3
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label="Account menu"
-          className="border-line-soft hover:border-line ml-1 flex items-center gap-2 rounded-full border py-1 pr-2 pl-1 transition-colors"
-        >
-          <span
-            aria-hidden="true"
-            className="font-display text-ink grid h-7 w-7 place-items-center rounded-full text-[13px] font-medium"
-            style={{
-              background: `linear-gradient(135deg, ${currentUser.avatarGradient.from}, ${currentUser.avatarGradient.to})`,
-            }}
-          >
-            {currentUser.initials.charAt(0)}
-          </span>
-          <span className="text-ink hidden text-[13px] font-medium sm:inline">
-            {currentUser.firstName} {currentUser.lastName.charAt(0)}.
-          </span>
-          <ChevronDown
-            className="text-ink-mute h-3 w-3"
-            strokeWidth={1.5}
-            aria-hidden="true"
+            <MessageSquare
+              className="h-[18px] w-[18px]"
+              strokeWidth={1.6}
+              aria-hidden="true"
+            />
+            {topbarUnreadMessageCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="bg-lime-deep text-ink absolute -top-0.5 -right-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 font-mono text-[9px] font-semibold"
+              >
+                {topbarUnreadMessageCount}
+              </span>
+            ) : null}
+          </button>
+          <TopbarMessagesPanel
+            isOpen={openPanel === "messages"}
+            onClose={close}
           />
-        </button>
+        </div>
+
+        {/* User menu */}
+        <div className="relative">
+          <button
+            type="button"
+            data-topbar-trigger="user"
+            aria-label="Account menu"
+            aria-expanded={openPanel === "user"}
+            aria-haspopup="menu"
+            onClick={() => toggle("user")}
+            className="border-line-soft hover:border-line ml-1 flex items-center gap-2 rounded-full border py-1 pr-2 pl-1 transition-colors"
+          >
+            <span
+              aria-hidden="true"
+              className="font-display text-ink grid h-7 w-7 place-items-center rounded-full text-[13px] font-medium"
+              style={{
+                background: `linear-gradient(135deg, ${currentUser.avatarGradient.from}, ${currentUser.avatarGradient.to})`,
+              }}
+            >
+              {currentUser.initials.charAt(0)}
+            </span>
+            <span className="text-ink hidden text-[13px] font-medium sm:inline">
+              {currentUser.firstName} {currentUser.lastName.charAt(0)}.
+            </span>
+            <ChevronDown
+              className="text-ink-mute h-3 w-3"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+          </button>
+          <TopbarUserMenu isOpen={openPanel === "user"} onClose={close} />
+        </div>
       </div>
     </header>
   );
