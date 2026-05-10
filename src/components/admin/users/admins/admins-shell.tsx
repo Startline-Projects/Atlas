@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { ADMIN_PROFILES, ADMINS_PAGE_DATA } from '@/lib/mock-data/admin/admin-profiles-data';
-import type { AdminFilterRoleKey } from '@/lib/mock-data/admin/admin-profiles-data';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
+import { ADMIN_PROFILES, ADMINS_PAGE_DATA, EMPTY_ADMIN_CREATE_FORM } from '@/lib/mock-data/admin/admin-profiles-data';
+import type { AdminFilterRoleKey, AdminCreateFormFields } from '@/lib/mock-data/admin/admin-profiles-data';
 import { AdminRosterCard } from './admin-roster-card';
 import { AdminDetailHead } from './admin-detail-head';
 import { AdminSubProfile } from './sections/admin-sub-profile';
@@ -12,6 +12,8 @@ import { AdminSubActivity } from './sections/admin-sub-activity';
 import { AdminStatsRow } from './admin-stats-row';
 import { AdminToolbar } from './admin-toolbar';
 import { AdminActionsRow } from './admin-actions-row';
+import { AdminCreateForm } from './admin-create-form';
+import { cn } from '@/lib/utils/cn';
 
 export function AdminsShell() {
   // Default to admin-001 on both server (SSG) and first client render — prevents
@@ -20,6 +22,31 @@ export function AdminsShell() {
   const [selectedId, setSelectedId] = useState<string>('admin-001');
   const [selectedRole, setSelectedRole] = useState<AdminFilterRoleKey>('all');
   const [roleSearchQuery, setRoleSearchQuery] = useState<string>('');
+  const [formOpen, setFormOpen] = useState<boolean>(false);
+  const [formFields, setFormFields] = useState<AdminCreateFormFields>(EMPTY_ADMIN_CREATE_FORM);
+
+  // Phase 9c — Create-new-admin form handlers
+  const handleFieldChange = <K extends keyof AdminCreateFormFields>(
+    key: K,
+    value: AdminCreateFormFields[K]
+  ) => {
+    setFormFields((prev) => ({ ...prev, [key]: value }));
+  };
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // eslint-disable-next-line no-console
+    console.log('[admin-create] send-invitation submitted:', formFields);
+    setFormFields(EMPTY_ADMIN_CREATE_FORM);
+    setFormOpen(false);
+  };
+  const handleCancel = () => {
+    setFormFields(EMPTY_ADMIN_CREATE_FORM);
+    setFormOpen(false);
+  };
+  const handleClose = () => {
+    // Close without resetting fields — preserves typed data for next open
+    setFormOpen(false);
+  };
 
   useEffect(() => {
     const updateFromHash = () => {
@@ -69,12 +96,19 @@ export function AdminsShell() {
             {ADMINS_PAGE_DATA.pageMeta}
           </div>
         </div>
-        {/* Create button — disabled placeholder in 9a; Phase 9c will wire form toggle */}
+        {/* Phase 9c — Create button: toggles formOpen state */}
         <button
           type="button"
-          disabled
-          aria-label="Create new admin (Super Admin only — Phase 9c will wire this)"
-          className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] font-body text-[12.5px] font-medium bg-[var(--paper)] border border-[var(--line)] rounded-full text-[var(--ink-soft)] whitespace-nowrap opacity-50 cursor-not-allowed [&>svg]:flex-shrink-0"
+          onClick={() => setFormOpen((o) => !o)}
+          aria-expanded={formOpen}
+          aria-controls="admCreateForm"
+          aria-label={formOpen ? 'Close create-admin form' : 'Open create-admin form (Super Admin only)'}
+          className={cn(
+            'inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] font-body text-[12.5px] font-medium border rounded-full whitespace-nowrap cursor-pointer transition-all duration-150 ease [&>svg]:flex-shrink-0',
+            formOpen
+              ? 'bg-[var(--cream-deep)] border-[var(--ink)] text-[var(--ink)]'
+              : 'bg-[var(--paper)] border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--ink)] hover:text-[var(--ink)] hover:bg-[var(--cream-deep)]'
+          )}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -148,7 +182,16 @@ export function AdminsShell() {
         <AdminActionsRow profile={selected} />
       </section>
 
-      {/* Create-new-admin form — DEFERRED to Phase 9c (hidden by default per admin.html) */}
+      {/* Phase 9c — Create-new-admin form (page-level, after detail panel) */}
+      {formOpen && (
+        <AdminCreateForm
+          fields={formFields}
+          onFieldChange={handleFieldChange}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          onClose={handleClose}
+        />
+      )}
     </div>
   );
 }

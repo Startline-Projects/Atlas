@@ -1,7 +1,15 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo, type KeyboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { TOPBAR } from '@/lib/mock-data/admin/topbar-data';
+import {
+  filterSearchIndex,
+  groupResultsByType,
+  flattenGrouped,
+  type SearchResult,
+} from '@/lib/mock-data/admin/search-index';
+import { GlobalSearchDropdown } from './global-search-dropdown';
 import {
   HamburgerIcon,
   SearchIcon,
@@ -15,10 +23,18 @@ import {
 } from '@/components/ui/icons';
 
 export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => void }) {
+  const router = useRouter();
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Phase 9d — global search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Close avatar dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -31,6 +47,81 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [avatarDropdownOpen]);
+
+  // Phase 9d — Compute filtered + grouped + flat results
+  const { groups, flatResults } = useMemo(() => {
+    const filtered = filterSearchIndex(searchQuery);
+    const grouped = groupResultsByType(filtered, 5);
+    return { groups: grouped, flatResults: flattenGrouped(grouped) };
+  }, [searchQuery]);
+
+  // Phase 9d — global ⌘K / Ctrl+K shortcut
+  useEffect(() => {
+    const handleKeydown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        if (searchQuery.trim().length > 0) {
+          setSearchDropdownOpen(true);
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeydown);
+    return () => document.removeEventListener('keydown', handleKeydown);
+  }, [searchQuery]);
+
+  // Phase 9d — close search dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setSearchDropdownOpen(false);
+      }
+    };
+    if (searchDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [searchDropdownOpen]);
+
+  const handleSelect = (result: SearchResult) => {
+    setSearchDropdownOpen(false);
+    setSearchQuery('');
+    setActiveIndex(0);
+    searchInputRef.current?.blur();
+    router.push(result.href);
+  };
+
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setSearchDropdownOpen(false);
+      setSearchQuery('');
+      setActiveIndex(0);
+      searchInputRef.current?.blur();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(flatResults.length - 1, i + 1));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(0, i - 1));
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = flatResults[activeIndex];
+      if (target) handleSelect(target);
+      return;
+    }
+  };
+
+  const showDropdown = searchDropdownOpen && searchQuery.trim().length > 0;
 
   return (
     <div className="dash-topbar sticky top-0 z-40 bg-[rgba(243,238,227,0.92)] backdrop-blur-[12px] border-b border-[var(--color-line)] px-7 py-[11px] flex items-center gap-4">
@@ -54,18 +145,45 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
         </span>
       </div>
 
-      {/* Center: Global Search */}
-      <div className="flex-1 max-w-[480px] relative hidden md:block">
-        <SearchIcon className="absolute left-[13px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[var(--color-ink-mute)] pointer-events-none" />
+      {/* Center: Global Search (Phase 9d wired) */}
+      <div ref={searchContainerRef} className="flex-1 max-w-[480px] relative hidden md:block">
+        <SearchIcon className="absolute left-[13px] top-1/2 -translate-y-1/2 w-[14px] h-[14px] text-[var(--color-ink-mute)] pointer-events-none z-10" />
         <input
+          ref={searchInputRef}
           type="text"
-          className="w-full py-[9px] px-[14px] pl-9 text-[13.5px] bg-[var(--color-paper)] border border-[var(--color-line)] rounded-full text-[var(--color-ink)] placeholder:text-[var(--color-ink-mute)] placeholder:opacity-70 focus:outline-none focus:border-[var(--color-ink)] focus:bg-white focus:shadow-[0_0_0_3px_rgba(14,14,12,0.06)] transition-all"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setActiveIndex(0);
+            setSearchDropdownOpen(e.target.value.trim().length > 0);
+          }}
+          onFocus={() => {
+            if (searchQuery.trim().length > 0) setSearchDropdownOpen(true);
+          }}
+          onKeyDown={handleSearchKeyDown}
+          aria-expanded={showDropdown}
+          aria-controls="globalSearchDropdown"
+          aria-autocomplete="list"
+          role="combobox"
+          className="peer w-full py-[9px] px-[14px] pl-9 text-[13.5px] bg-[var(--color-paper)] border border-[var(--color-line)] rounded-full text-[var(--color-ink)] placeholder:text-[var(--color-ink-mute)] placeholder:opacity-70 focus:outline-none focus:border-[var(--color-ink)] focus:bg-white focus:shadow-[0_0_0_3px_rgba(14,14,12,0.06)] transition-all"
           placeholder={TOPBAR.search.placeholder}
           aria-label="Global admin search"
         />
-        <span className="absolute right-[14px] top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--color-ink-mute)] bg-[var(--color-cream)] px-1.5 py-0.5 rounded border border-[var(--color-line)] pointer-events-none">
+        {/* admin.html line 1864: kbd hint hides when input focused — using peer-focus utility */}
+        <span className="absolute right-[14px] top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--color-ink-mute)] bg-[var(--color-cream)] px-1.5 py-0.5 rounded border border-[var(--color-line)] pointer-events-none peer-focus:hidden">
           {TOPBAR.search.kbd}
         </span>
+
+        {showDropdown && (
+          <GlobalSearchDropdown
+            query={searchQuery}
+            groups={groups}
+            flatResults={flatResults}
+            activeIndex={activeIndex}
+            onSelect={handleSelect}
+            onHover={(idx) => setActiveIndex(idx)}
+          />
+        )}
       </div>
 
       {/* Right: Help + Notifications + Avatar */}

@@ -193,6 +193,49 @@ export interface AdminsPageData {
 }
 
 // ============================================================
+// PHASE 9c — CREATE-NEW-ADMIN FORM
+// ============================================================
+
+// 6 role options per admin.html lines 21330-21335 (verbatim order + values)
+export type AdminCreateRoleOption =
+  | 'ops'
+  | 'trust'
+  | 'finance'
+  | 'compliance'
+  | 'readonly'
+  | 'super';
+
+export interface AdminRoleOption {
+  value: AdminCreateRoleOption;
+  label: string;
+}
+
+export const ADMIN_ROLE_OPTIONS: AdminRoleOption[] = [
+  { value: 'ops', label: 'Operations Admin' },
+  { value: 'trust', label: 'Trust & Safety Admin' },
+  { value: 'finance', label: 'Finance Admin' },
+  { value: 'compliance', label: 'Compliance Admin' },
+  { value: 'readonly', label: 'Read-Only Admin (auditor)' },
+  { value: 'super', label: 'Super Admin' },
+];
+
+export interface AdminCreateFormFields {
+  fullName: string;
+  email: string;
+  role: AdminCreateRoleOption | '';
+  phone: string;
+  ipAllowlist: string;
+}
+
+export const EMPTY_ADMIN_CREATE_FORM: AdminCreateFormFields = {
+  fullName: '',
+  email: '',
+  role: '',
+  phone: '',
+  ipAllowlist: '',
+};
+
+// ============================================================
 // AVATAR GRADIENTS (av-N from Phase 7f)
 // ============================================================
 
