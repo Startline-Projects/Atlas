@@ -1,10 +1,33 @@
-import { ArrowUpRight, MessageSquare, MoreHorizontal } from "lucide-react";
+import {
+  ArrowUpRight,
+  Calendar,
+  ExternalLink,
+  MessageSquare,
+  PauseCircle,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import {
   AVATAR_GRADIENTS,
 } from "@/lib/mock-data/specialist/queue-types";
 import type { ManagedCandidate } from "@/lib/mock-data/specialist/my-candidates";
 import { cn } from "@/lib/utils/cn";
+import {
+  RowOverflowMenu,
+  type OverflowMenuItem,
+} from "@/components/specialist/people-shared/row-overflow-menu";
+
+export type CandidateRowCallbacks = {
+  /** Open the SchedulingModal for this candidate. */
+  onSchedule: (c: ManagedCandidate) => void;
+  /** Fire a queued flash for "Suggest for client". */
+  onSuggestForClient: (c: ManagedCandidate) => void;
+  /** Fire a queued flash for "Flag for re-cert". */
+  onFlagForRecert: (c: ManagedCandidate) => void;
+  /** Fire a queued flash for "Mark unavailable" (danger tone). */
+  onMarkUnavailable: (c: ManagedCandidate) => void;
+};
 
 const TIER_PILL: Record<ManagedCandidate["tier"], string> = {
   Elite:
@@ -54,10 +77,64 @@ function certLabel(days: number): string {
   return `${Math.round(days / 30)}mo`;
 }
 
-export function CandidateRow({ c }: { c: ManagedCandidate }) {
+export function CandidateRow({
+  c,
+  callbacks,
+}: {
+  c: ManagedCandidate;
+  callbacks: CandidateRowCallbacks;
+}) {
   const gradient = c.avatarGradient
     ? AVATAR_GRADIENTS[c.avatarGradient]
     : { from: "#FFD6A5", to: "#FFA07A" };
+
+  const overflowItems: ReadonlyArray<OverflowMenuItem> = [
+    {
+      kind: "link",
+      key: "profile",
+      label: "View full profile",
+      href: `/specialist/candidates/${c.id}`,
+      icon: <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "link",
+      key: "message",
+      label: "Send message",
+      href: `/specialist/candidate-chat?id=${c.id}`,
+      icon: <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "schedule",
+      label: "Schedule check-in",
+      onClick: () => callbacks.onSchedule(c),
+      icon: <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "suggest",
+      label: "Suggest for client",
+      onClick: () => callbacks.onSuggestForClient(c),
+      icon: <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    { kind: "divider", key: "div" },
+    {
+      kind: "action",
+      key: "recert",
+      label: "Flag for re-cert",
+      onClick: () => callbacks.onFlagForRecert(c),
+      icon: <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />,
+    },
+    {
+      kind: "action",
+      key: "pause",
+      label: "Mark unavailable",
+      onClick: () => callbacks.onMarkUnavailable(c),
+      icon: <PauseCircle className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      tone: "danger",
+    },
+  ];
+
   return (
     <>
       <td className="text-ink-soft min-w-[220px]">
@@ -143,7 +220,10 @@ export function CandidateRow({ c }: { c: ManagedCandidate }) {
         </span>
       </td>
       <td className="w-[92px] text-right align-middle">
-        <div className="inline-flex gap-0.5 opacity-40 group-hover:opacity-100">
+        <div
+          className="inline-flex gap-0.5 opacity-40 group-hover:opacity-100"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Link
             href={`/specialist/candidate-chat?id=${c.id}`}
             onClick={(e) => e.stopPropagation()}
@@ -160,14 +240,11 @@ export function CandidateRow({ c }: { c: ManagedCandidate }) {
           >
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
           </Link>
-          <button
-            type="button"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="More actions"
-            className="text-ink-mute hover:bg-paper hover:border-line hover:text-ink grid h-7 w-7 cursor-pointer place-items-center rounded-md border border-transparent transition-colors"
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-          </button>
+          <RowOverflowMenu
+            triggerId={`row-${c.id}`}
+            triggerLabel={`More actions for ${c.fullName}`}
+            items={overflowItems}
+          />
         </div>
       </td>
     </>

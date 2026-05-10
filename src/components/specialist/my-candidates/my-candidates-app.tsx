@@ -2,6 +2,7 @@
 
 import { Download, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
 import {
   RosterActionButton,
   RosterAttentionStrip,
@@ -12,9 +13,15 @@ import {
   RosterShell,
   RosterSheet,
   RosterTable,
+  useQueuedFlash,
   type AttentionCardData,
   type ColumnDef,
 } from "@/components/specialist/people-shared";
+import {
+  SchedulingModal,
+  formatSchedulePartsForFlash,
+  type SchedulePayload,
+} from "@/components/specialist/shell/scheduling-modal";
 import {
   MANAGED_COHORTS,
   MANAGED_HEADER_SUBTITLE,
@@ -89,6 +96,13 @@ export function MyCandidatesApp() {
   const [search, setSearch] = useState<string>("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sheetId, setSheetId] = useState<string | null>(null);
+  /** When non-null, the SchedulingModal is open for that candidate. */
+  const [schedulingFor, setSchedulingFor] = useState<ManagedCandidate | null>(
+    null,
+  );
+
+  /* Queued-flash trigger — single source of truth for warn-tone overlays. */
+  const { flash, fireQueuedFlash } = useQueuedFlash();
 
   /** Counts used by the cohort chips — derive from the full mock list. */
   const cohortCounts = useMemo(() => {
@@ -137,6 +151,43 @@ export function MyCandidatesApp() {
     sheetId !== null
       ? managedCandidates.find((c) => c.id === sheetId)
       : null;
+
+  /* Row + sheet workflow callbacks. All visual-only — backend wired later. */
+  const openSchedule = (c: ManagedCandidate) => setSchedulingFor(c);
+  const handleSuggestForClient = (c: ManagedCandidate) =>
+    fireQueuedFlash(`Suggest-for-client queued for ${c.fullName}`);
+  const handleFlagForRecert = (c: ManagedCandidate) =>
+    fireQueuedFlash(`Re-cert flag queued for ${c.fullName}`);
+  const handleMarkUnavailable = (c: ManagedCandidate) =>
+    fireQueuedFlash(`Mark-unavailable queued for ${c.fullName}`);
+
+  const rowCallbacks = {
+    onSchedule: openSchedule,
+    onSuggestForClient: handleSuggestForClient,
+    onFlagForRecert: handleFlagForRecert,
+    onMarkUnavailable: handleMarkUnavailable,
+  };
+  const sheetCallbacks = {
+    onSchedule: openSchedule,
+    onSuggestForClient: handleSuggestForClient,
+    onFlagForRecert: handleFlagForRecert,
+  };
+
+  /* SchedulingModal confirm handler — visual-only flash with selections. */
+  const handleScheduleConfirm = (payload: SchedulePayload) => {
+    if (!schedulingFor) return;
+    const parts = formatSchedulePartsForFlash(payload);
+    fireQueuedFlash(
+      `Scheduled. ${schedulingFor.firstName} · ${parts}${payload.videoCall ? " · video link queued" : ""}`,
+    );
+    setSchedulingFor(null);
+  };
+
+  /* Bulk-action handlers — fire flash with count + clear selection. */
+  const fireBulkFlash = (verb: string) => {
+    fireQueuedFlash(`${verb} queued for ${selected.size} candidates`);
+    setSelected(new Set());
+  };
 
   /** Attention card data — joins the static config with row identity. */
   const attentionCardData: ReadonlyArray<AttentionCardData> = useMemo(
@@ -199,7 +250,7 @@ export function MyCandidatesApp() {
               <RosterActionButton
                 variant="primary"
                 icon={<Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />}
-                onClick={(e) => e.preventDefault()}
+                href="/specialist/sourcing"
               >
                 Source new
               </RosterActionButton>
@@ -266,7 +317,7 @@ export function MyCandidatesApp() {
           onToggleAll={toggleAll}
           allSelected={allSelected}
           someSelected={someSelected}
-          renderRow={(c) => <CandidateRow c={c} />}
+          renderRow={(c) => <CandidateRow c={c} callbacks={rowCallbacks} />}
           onRowOpen={setSheetId}
           empty={{
             title: "No candidates match your filters",
@@ -281,23 +332,23 @@ export function MyCandidatesApp() {
           {
             key: "message",
             label: "Message all",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Bulk message"),
           },
           {
             key: "list",
             label: "Add to list",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Add-to-list"),
           },
           {
             key: "recert",
             label: "Flag for re-cert",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Bulk re-cert flag"),
           },
           {
             key: "pause",
             label: "Pause",
             tone: "danger",
-            onClick: () => setSelected(new Set()),
+            onClick: () => fireBulkFlash("Pause"),
           },
         ]}
         onClear={() => setSelected(new Set())}
@@ -308,8 +359,20 @@ export function MyCandidatesApp() {
         onClose={() => setSheetId(null)}
         ariaLabel="Candidate detail"
       >
-        {sheetCandidate ? <CandidateSheetContent c={sheetCandidate} /> : null}
+        {sheetCandidate ? (
+          <CandidateSheetContent c={sheetCandidate} callbacks={sheetCallbacks} />
+        ) : null}
       </RosterSheet>
+
+      <SchedulingModal
+        key={schedulingFor?.id ?? "closed"}
+        open={schedulingFor !== null}
+        subjectName={schedulingFor?.fullName ?? ""}
+        onClose={() => setSchedulingFor(null)}
+        onSchedule={handleScheduleConfirm}
+      />
+
+      <ApprovedFlash {...flash} />
     </>
   );
 }

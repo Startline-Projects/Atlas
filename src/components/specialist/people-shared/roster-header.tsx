@@ -5,6 +5,8 @@
  * `actions` slot — those buttons can carry their own onClick handlers
  * if the page wraps them in a Client component.
  */
+import Link from "next/link";
+
 type RosterHeaderProps = {
   eyebrow: string;
   /** h1 content — supports inline emphasized fragment via the `italic` part. */
@@ -41,10 +43,22 @@ export function RosterHeader({
   );
 }
 
-/** Standard action button used in the roster header `actions` slot. */
-type RosterActionProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+/**
+ * Standard action button used in the roster header `actions` slot.
+ *
+ * When `href` is provided the button renders as a Next.js `<Link>` instead
+ * of a `<button>`. Same precedent as `dashboard/quick-actions-card.tsx`
+ * (commit 4d08556) — extending an existing styled button to support
+ * navigation without forking the component.
+ */
+type RosterActionProps = Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "href"
+> & {
   variant?: "default" | "primary";
   icon?: React.ReactNode;
+  /** When present, renders as a Link instead of a button. */
+  href?: string;
 };
 
 export function RosterActionButton({
@@ -52,6 +66,7 @@ export function RosterActionButton({
   icon,
   children,
   className,
+  href,
   ...rest
 }: RosterActionProps) {
   const base =
@@ -60,12 +75,17 @@ export function RosterActionButton({
     variant === "primary"
       ? "bg-ink text-paper border-ink hover:bg-ink-soft"
       : "bg-paper border-line text-ink hover:bg-cream-deep";
+  const cls = `${base} ${variantClass} ${className ?? ""}`;
+  if (href) {
+    return (
+      <Link href={href} className={cls}>
+        {icon ? <span aria-hidden="true">{icon}</span> : null}
+        {children}
+      </Link>
+    );
+  }
   return (
-    <button
-      type="button"
-      className={`${base} ${variantClass} ${className ?? ""}`}
-      {...rest}
-    >
+    <button type="button" className={cls} {...rest}>
       {icon ? <span aria-hidden="true">{icon}</span> : null}
       {children}
     </button>

@@ -2612,3 +2612,213 @@ All 5 still apply equally to recert-queue:
 | Review-queue's `IntroVideoSection` (1st consumer of PreviewUnavailableModal) | Untouched | ✓ Still renders correctly |
 
 ---
+
+## Post-conversion polish — My-candidates tab interactions (commit pending)
+
+End-to-end audit of `/specialist/my-candidates` (47-candidate roster
+with cohort tabs, search, sort, attention strip, table, bulk action
+bar, and slide-over candidate sheet). Audit identified **2 confirmed
+broken interactions** the user explicitly flagged (row 3-dot kebab,
+"Schedule check-in" sheet button) plus **1 missed wiring** (Source
+new) and **6 backend-blocked workflow buttons** needing an honest
+queued-flash treatment.
+
+This step is heavier than prior polish commits — **2 new shared
+primitives + 1 helper hook** because the affordances apply across 3+
+sites each.
+
+### Files added (3) + 4 modified
+
+| File | Purpose |
+|---|---|
+| `components/specialist/people-shared/row-overflow-menu.tsx` | NEW — generic 3-dot popover. Discriminated-union item shape (`link` / `action` / `divider`). Default trigger styled to match the existing kebab; consumers can override via `renderTrigger`. Click-outside via `data-overflow-trigger="<id>"` attribute. |
+| `components/specialist/shell/scheduling-modal.tsx` | NEW — visual-only date+time+duration+video+note picker. Wraps `ReviewModal`. Default time = now + 2hrs rounded UP to next 15-min interval. `disabled` confirm until both date + time non-empty. Exports `formatSchedulePartsForFlash` helper for parents. |
+| `components/specialist/people-shared/fire-queued-flash.ts` | NEW — `useQueuedFlash()` hook. Returns `{ flash, fireQueuedFlash }`. Default sub-line "· backend pending". Auto-dismiss 2.5s. Single source of truth for warn-tone overlays on visual-only workflow actions. |
+| `components/specialist/people-shared/roster-header.tsx` | RosterActionButton now supports optional `href` — renders as `<Link>` when provided, otherwise `<button>`. Same precedent as `dashboard/quick-actions-card.tsx` (commit `4d08556`). |
+| `components/specialist/my-candidates/candidate-row.tsx` | Replaced inert `<button>MoreHorizontal</button>` with `<RowOverflowMenu>`. New `CandidateRowCallbacks` type (4 callbacks: schedule / suggest / recert / unavailable). |
+| `components/specialist/my-candidates/candidate-sheet-content.tsx` | Wired the 3 inert sheet actions (Schedule check-in / Suggest for client / Flag for re-cert) via `CandidateSheetCallbacks`. |
+| `components/specialist/my-candidates/my-candidates-app.tsx` | Orchestrator owns `schedulingFor` modal state + `useQueuedFlash` flash state. Source-new header button now `<Link>` to `/specialist/sourcing`. Bulk-action handlers fire flash + clear selection. |
+| `components/specialist/people-shared/index.ts` | Re-exports `RowOverflowMenu` / `OverflowMenuItem` / `useQueuedFlash` / `QUEUED_FLASH_DEFAULT_SUB` / `FireQueuedFlashOpts`. |
+
+### `RowOverflowMenu` — new shared primitive
+
+3 known consumer files (1 wired now, 2 to wire later):
+
+| Site | Status |
+|---|---|
+| `my-candidates/candidate-row.tsx` per-row kebab | ✓ Wired (this commit) |
+| `my-clients/client-row.tsx` per-row kebab | Pending — same shape |
+| `chat-shared/chat-header.tsx` More button | Pending — uses `renderTrigger` override for the existing `ActionIconButton` styling |
+
+**API:**
+
+```tsx
+type OverflowMenuItem =
+  | { kind: "link"; key; label; href; icon? }
+  | { kind: "action"; key; label; onClick; icon?; tone?: "default" | "danger" }
+  | { kind: "divider"; key };
+
+<RowOverflowMenu
+  triggerId={`row-${c.id}`}
+  triggerLabel={`More actions for ${c.fullName}`}
+  items={overflowItems}
+/>
+```
+
+Click-outside detection: same precedent as topbar popovers (`dd2d450`).
+Document-level `mousedown` listener checks
+`closest('[data-overflow-trigger="<triggerId>"]')` so the trigger
+itself doesn't close the menu when re-clicked. Esc closes via
+keydown.
+
+z-[30] is above sticky page chrome (sidebar / topbar / cohort tabs)
+and below modals (z-[200]+) and approved-flash (z-[300]).
+
+### `SchedulingModal` — new shared primitive
+
+3 known consumer files, 4 surfaces (1 wired now, 3 to wire later):
+
+| Site | Status |
+|---|---|
+| `my-candidates/candidate-sheet-content.tsx` (Schedule check-in sheet action) | ✓ Wired (this commit) |
+| `my-candidates/candidate-row.tsx` (kebab item) | ✓ Wired (same orchestrator state) |
+| `candidate-profile/profile-hero.tsx` (Schedule check-in hero action) | Pending |
+| `chat-shared/chat-header.tsx` (Schedule action — both candidate-chat AND client-chat headers) | Pending — 1 file, 2 thread kinds |
+
+**API:**
+
+```tsx
+type SchedulePayload = {
+  date: string;       // YYYY-MM-DD
+  time: string;       // HH:MM 24-hour
+  duration: number;   // 15 / 30 / 45 / 60
+  videoCall: boolean;
+  note?: string;      // ≤140 chars; absent when empty
+};
+
+<SchedulingModal
+  key={schedulingFor?.id ?? "closed"}   // remount-on-open pattern
+  open={schedulingFor !== null}
+  subjectName={c.fullName}
+  purpose="Check-in"                    // optional, defaults to "Check-in"
+  onClose={() => setSchedulingFor(null)}
+  onSchedule={(payload) => fireFlash(payload) /* visual-only */}
+/>
+```
+
+**Default time logic:** `now + 2 hours, rounded UP to next 15-min
+interval`. So at 10:07 AM the default becomes 12:15 PM (not 12:07 nor
+midnight). Implemented in `defaultDateTime()`.
+
+**Confirm gate:** `disabled={!canSubmit}` where `canSubmit = date.length
+> 0 && time.length > 0`. Symmetric with the disabled-at-zero pattern
+locked across RevisionsModal (`6241650`), PauseModal (`d1153e6`), and
+RejectModal/OffboardModal (`disabled={!reason}`).
+
+**State reset semantics:** parent passes `key={subject.id ?? "closed"}`
+so the modal remounts per-open. Lazy-init `useState(defaultDateTime)`
+picks up fresh defaults — no `useEffect` needed (avoids the
+cascading-render lint rule `react-hooks/immutability`). Same precedent
+as `review-queue/detail-pane.tsx` re-keying on candidate id.
+
+**`formatSchedulePartsForFlash`** helper exported alongside the modal:
+takes a `SchedulePayload` → `"Wed May 13, 2:00 PM · 30 min"`. Lives
+with the modal so consumers stay consistent on flash copy. Parents
+wrap that in their own queued-flash message:
+
+```tsx
+fireQueuedFlash(
+  `Scheduled. ${firstName} · ${parts}${videoCall ? " · video link queued" : ""}`,
+);
+```
+
+### `useQueuedFlash` — new hook
+
+The standing pattern for visual-only workflow actions whose backend
+isn't yet wired. Replaces ad-hoc `setSelected(new Set())` "looks like
+it succeeded" anti-pattern with honest "queued · backend pending"
+acknowledgement.
+
+**6 consumer sites** wired in this commit:
+
+| Site | Flash copy |
+|---|---|
+| Bulk: Message all | `Bulk message queued for N candidates` |
+| Bulk: Add to list | `Add-to-list queued for N candidates` |
+| Bulk: Flag for re-cert | `Bulk re-cert flag queued for N candidates` |
+| Bulk: Pause | `Pause queued for N candidates` |
+| Sheet: Suggest for client | `Suggest-for-client queued for {fullName}` |
+| Sheet: Flag for re-cert | `Re-cert flag queued for {fullName}` |
+| Kebab: Mark unavailable | `Mark-unavailable queued for {fullName}` |
+| SchedulingModal confirm | `Scheduled. {firstName} · Wed May 13, 2:00 PM · 30 min · video link queued` |
+
+All use `ApprovedFlash` in warn tone; default sub-line `· backend
+pending` (overridable via `opts.tail`); auto-dismiss 2.5s.
+
+### `RosterActionButton.href?` — backwards-compatible extension
+
+Adding `href` to the optional prop set lets the button render as
+`<Link>` for navigational actions ("Source new" → `/specialist/sourcing`)
+without forcing consumers to fork or wrap. Other call sites keep
+working — `href` is undefined → falls back to the existing
+`<button type="button">` branch. Same shape as the dashboard
+quick-actions wiring in `4d08556`.
+
+### Wired (8 sites in this commit)
+
+| # | Site | Treatment |
+|---|---|---|
+| 1 | A3 "Source new" header button | `<Link>` → `/specialist/sourcing` |
+| 2 | D6 row 3-dot kebab | `<RowOverflowMenu>` with 6 items (View profile / Send message / Schedule check-in / Suggest for client / divider / Flag for re-cert / Mark unavailable) |
+| 3 | E2 "Message all" bulk | `useQueuedFlash` |
+| 4 | E3 "Add to list" bulk | `useQueuedFlash` |
+| 5 | E4 "Flag for re-cert" bulk | `useQueuedFlash` |
+| 6 | E5 "Pause" bulk | `useQueuedFlash` (danger button, warn flash) |
+| 7 | F12 sheet "Schedule check-in" | `<SchedulingModal>` |
+| 8 | F13 / F14 sheet "Suggest for client" / "Flag for re-cert" | `useQueuedFlash` |
+
+### A2 "Export" — backend-blocked, no UI treatment
+
+Documented per the standing rule: when a feature is genuinely niche
+AND backend-blocked, omit visual treatment and document only.
+**Reserve flash treatment for high-traffic interactions where dead
+clicks would actively confuse users.** Export is the first formal
+example of this rule.
+
+### Polish-data items deferred (Q6 logged)
+
+Recurring theme across recert-queue (`d1153e6`), my-candidates (this
+commit), and dashboard (`8016b7d`) — gathered into a dedicated future
+polish step:
+
+**"Polish step: cross-session ID backfill"** — single mock-data sweep:
+- Backfill `clientId` on `Engagement` type (recert-queue + my-candidates sheet)
+- Backfill `clientId` on `FeedbackQuote` type (recert-queue feedback section)
+- Add `Hana / Kanya / Linh` chat threads to `candidate-chats.ts` (3 of 13 my-candidates currently fall back to default thread)
+- Backfill any other `clientId` / `candidateId` references found
+- Grep across mock-data files for hardcoded names without IDs
+
+Bounded: single-pass sweep, no component changes.
+
+### Carryover verifications
+
+| Component | Status |
+|---|---|
+| `PreviewUnavailableModal` (1st: review-queue intro-video; 2nd: recert "View diff") | Untouched; both consumers still work |
+| Review-queue + recert-queue full surface | Build prerenders both; spot-checked the IvCard `transcriptToggle` carryover |
+| `my-clients/client-row.tsx` 3-dot kebab | NOT yet wired to `RowOverflowMenu` — still inert. Verified renders without errors. Listed as planned 2nd consumer. |
+| `chat-shared/chat-header.tsx` Schedule + More buttons | NOT yet wired. Still render as inert. Verified routes prerender. Listed as planned consumers. |
+| `candidate-profile/profile-hero.tsx` Schedule check-in | NOT yet wired. Still inert. Listed as planned consumer. |
+
+**Three new primitives extracted post-conversion now form a pattern:**
+
+| Primitive | Origin | Consumer expansion |
+|---|---|---|
+| `PreviewUnavailableModal` | `6241650` (review-queue video + transcript) | + recert "View diff" (`d1153e6`) — 3 confirmed sites |
+| `RowOverflowMenu` | This commit (my-candidates row kebab) | + my-clients row + chat-header More — 3 known sites |
+| `SchedulingModal` | This commit (my-candidates sheet + kebab) | + candidate-profile hero + chat-header Schedule (×2) — 3 files / 4 surfaces |
+| `useQueuedFlash` | This commit (my-candidates 8 sites) | + future bulk/workflow buttons across views |
+
+All four extractions share the **"build pre-emptively at the 2nd-consumer threshold"** convention from CONVERSION_LOG. None broke a Sessions 1-6 layer.
+
+---

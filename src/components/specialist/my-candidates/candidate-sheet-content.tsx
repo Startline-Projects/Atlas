@@ -21,6 +21,15 @@ import type {
 } from "@/lib/mock-data/specialist/my-candidates";
 import { cn } from "@/lib/utils/cn";
 
+export type CandidateSheetCallbacks = {
+  /** Open the SchedulingModal for this candidate. */
+  onSchedule: (c: ManagedCandidate) => void;
+  /** Fire a queued flash for "Suggest for client match". */
+  onSuggestForClient: (c: ManagedCandidate) => void;
+  /** Fire a queued flash for "Flag for re-cert". */
+  onFlagForRecert: (c: ManagedCandidate) => void;
+};
+
 const TIMELINE_BULLET: Record<TimelineEvent["kind"], string> = {
   approved: "bg-lime-deep",
   hired: "bg-success",
@@ -37,7 +46,13 @@ const TIMELINE_BULLET: Record<TimelineEvent["kind"], string> = {
   "specialist-message": "bg-ink",
 };
 
-export function CandidateSheetContent({ c }: { c: ManagedCandidate }) {
+export function CandidateSheetContent({
+  c,
+  callbacks,
+}: {
+  c: ManagedCandidate;
+  callbacks: CandidateSheetCallbacks;
+}) {
   const gradient = c.avatarGradient
     ? AVATAR_GRADIENTS[c.avatarGradient]
     : { from: "#FFD6A5", to: "#FFA07A" };
@@ -159,16 +174,19 @@ export function CandidateSheetContent({ c }: { c: ManagedCandidate }) {
             key: "checkin",
             label: "Schedule check-in",
             icon: <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onSchedule(c),
           },
           {
             key: "suggest",
             label: "Suggest for client match",
             icon: <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onSuggestForClient(c),
           },
           {
             key: "recert",
             label: "Flag for re-cert",
             icon: <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />,
+            onClick: () => callbacks.onFlagForRecert(c),
           },
         ]}
       />
