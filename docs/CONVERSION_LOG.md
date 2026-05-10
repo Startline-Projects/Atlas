@@ -2340,3 +2340,145 @@ by `/specialist/candidate-chat`, `/specialist/client-chat`,
   styling now actually reflects a real click target.
 
 ---
+
+## Post-conversion polish — Review-queue tab interactions (commit pending)
+
+End-to-end audit of `/specialist/review-queue` (3 candidates × 10
+sections × full decision flow). Out of ~40 distinct interactive
+elements, **28 were already correctly wired** from Session 2. The
+remaining gaps were:
+- 1 misleading affordance (work-sample buttons)
+- 2 backend-blocked buttons that needed honest treatment (video play +
+  read full transcript)
+- 1 visual-fidelity gap (Show full transcript toggle on Interview
+  1 / Interview 2 — present in source HTML, not ported)
+- 1 modal UX nit (revisions confirm enabled at 0 checks)
+- 1 reversion (notes "+ Add tag" was using `window.prompt`; reverted
+  to source-shape static placeholder)
+
+### Files added (1) + 5 modified
+
+| File | Change |
+|---|---|
+| `components/specialist/shell/preview-unavailable-modal.tsx` | **NEW shared primitive** — wraps `queue-shared/ReviewModal` with kind-keyed copy for video / document / transcript / audio. Honest treatment for buttons that advertise preview/play/download actions blocked on backend services. |
+| `components/specialist/queue-shared/iv-card.tsx` | Added optional `transcriptToggle?: boolean` prop. When true (Interview 1 + 2 only), renders the "Show full transcript →" expand-collapse affordance from source HTML between snippets and commentary. Card converts to `"use client"` (state for the toggle); recert-queue defaults to `false` → no regression. |
+| `components/specialist/queue-shared/notes-card.tsx` | Removed `window.prompt`-based add-tag (which extended source). Now matches source-shape: static "+ Add tag" chip, no behavior. Tag chip-input UX logged as future polish. |
+| `components/specialist/review-queue/sections.tsx` | `"use client"` (modal state); IntroVideoSection wires play + read-transcript buttons to `PreviewUnavailableModal`; InterviewSection passes `transcriptToggle`; work-sample cards `<button>` → `<article>` (misleading affordance fix). |
+| `components/specialist/review-queue/modals.tsx` | RevisionsModal confirm button: `disabled` when 0 checkboxes selected. Symmetric with RejectModal's disabled-until-reason rule. |
+
+### `PreviewUnavailableModal` — new standing convention
+
+Honest > faked > removed. A button that advertises a preview, play,
+or download action should DO something on click. Removing the button
+makes the page look incomplete; faking the action misleads users.
+This modal acknowledges the gap honestly and tells the user what
+will happen when services land.
+
+**API:**
+
+```tsx
+<PreviewUnavailableModal
+  open={isOpen}
+  kind="video" | "document" | "transcript" | "audio"
+  subjectName="Marie's intro video"
+  onClose={...}
+/>
+```
+
+**Wraps `queue-shared/ReviewModal`** so it inherits Esc-close,
+backdrop-click-close, body scroll lock, and the established modal
+aesthetic.
+
+**Pre-emptive 2nd-consumer trigger:** the disputes evidence ledger
+"View" button on each evidence row currently does nothing — that's
+the known second consumer. When the dispute polish step lands, those
+buttons should consume `<PreviewUnavailableModal kind="document"
+subjectName="Sofia × Acme · Exhibit B" />` (or `"audio"` for the call
+recording, `"video"` for video evidence). Lives in `shell/` rather
+than `queue-shared/` because it isn't queue-specific — any future
+specialist surface that has backend-blocked previews can reuse it.
+
+**Standing rule:** when a button advertises a preview/play/download
+action and the underlying data is backend-blocked, render
+`<PreviewUnavailableModal>` rather than removing the button or
+leaving it inert. Misleading affordances (`<button>` with no `onClick`
+or with `e.preventDefault()`) are still removed when they don't
+advertise a feature — see the dashboard "Filter" span removed in
+8016b7d and the work-sample cards reverted in this commit. The
+distinction is: does the button label promise behavior (Play /
+Read transcript / View document)? Promised behavior → modal. No
+promise → revert to display element.
+
+### `IvCard.transcriptToggle` — additive prop
+
+Backwards-compatible. Recert-queue, AI assessment section, and
+Overview section all consume `IvCard` without passing
+`transcriptToggle` → toggle UI hidden → no regression. Only
+review-queue's Interview 1 + 2 sections pass it. The expanded panel
+copy is honest: "Full transcript loads when the assessment service
+persists transcripts. AI-extracted highlights are shown above…".
+No new mock data needed.
+
+### Misleading affordance fixed (work-sample cards)
+
+Same precedent as the dashboard "Filter" span removed in 8016b7d.
+Source HTML uses `<div class="work-item">` (not `<button>`); build
+had wrapped them in `<button type="button">` with no onClick — pure
+hover-styled affordance with no behavior. Reverted to `<article>`,
+removed cursor-pointer + border-hover. If sample preview becomes a
+real feature later, restore the button + wire to
+`<PreviewUnavailableModal kind="document">`.
+
+### Notes "+ Add tag" — reverted to source-shape
+
+Source HTML renders only a static `<span class="notes-tag">+ Add
+tag</span>` (no behavior). Build had extended it to a
+`window.prompt`-based add. Native browser prompt is jank and the
+source-fidelity divergence wasn't logged. Reverted. Tag chip-input
+UX is future polish (see list below). No regression for recert-queue
+which uses the same shared `NotesCard`.
+
+### Revisions modal — confirm disabled at 0 checks
+
+Symmetric with RejectModal's `disabled={!reason}` rule. Tiny UX
+improvement — prevents accidentally sending an empty revisions
+request. Source HTML has no enforcement; build adds it. Logged as
+deliberate divergence: "Build adds confirm-button disabled state
+when no revisions are selected. Source HTML allows zero-check
+submission; build does not. Consistent with the reject-modal
+pattern."
+
+### Recert-queue verification
+
+Both shared components (`IvCard`, `NotesCard`) updated. Recert-queue
+unchanged at the consumer site — `IvCard data={...}` (no
+`transcriptToggle`) and `NotesCard label=... placeholder=...` (API
+unchanged). Build prerenders both `/specialist/review-queue` and
+`/specialist/recert-queue` cleanly. No regression observed.
+
+### Future-polish items logged (5)
+
+Each is a real UX gap not addressed in this commit. Source HTML has
+the same gap in most cases (noted per item). Skip-to-build threshold
+is "user-blocking" — none of these meet it today.
+
+| # | Site | Polish | Source HTML status |
+|---|---|---|---|
+| 1 | Tab strip (review + recert) | IntersectionObserver-based scroll-spy so the active tab follows scroll | Same gap |
+| 2 | Profile section (review) | Post-approval edit affordance; today the section caption says "Editable post-approval" but no edit UI is rendered after approval | Same gap |
+| 3 | References section (review + recert) | "Resend outreach" / "Mark unreachable" actions on pending references | Same gap |
+| 4 | Anti-cheat section (review + recert) | "Investigate flag" / "Clear flag" actions for failed checks | Same gap |
+| 5 | AI assessment section (review + recert) | "Re-run assessment" action — needs ML pipeline | Same gap |
+| 6 | Notes (review + recert) | Chip-input add-tag UX (replacing the reverted prompt) + click-to-remove on existing chips | Source has only the visual placeholder |
+
+### Visual fidelity captured
+
+Closed two gaps from the Session 6.6 deferred-FA list — neither was
+formally on the FA table (these surfaced during the audit):
+
+1. **Interview transcript toggle** — source has it, build was
+   missing it. Now ports cleanly via the new `transcriptToggle` prop.
+2. **Work-sample button affordance** — source uses `<div>`, build
+   used `<button>`. Now reverted.
+
+---

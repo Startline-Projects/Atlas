@@ -1,14 +1,29 @@
+"use client";
+
 /**
  * All review-queue section components — grouped in one file because each
  * is small and they're tightly coupled to the same `ReviewQueueCandidate`
  * shape. Sections receive only the data they need; no global state.
+ *
+ * "use client" is required because IntroVideoSection owns modal state
+ * for the PreviewUnavailableModal triggered by the play + read-transcript
+ * buttons. The remaining sections are interactive-free but live in this
+ * file by virtue of grouping. Bundle impact: zero — sections are
+ * imported into detail-pane.tsx which is already a Client Component, so
+ * this code already ran on the Client; the directive just makes that
+ * explicit.
  */
+import { useState } from "react";
 import { Check, FileText, Lock, Play, Star } from "lucide-react";
 import { IvCard } from "@/components/specialist/queue-shared/iv-card";
 import { IdentityGrid } from "@/components/specialist/queue-shared/identity-grid";
 import { NotesCard } from "@/components/specialist/queue-shared/notes-card";
 import { RefList } from "@/components/specialist/queue-shared/ref-list";
 import { SectionFrame } from "@/components/specialist/queue-shared/section-frame";
+import {
+  PreviewUnavailableModal,
+  type PreviewUnavailableKind,
+} from "@/components/specialist/shell/preview-unavailable-modal";
 import type {
   InterviewBlock,
   IntroVideo,
@@ -60,7 +75,7 @@ export function InterviewSection({
         tone: block.passed ? "success" : "warn",
       }}
     >
-      <IvCard data={block.card} />
+      <IvCard data={block.card} transcriptToggle />
     </SectionFrame>
   );
 }
@@ -166,6 +181,14 @@ function ProfileAttr({
 
 export function IntroVideoSection({ c }: { c: ReviewQueueCandidate }) {
   const v: IntroVideo = c.introVideo;
+  const [previewKind, setPreviewKind] = useState<PreviewUnavailableKind | null>(
+    null,
+  );
+  const firstName = c.firstName ?? c.fullName.split(" ")[0] ?? c.fullName;
+  const subjectName =
+    previewKind === "transcript"
+      ? `${firstName}'s intro-video transcript`
+      : `${firstName}'s intro video`;
   return (
     <SectionFrame
       id="rs-video"
@@ -182,6 +205,7 @@ export function IntroVideoSection({ c }: { c: ReviewQueueCandidate }) {
         <button
           type="button"
           aria-label={`Play intro video for ${c.fullName}`}
+          onClick={() => setPreviewKind("video")}
           className="bg-ink relative grid h-72 w-full place-items-center transition-transform hover:scale-[1.005]"
           style={{
             backgroundImage: "linear-gradient(135deg, #1f2937, #2b2a26)",
@@ -206,6 +230,7 @@ export function IntroVideoSection({ c }: { c: ReviewQueueCandidate }) {
           </p>
           <button
             type="button"
+            onClick={() => setPreviewKind("transcript")}
             className="border-line text-ink-mute hover:bg-cream-deep hover:text-ink inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors"
           >
             <FileText className="h-3 w-3" strokeWidth={1.6} aria-hidden="true" />
@@ -213,6 +238,13 @@ export function IntroVideoSection({ c }: { c: ReviewQueueCandidate }) {
           </button>
         </div>
       </div>
+
+      <PreviewUnavailableModal
+        open={previewKind !== null}
+        kind={previewKind ?? "video"}
+        subjectName={subjectName}
+        onClose={() => setPreviewKind(null)}
+      />
     </SectionFrame>
   );
 }
@@ -303,10 +335,13 @@ export function WorkSamplesSection({ c }: { c: ReviewQueueCandidate }) {
     >
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {c.workSamples.map((s, i) => (
-          <button
-            type="button"
+          // Source HTML uses <div class="work-item"> — display only, not
+          // clickable. Was previously a <button> with no onClick (misleading
+          // affordance — same precedent as the dashboard "Filter" span
+          // removed in 8016b7d). Reverted to <article> to match source intent.
+          <article
             key={i}
-            className="bg-paper border-line shadow-sm hover:border-ink group flex flex-col overflow-hidden rounded-md border text-left transition-colors"
+            className="bg-paper border-line shadow-sm flex flex-col overflow-hidden rounded-md border"
           >
             <div
               className={cn(
@@ -325,7 +360,7 @@ export function WorkSamplesSection({ c }: { c: ReviewQueueCandidate }) {
               </div>
               <div className="text-ink-mute text-[11.5px]">{s.type}</div>
             </div>
-          </button>
+          </article>
         ))}
       </div>
     </SectionFrame>

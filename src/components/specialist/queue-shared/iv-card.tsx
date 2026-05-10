@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type {
   IvCardData,
   ScoreBand,
@@ -22,7 +25,20 @@ const BAR_TONE: Record<ScoreBand, string> = {
   low: "bg-danger",
 };
 
-export function IvCard({ data }: { data: IvCardData }) {
+export function IvCard({
+  data,
+  transcriptToggle = false,
+}: {
+  data: IvCardData;
+  /**
+   * When true (Interview 1 / Interview 2 sections), renders the
+   * "Show full transcript →" expand-collapse affordance from the
+   * source HTML between snippets and commentary. Honest placeholder
+   * since the full transcript is backend-blocked — see the panel copy.
+   */
+  transcriptToggle?: boolean;
+}) {
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
   return (
     <div className="bg-paper border-line shadow-sm rounded-lg border p-5 sm:p-6">
       <div className="grid gap-6 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
@@ -133,6 +149,34 @@ export function IvCard({ data }: { data: IvCardData }) {
               </p>
             </div>
           ))}
+        </div>
+      ) : null}
+
+      {transcriptToggle && data.snippets && data.snippets.length > 0 ? (
+        <div className="border-line-soft mt-6 border-t pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-ink text-[13px] font-semibold tracking-[0.02em]">
+              Transcript
+            </h4>
+            <button
+              type="button"
+              onClick={() => setTranscriptOpen((prev) => !prev)}
+              aria-expanded={transcriptOpen}
+              className="text-ink-mute hover:text-ink font-mono text-[11px] tracking-[0.04em] uppercase transition-colors"
+            >
+              {transcriptOpen
+                ? "Hide full transcript ↑"
+                : "Show full transcript →"}
+            </button>
+          </div>
+          {transcriptOpen ? (
+            <div className="bg-cream/50 border-line-soft text-ink-soft mt-3 rounded-md border px-4 py-3 text-[12.5px] leading-[1.55] italic">
+              Full transcript loads when the assessment service persists
+              transcripts. AI-extracted highlights are shown above; the full
+              transcript adds every Q&amp;A turn with timestamps and
+              confidence flags.
+            </div>
+          ) : null}
         </div>
       ) : null}
 
