@@ -113,8 +113,10 @@ export const SIDEBAR_NAV = {
         {
           id: 'reviews',
           label: 'Reviews',
-          pathname: '#reviews',
+          pathname: '/admin/operations/reviews',
           icon: ReviewsNavIcon,
+          count: '18',
+          countType: 'warn',
         },
         {
           id: 'reports',

@@ -100,6 +100,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/operations/disputes/');
     }
 
+    // Reviews: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/reviews') {
+      return pathname === '/admin/operations/reviews'
+          || pathname.startsWith('/admin/operations/reviews/');
+    }
+
     return pathname === itemPathname;
   };
 
