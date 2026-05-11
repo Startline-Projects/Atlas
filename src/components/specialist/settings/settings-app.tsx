@@ -31,7 +31,10 @@ import {
   type DangerZoneAction,
 } from "@/lib/mock-data/specialist/settings";
 import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
-import { RosterHeader } from "@/components/specialist/people-shared";
+import {
+  RosterHeader,
+  useQueuedFlash,
+} from "@/components/specialist/people-shared";
 
 import { SettingsSubNav } from "./settings-sub-nav";
 import { SettingsSavebar } from "./settings-savebar";
@@ -107,6 +110,14 @@ export function SettingsApp() {
   const [flashTail, setFlashTail] = useState<string>("");
   const [flashTone, setFlashTone] = useState<"success" | "warn">("success");
 
+  /* Step 12: queued-flash for the new inert-button treatments
+     (avatar upload/remove, sign-out session, data export). Lives
+     alongside the bespoke settings flash above — mutually exclusive
+     in practice (only one fires per click). Migrating the bespoke
+     flash is deferred per Q5 of Step 11 — review-queue + recert-queue
+     use the same bespoke pattern and would migrate as a batch. */
+  const { flash: queuedFlash, fireQueuedFlash } = useQueuedFlash();
+
   const handleSectionChange = useCallback(
     (next: SettingsSection) => {
       const qs = new URLSearchParams(params.toString());
@@ -144,6 +155,28 @@ export function SettingsApp() {
     [],
   );
 
+  /* Step 12 inert-button handlers — all fire warn-tone queued-flash
+     via fireQueuedFlash. Each section's own onClick wraps these. */
+
+  const handleAvatarUpload = useCallback(() => {
+    fireQueuedFlash(
+      "Avatar upload queued — file storage service not yet wired",
+    );
+  }, [fireQueuedFlash]);
+
+  const handleAvatarRemove = useCallback(() => {
+    fireQueuedFlash("Avatar removed — change pending save");
+  }, [fireQueuedFlash]);
+
+  const handleExport = useCallback(
+    (label: string) => {
+      fireQueuedFlash(
+        `${label} queued for export — data export service not yet wired`,
+      );
+    },
+    [fireQueuedFlash],
+  );
+
   const handleConfirmModal = useCallback(
     (kind: NonNullable<SettingsModalKind>) => {
       setModalKind(null);
@@ -178,11 +211,11 @@ export function SettingsApp() {
               onModify={handleModify}
               onChangePassword={() => setModalKind("change-password")}
               onManage2FA={() => setModalKind("manage-2fa")}
-              onSignOutSession={() => {
-                /* visual only — no state change beyond local toast in
-                 * a future polish session */
-              }}
               onDangerAction={handleDangerAction}
+              onAvatarUpload={handleAvatarUpload}
+              onAvatarRemove={handleAvatarRemove}
+              onExport={handleExport}
+              fireQueuedFlash={fireQueuedFlash}
             />
 
             <SettingsSavebar
@@ -209,6 +242,12 @@ export function SettingsApp() {
         meta="SETTINGS"
         tone={flashTone}
       />
+
+      {/* Step 12: second ApprovedFlash mount for inert-button flashes
+          (avatar upload/remove, sign-out session, data export). Lives
+          alongside the bespoke flash above; mutually exclusive in
+          practice. See top-of-file note about deferred migration. */}
+      <ApprovedFlash {...queuedFlash} />
     </>
   );
 }
@@ -222,26 +261,39 @@ function ActiveSectionPanel({
   onModify,
   onChangePassword,
   onManage2FA,
-  onSignOutSession,
   onDangerAction,
+  onAvatarUpload,
+  onAvatarRemove,
+  onExport,
+  fireQueuedFlash,
 }: {
   section: SettingsSection;
   onModify: () => void;
   onChangePassword: () => void;
   onManage2FA: () => void;
-  onSignOutSession: (id: string) => void;
   onDangerAction: (key: DangerZoneAction["key"]) => void;
+  /* Step 12 — inert-button callbacks. */
+  onAvatarUpload: () => void;
+  onAvatarRemove: () => void;
+  onExport: (label: string) => void;
+  fireQueuedFlash: ReturnType<typeof useQueuedFlash>["fireQueuedFlash"];
 }) {
   switch (section) {
     case "profile":
-      return <ProfileSection onModify={onModify} />;
+      return (
+        <ProfileSection
+          onModify={onModify}
+          onAvatarUpload={onAvatarUpload}
+          onAvatarRemove={onAvatarRemove}
+        />
+      );
     case "security":
       return (
         <SecuritySection
           onModify={onModify}
           onChangePassword={onChangePassword}
           onManage2FA={onManage2FA}
-          onSignOutSession={onSignOutSession}
+          fireQueuedFlash={fireQueuedFlash}
         />
       );
     case "notifications":
@@ -251,7 +303,7 @@ function ActiveSectionPanel({
     case "integrations":
       return <IntegrationsSection onModify={onModify} />;
     case "data-export":
-      return <DataExportSection />;
+      return <DataExportSection onExport={onExport} />;
     case "advanced":
       return (
         <AdvancedSection

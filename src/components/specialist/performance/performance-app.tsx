@@ -34,7 +34,9 @@ import {
 import {
   RosterHeader,
   RosterActionButton,
+  useQueuedFlash,
 } from "@/components/specialist/people-shared";
+import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
 import { ReviewTabs } from "@/components/specialist/queue-shared/review-tabs";
 import type { TabDef } from "@/lib/mock-data/specialist/queue-types";
 
@@ -67,6 +69,11 @@ export function PerformanceApp() {
   const period = parsePeriod(params.get("period"));
   const [activeTab, setActiveTab] = useState<PerformanceTabKey>("overview");
 
+  /* Step 12: queued-flash for the Export button. PDF service is
+     backend-blocked; flash acknowledges the click without faking the
+     download. */
+  const { flash, fireQueuedFlash } = useQueuedFlash();
+
   const s = performanceSnapshot;
 
   const handlePeriodChange = useCallback(
@@ -82,50 +89,61 @@ export function PerformanceApp() {
     setActiveTab(key as PerformanceTabKey);
   }, []);
 
+  const handleExport = useCallback(() => {
+    fireQueuedFlash(
+      "Performance report queued for export — PDF service not yet wired",
+    );
+  }, [fireQueuedFlash]);
+
   return (
-    <main className="bg-cream flex min-w-0 flex-1 flex-col">
-      <RosterHeader
-        eyebrow="Self-evaluation"
-        title={{ lead: "Your", italic: "performance" }}
-        subtitle={`${currentUser.fullName} · ${currentUser.category} specialist · ${currentUser.tenureMonths} months at Atlas · review window ${s.reviewWindowLabel}`}
-        actions={
-          <>
-            <PeriodToggle<PerformancePeriod>
-              options={PERIOD_OPTIONS}
-              active={period}
-              onChange={handlePeriodChange}
-              ariaLabel="Performance period"
-            />
-            <RosterActionButton
-              icon={<Download className="h-3 w-3" strokeWidth={1.5} />}
-            >
-              Export
-            </RosterActionButton>
-          </>
-        }
-      />
+    <>
+      <main className="bg-cream flex min-w-0 flex-1 flex-col">
+        <RosterHeader
+          eyebrow="Self-evaluation"
+          title={{ lead: "Your", italic: "performance" }}
+          subtitle={`${currentUser.fullName} · ${currentUser.category} specialist · ${currentUser.tenureMonths} months at Atlas · review window ${s.reviewWindowLabel}`}
+          actions={
+            <>
+              <PeriodToggle<PerformancePeriod>
+                options={PERIOD_OPTIONS}
+                active={period}
+                onChange={handlePeriodChange}
+                ariaLabel="Performance period"
+              />
+              <RosterActionButton
+                icon={<Download className="h-3 w-3" strokeWidth={1.5} />}
+                onClick={handleExport}
+              >
+                Export
+              </RosterActionButton>
+            </>
+          }
+        />
 
-      <PerformanceHero hero={s.hero} />
+        <PerformanceHero hero={s.hero} />
 
-      <ReviewTabs
-        tabs={TABS}
-        activeKey={activeTab}
-        onChange={handleTabChange}
-        ariaLabel="Performance sections"
-      />
+        <ReviewTabs
+          tabs={TABS}
+          activeKey={activeTab}
+          onChange={handleTabChange}
+          ariaLabel="Performance sections"
+        />
 
-      <div className="px-10 pt-6 pb-15 max-md:px-5">
-        {activeTab === "overview" ? (
-          <OverviewTab snapshot={s} />
-        ) : null}
-        {activeTab === "metrics" ? <MetricsTab snapshot={s} /> : null}
-        {activeTab === "peer-ranking" ? (
-          <PeerRankingTab snapshot={s} />
-        ) : null}
-        {activeTab === "feedback" ? <FeedbackTab snapshot={s} /> : null}
-        {activeTab === "goals" ? <GoalsTab snapshot={s} /> : null}
-      </div>
-    </main>
+        <div className="px-10 pt-6 pb-15 max-md:px-5">
+          {activeTab === "overview" ? (
+            <OverviewTab snapshot={s} />
+          ) : null}
+          {activeTab === "metrics" ? <MetricsTab snapshot={s} /> : null}
+          {activeTab === "peer-ranking" ? (
+            <PeerRankingTab snapshot={s} />
+          ) : null}
+          {activeTab === "feedback" ? <FeedbackTab snapshot={s} /> : null}
+          {activeTab === "goals" ? <GoalsTab snapshot={s} /> : null}
+        </div>
+      </main>
+
+      <ApprovedFlash {...flash} />
+    </>
   );
 }
 

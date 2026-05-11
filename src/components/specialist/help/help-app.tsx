@@ -14,6 +14,16 @@
  * Per Session 6.5 directive 6: no URL state. All CTAs are visual-only
  * (`e.preventDefault`); article / training / contact routes don't
  * exist this session.
+ *
+ * Step 12 audit verdict (LOCKED): help is intentionally a marketing-
+ * style preview surface until the CMS service lands. ~34 inert CTAs
+ * (suggestion chips · topic cards · article rows · training cards ·
+ * contact CTAs · "all N" headers · resume button) remain inert by
+ * design — re-wiring them to flashes or modals would add code
+ * surface for no UX gain (the buttons still wouldn't lead to real
+ * content). When the CMS service lands, all CTAs become real links
+ * to article / training / contact routes in a single sweep. Until
+ * then: do NOT relitigate in future polish passes.
  */
 
 import { RosterHeader } from "@/components/specialist/people-shared";

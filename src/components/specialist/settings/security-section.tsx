@@ -8,18 +8,34 @@
  * enable/disable toggle. Recovery codes + Login alerts toggle live
  * here too.
  *
+ * Step 12 polish:
+ *   - "View & regenerate" recovery codes button routes to the
+ *     existing manage-2fa modal — its body already covers the
+ *     backup-codes inventory, so no new modal kind needed.
+ *   - "Sign out" per-session button is now backed by REAL local
+ *     state. Active sessions array is lifted to a useState so the
+ *     row removes from the list on click (honest UX — the user's
+ *     gesture has a visible effect). A success-tone queued-flash
+ *     fires alongside the removal to confirm the action. This was
+ *     called out as the worst misleading affordance in the Step 12
+ *     audit because the previous handler was wired but empty
+ *     (`// visual only`) — clicks looked complete but did nothing.
+ *     Local-state removal + flash pair is the right fix.
+ *
  * Login history (PDF Step 15) is typed but not rendered — placeholder
  * caption added inline.
  *
- * Client Component (toggle + modal triggers).
+ * Client Component (toggle + modal triggers + session list state).
  */
 
 import { useState } from "react";
 import { Check, ShieldCheck } from "lucide-react";
 import {
   TWO_FACTOR_REQUIRED,
-  activeSessions,
+  activeSessions as initialActiveSessions,
+  type ActiveSession,
 } from "@/lib/mock-data/specialist/settings";
+import type { FireQueuedFlashOpts } from "@/components/specialist/people-shared";
 import {
   SettingsSectionCard,
   SettingsField,
@@ -30,14 +46,37 @@ export function SecuritySection({
   onModify,
   onChangePassword,
   onManage2FA,
-  onSignOutSession,
+  fireQueuedFlash,
 }: {
   onModify: () => void;
   onChangePassword: () => void;
+  /** Existing 2FA modal trigger — Step 12 also re-uses this for the
+   *  "View & regenerate" recovery-codes button (B18). The manage-2fa
+   *  modal body already covers backup codes; no new modal kind. */
   onManage2FA: () => void;
-  onSignOutSession: (id: string) => void;
+  /** Step 12: section fires `Signed out of {device}` success-tone
+   *  alongside its local state removal of the session row. */
+  fireQueuedFlash: (
+    message: string,
+    opts?: FireQueuedFlashOpts,
+  ) => void;
 }) {
   const [loginAlerts, setLoginAlerts] = useState(true);
+
+  /* Step 12: lift activeSessions to local state so the per-row
+     "Sign out" button can actually remove the row. Initialized from
+     the static mock; resets on page reload (same convention as
+     candidate-chat localAppends and tags-panel applied set). */
+  const [sessions, setSessions] = useState<ReadonlyArray<ActiveSession>>(
+    initialActiveSessions,
+  );
+
+  const handleSignOutSession = (id: string) => {
+    const session = sessions.find((s) => s.id === id);
+    if (!session) return;
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+    fireQueuedFlash(`Signed out of ${session.device}`, { tone: "success" });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -99,8 +138,8 @@ export function SecuritySection({
         >
           <button
             type="button"
-            onClick={(e) => e.preventDefault()}
-            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink rounded-md border px-3 py-1.5 font-body text-[12.5px] transition-colors"
+            onClick={onManage2FA}
+            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink cursor-pointer rounded-md border px-3 py-1.5 font-body text-[12.5px] transition-colors"
           >
             View &amp; regenerate
           </button>
@@ -126,10 +165,10 @@ export function SecuritySection({
       <SettingsSectionCard
         eyebrow="Active sessions"
         title="Devices signed in to your account"
-        description={`${activeSessions.length} active sessions · sign out of any device you don't recognize.`}
+        description={`${sessions.length} active sessions · sign out of any device you don't recognize.`}
       >
         <div className="flex flex-col gap-0">
-          {activeSessions.map((s) => (
+          {sessions.map((s) => (
             <div
               key={s.id}
               className="border-line-soft grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b py-3 last:border-b-0"
@@ -149,8 +188,8 @@ export function SecuritySection({
               ) : (
                 <button
                   type="button"
-                  onClick={() => onSignOutSession(s.id)}
-                  className="border-line bg-paper text-ink-soft hover:bg-danger-bg hover:text-danger hover:border-danger rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
+                  onClick={() => handleSignOutSession(s.id)}
+                  className="border-line bg-paper text-ink-soft hover:bg-danger-bg hover:text-danger hover:border-danger cursor-pointer rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
                 >
                   Sign out
                 </button>

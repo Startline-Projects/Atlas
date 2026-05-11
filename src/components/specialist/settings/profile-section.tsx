@@ -29,8 +29,14 @@ const TIMEZONE_OPTIONS = [
 
 export function ProfileSection({
   onModify,
+  onAvatarUpload,
+  onAvatarRemove,
 }: {
   onModify: () => void;
+  /** Step 12: avatar Upload / Remove flashes — file-storage service
+   *  not yet wired, so clicks fire warn-tone queued-flash via parent. */
+  onAvatarUpload?: (() => void) | undefined;
+  onAvatarRemove?: (() => void) | undefined;
 }) {
   const [fullName, setFullName] = useState(currentUser.fullName);
   const [displayName, setDisplayName] = useState(currentUser.displayName);
@@ -75,15 +81,15 @@ export function ProfileSection({
         <div className="flex flex-shrink-0 gap-2">
           <button
             type="button"
-            onClick={(e) => e.preventDefault()}
-            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
+            onClick={onAvatarUpload}
+            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink cursor-pointer rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
           >
             Upload photo
           </button>
           <button
             type="button"
-            onClick={(e) => e.preventDefault()}
-            className="border-line bg-paper text-ink-mute hover:text-danger hover:border-danger rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
+            onClick={onAvatarRemove}
+            className="border-line bg-paper text-ink-mute hover:text-danger hover:border-danger cursor-pointer rounded-md border px-3 py-1.5 font-body text-[12px] transition-colors"
           >
             Remove
           </button>

@@ -4,9 +4,13 @@
  * Data & export panel — 4 export rows (Decision history / Activity log
  * / Pool snapshot / Communication archive).
  *
- * Per source HTML: each row is `label / description / CTA button`. CTA
- * is visual-only (no actual download); clicking fires
- * e.preventDefault().
+ * Per source HTML: each row is `label / description / CTA button`.
+ *
+ * Step 12 polish: each CTA fires a warn-tone queued-flash with the
+ * row's own label interpolated — "{label} queued for export — data
+ * export service not yet wired". Single handler factory pattern; one
+ * `onExport(label)` callback owned by the parent, four call sites
+ * passing their own labels.
  *
  * Client Component (button onClick).
  */
@@ -18,7 +22,13 @@ import {
   SettingsField,
 } from "./settings-section-card";
 
-export function DataExportSection() {
+export function DataExportSection({
+  onExport,
+}: {
+  /** Step 12: fired with the row's `label` string. Parent fires a
+   *  warn-tone queued-flash with row-specific copy. */
+  onExport?: ((label: string) => void) | undefined;
+}) {
   return (
     <SettingsSectionCard
       eyebrow="Data & export"
@@ -34,8 +44,8 @@ export function DataExportSection() {
         >
           <button
             type="button"
-            onClick={(e) => e.preventDefault()}
-            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-body text-[12.5px] transition-colors"
+            onClick={onExport ? () => onExport(item.label) : undefined}
+            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 font-body text-[12.5px] transition-colors"
           >
             <Download className="h-3 w-3" strokeWidth={1.5} aria-hidden="true" />
             {item.ctaLabel}
