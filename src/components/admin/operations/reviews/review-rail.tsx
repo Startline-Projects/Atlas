@@ -222,38 +222,49 @@ export function ReviewRail({ review }: ReviewRailProps) {
         </ul>
       </nav>
 
-      {/* Reviewer snapshot panel — NEW */}
-      <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] py-[14px] px-[16px]">
-        <h4 className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--ink-mute)] font-semibold mb-[10px] pb-[8px] border-b border-dashed border-[var(--line-soft)] m-0">
+      {/* Reviewer snapshot panel — admin.html CSS L13978-14091 */}
+      <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] p-[18px] flex flex-col gap-[12px]">
+        {/* h4 — L13987-96: pb-10 border-b-dashed line-soft, NO mb (gap handles spacing) */}
+        <h4 className="font-mono text-[10px] tracking-[0.16em] uppercase text-[var(--ink-mute)] font-semibold pb-[10px] border-b border-dashed border-[var(--line-soft)] m-0">
           Reviewer snapshot
         </h4>
-        <div className="flex items-center gap-[10px] mb-[10px]">
+        {/* byline — L13998-14002: flex items-center gap-10 (no mb — parent gap handles) */}
+        <div className="flex items-center gap-[10px]">
           <span
             aria-hidden="true"
-            className="w-[36px] h-[36px] rounded-full grid place-items-center font-display text-[13px] text-[var(--paper)] font-medium tracking-[-0.01em] flex-shrink-0"
+            className="w-[36px] h-[36px] rounded-full grid place-items-center font-display text-[12px] text-[var(--paper)] font-medium flex-shrink-0"
             style={{ background: snap.gradient }}
           >
             {snap.initials}
           </span>
           <div className="min-w-0">
-            <div className="text-[14px] font-semibold text-[var(--ink)]">{snap.name}</div>
+            {/* rrp-name — L14015-20: 14px 600 ink -0.01em */}
+            <div className="text-[14px] font-semibold text-[var(--ink)] tracking-[-0.01em]">{snap.name}</div>
             {snap.realLabel && (
-              <div className="font-mono text-[10px] text-[var(--super)] font-semibold mt-[1px]">{snap.realLabel}</div>
+              // rrp-real — L14021-28: mono 10px super 600 0.02em mt-2
+              <div className="font-mono text-[10px] text-[var(--super)] font-semibold tracking-[0.02em] mt-[2px]">
+                {snap.realLabel}
+              </div>
             )}
           </div>
         </div>
-        <div className="text-[12px] text-[var(--ink-soft)] leading-[1.5] mb-[10px] pb-[10px] border-b border-dashed border-[var(--line-soft)]">
+        {/* rrp-meta — L14029-36: mono 10.5px ink-mute 0.02em leading-1.55 (NO bottom border — stat-row has top border instead) */}
+        <div className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.02em] leading-[1.55]">
           {snap.metaLine}
         </div>
-        <div className="grid grid-cols-2 gap-[10px] mb-[12px]">
+        {/* rrp-stat-row — L14037-43: grid grid-cols-2 gap-10 pt-10 border-TOP dashed line-soft */}
+        <div className="grid grid-cols-2 gap-[10px] pt-[10px] border-t border-dashed border-[var(--line-soft)]">
           {snap.stats.map((stat, idx) => (
-            <div key={idx} className="bg-[var(--paper-deep)] py-[8px] px-[10px] rounded-[var(--r-sm)] text-center">
-              <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--ink-mute)] font-semibold mb-[2px]">
+            // rrp-stat-cell — L14044-48: FLAT flex flex-col gap-2 (no bg, no padding, no rounded, no text-center)
+            <div key={idx} className="flex flex-col gap-[2px]">
+              {/* rrp-stat-label — L14049-56: mono 9px 0.14em uppercase ink-mute 600 */}
+              <div className="font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--ink-mute)] font-semibold">
                 {stat.label}
               </div>
+              {/* rrp-stat-value — L14057-65: font-display 17px 500 ink -0.01em line-height 1 tabular-nums */}
               <div
                 className={cn(
-                  'font-display text-[18px] font-medium [font-variant-numeric:tabular-nums]',
+                  'font-display text-[17px] font-medium tracking-[-0.01em] leading-[1] [font-variant-numeric:tabular-nums]',
                   snapshotValueColor(stat.valueColor)
                 )}
               >
@@ -262,10 +273,11 @@ export function ReviewRail({ review }: ReviewRailProps) {
             </div>
           ))}
         </div>
+        {/* rrp-action — L14068-91: BUTTON STYLED — border + paper-deep bg + ink/paper hover inversion */}
         <a
           href={snap.actionHref}
           data-rev-action="open-reviewer-detail"
-          className="block text-[12px] font-medium text-[var(--ink-soft)] text-center py-[8px] no-underline hover:text-[var(--ink)] transition-colors duration-[120ms]"
+          className="mt-[4px] inline-flex items-center justify-center gap-[6px] font-mono text-[10.5px] font-semibold tracking-[0.04em] text-[var(--ink-soft)] py-[7px] px-[10px] border border-[var(--line)] rounded-[5px] bg-[var(--paper-deep)] no-underline cursor-pointer transition-[background,color,border-color] duration-[120ms] ease hover:bg-[var(--ink)] hover:text-[var(--paper)] hover:border-[var(--ink)]"
         >
           {snap.actionLabel}
         </a>

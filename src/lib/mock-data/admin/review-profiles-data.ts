@@ -120,6 +120,167 @@ export interface ReviewSectionStatus {
   statusVariant: ReviewSectionStatusVariant;
 }
 
+// §01 — Review content card types (Phase 13b-1)
+export type ReviewContentSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'hl-template'; text: string; title: string };
+
+export interface ReviewContentParagraph {
+  segments: ReviewContentSegment[];
+}
+
+export interface ReviewContentFootStat {
+  label: string;
+  value: string;
+  bold?: boolean;
+}
+
+export interface ReviewContentDangerStat {
+  text: string;
+}
+
+export interface ReviewContentByline {
+  avatarInitials: string;
+  avatarGradient: string;
+  name: string;
+  realChip?: string;
+  role: string;
+}
+
+export interface ReviewContentData {
+  byline: ReviewContentByline;
+  rating: number;
+  ratingNum: string;
+  headline: string;
+  paragraphs: ReviewContentParagraph[];
+  footerMeta: string;
+  footStats: ReviewContentFootStat[];
+  dangerStat?: ReviewContentDangerStat;
+}
+
+// §02 — Engagement context linked cards types (Phase 13b-1)
+export interface ReviewContextDetailLine {
+  strongLabel: string;
+  text: string;
+}
+
+export interface ReviewContextCard {
+  tag: string;
+  title: string;
+  titleChip?: { text: string; color: 'super' | 'mute' };
+  meta: string;
+  details: ReviewContextDetailLine[];
+  actionKey: string;
+  href: string;
+}
+
+export interface ReviewContextData {
+  cards: ReviewContextCard[];
+}
+
+// §03 — Pattern detection types (Phase 13b-2)
+export interface ReviewClusterItem {
+  index: number;
+  atlasId: string;
+  reviewId?: string;
+  target: string;
+  meta: string;
+  rating: number;
+  variant: 'warn' | 'danger';
+  current: boolean;
+}
+
+export type SimilarityCellVariant = 'head' | 'row-label' | 'diag' | 'heat-low' | 'heat-mid' | 'heat-high' | 'heat-xhigh';
+
+export interface SimilarityCell {
+  variant: SimilarityCellVariant;
+  value: string;
+}
+
+export interface SimilarityCaptionSegment {
+  text: string;
+  color?: 'success' | 'amber' | 'danger';
+  bold?: boolean;
+}
+
+export type PatternSignalIcon = 'default' | 'warn' | 'neutral';
+
+export interface PatternSignal {
+  iconVariant: PatternSignalIcon;
+  iconChar: string;
+  label: string;
+  detail: string;
+}
+
+export type ReviewPatternSummarySegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'strong'; text: string }
+  | { kind: 'mono'; text: string };
+
+export interface PatternRecommendation {
+  strongParts: string[];
+  plainParts: string[];
+  emPart: string;
+  deferLabel: string;
+  deferActionKey: string;
+  applyLabel: string;
+  applyActionKey: string;
+}
+
+export type PatternSeverity = 'high' | 'medium' | 'low';
+
+export interface ReviewPatternData {
+  severity: PatternSeverity;
+  headTitle: string;
+  confidence: number;
+  summarySegments: ReviewPatternSummarySegment[];
+  clusterLabel: string;
+  clusterItems: ReviewClusterItem[];
+  similarityLabel: string;
+  similarityHeaders: string[];
+  similarityRows: { label: string; cells: SimilarityCell[] }[];
+  captionSegments: SimilarityCaptionSegment[];
+  signalsLabel: string;
+  signals: PatternSignal[];
+  recommendation: PatternRecommendation;
+}
+
+// §04 — Reports & flags types (Phase 13b-2)
+export type FlagKind = 'system' | 'user' | 'resolved';
+
+export interface ReviewFlagItem {
+  kind: FlagKind;
+  iconSvg: 'target' | 'user';
+  source: string;
+  tag: string;
+  time: string;
+  reason: string;
+  status: string;
+}
+
+export interface ReviewFlagsData {
+  items: ReviewFlagItem[];
+}
+
+// §05 — Moderation history types (Phase 13b-2)
+export type ModEventVariant = 'default' | 'system' | 'admin' | 'danger';
+
+export type ModActionSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'strong'; text: string };
+
+export interface ReviewModEvent {
+  variant: ModEventVariant;
+  actor: string;
+  actionSegments: ModActionSegment[];
+  time: string;
+  detail: string;
+}
+
+export interface ReviewModerationData {
+  events: ReviewModEvent[];
+}
+
 export interface ReviewProfile {
   id: string;
   atlasId: string;
@@ -151,6 +312,11 @@ export interface ReviewProfile {
   >;
   reviewerSnapshot: ReviewerSnapshotPanel;
   quickFacts: ReviewQuickFact[];
+  contentData?: ReviewContentData;
+  contextData?: ReviewContextData;
+  patternData?: ReviewPatternData;
+  flagsData?: ReviewFlagsData;
+  moderationData?: ReviewModerationData;
   linkedEngagementId?: string;
   linkedClientId?: string;
   linkedCandidateId?: string;
@@ -567,6 +733,286 @@ const REV_834: ReviewProfile = {
     { dt: 'Public visibility', dd: 'Hidden 5d ago', ddColor: 'mute-strike' },
     { dt: 'Reviewee notified?', dd: 'Yes · Apr 30 16:46' },
   ],
+  // §01 — Review content (Phase 13b-1, verbatim per admin.html L37363-37395)
+  contentData: {
+    byline: {
+      avatarInitials: 'MV',
+      avatarGradient: GR_MARINA,
+      name: 'Marina V.',
+      realChip: 'REAL: A2Z SOLUTIONS LTD',
+      role: 'Verified client · cl-178 · joined Atlas Feb 14, 2026',
+    },
+    rating: 1,
+    ratingNum: '1.0',
+    headline: '“Disappointed by the engagement experience”',
+    paragraphs: [
+      {
+        segments: [
+          { kind: 'text', text: 'Their ' },
+          { kind: 'hl-template', text: 'lack of professionalism', title: 'Phrase appears verbatim in 3 other reviews from this account' },
+          { kind: 'text', text: ' made this engagement extremely difficult. ' },
+          { kind: 'hl-template', text: 'Communication issues', title: 'Phrase appears verbatim in 4 other reviews from this account' },
+          { kind: 'text', text: ' throughout — slow responses, missed details on the spec, and ultimately the deliverable did not match what we expected.' },
+        ],
+      },
+      {
+        segments: [
+          { kind: 'text', text: 'I would ' },
+          { kind: 'hl-template', text: 'not recommend to other serious clients', title: 'Phrase appears verbatim in 4 other reviews from this account' },
+          { kind: 'text', text: ' looking for someone reliable. The work was technically functional but the experience around it was not what Atlas advertises.' },
+        ],
+      },
+    ],
+    footerMeta: '— Posted Apr 30, 2026 16:42 UTC · 248 characters · 3 phrases highlighted as template-language by AI similarity model',
+    footStats: [
+      { label: 'helpful', value: '0', bold: true },
+      { label: 'not helpful', value: '0', bold: true },
+      { label: 'reports', value: '3', bold: true },
+      { label: 'public reactions', value: '0', bold: true },
+    ],
+    dangerStat: {
+      text: 'PUBLIC: hidden since Apr 30 19:14 (system auto-hide on flag threshold)',
+    },
+  },
+
+  // §02 — Engagement context (Phase 13b-1, verbatim per admin.html L37410-37456)
+  contextData: {
+    cards: [
+      {
+        tag: 'ENGAGEMENT',
+        title: 'eng-247-a2z · React/Node platform rebuild',
+        meta: '$4,800 fixed-price · 1 milestone · Apr 8 → Apr 28 (20 days)',
+        details: [
+          { strongLabel: 'Status:', text: 'Closed · marked complete by client Apr 28' },
+          { strongLabel: 'Final payment:', text: '$4,800 released Apr 28 · no disputes opened' },
+          { strongLabel: 'Hours logged:', text: '64h (within 60-70h estimate)' },
+          { strongLabel: 'Client satisfaction at close:', text: '“Acceptable” (private, pre-review)' },
+        ],
+        actionKey: 'open-engagement',
+        href: '/admin/operations/engagements/eng-247-a2z',
+      },
+      {
+        tag: 'REVIEWER',
+        title: 'A2Z Solutions Ltd',
+        titleChip: { text: 'REAL · cl-178', color: 'super' },
+        meta: 'Display name: “Marina V.” · joined Feb 14, 2026 (80 days ago)',
+        details: [
+          { strongLabel: 'Trust tier:', text: 'New client (under 90 days, < 5 hires)' },
+          { strongLabel: 'Hires made:', text: '6 total · 4 in last 7 days (sharp uptick)' },
+          { strongLabel: 'Reviews filed:', text: '4 · all 1-star · all on Tier-1 candidates' },
+          { strongLabel: 'Confidential client:', text: 'No · no NDA on file' },
+        ],
+        actionKey: 'open-client',
+        href: '/admin/users/clients/cl-178',
+      },
+      {
+        tag: 'REVIEWEE',
+        title: 'Adesuwa Babatunde',
+        titleChip: { text: 'CAND-001 · TIER-1', color: 'mute' },
+        meta: 'Senior Full-Stack Engineer · Lagos, Nigeria · live since Sep 2025',
+        details: [
+          { strongLabel: 'Avg rating:', text: '4.92 / 5.0 (32 reviews · this is the 1st 1-star)' },
+          { strongLabel: 'Atlas vetting:', text: 'Tier-1 · interview score 94 · founding cohort' },
+          { strongLabel: 'Engagements:', text: '14 completed · 0 disputes ever filed' },
+          { strongLabel: 'Repeat hires:', text: '8 of 14 clients re-hired' },
+        ],
+        actionKey: 'open-candidate',
+        href: '/admin/users/candidates/cand-001',
+      },
+    ],
+  },
+
+  // §03 — Pattern detection (Phase 13b-2, verbatim per admin.html L37472-37652)
+  patternData: {
+    severity: 'high',
+    headTitle: 'Sock-puppet cluster · 4 reviews from one source',
+    confidence: 87,
+    summarySegments: [
+      { kind: 'text', text: 'This review is the ' },
+      { kind: 'strong', text: '4th of 4' },
+      { kind: 'text', text: ' reviews filed by client account ' },
+      { kind: 'mono', text: 'cl-178 (A2Z Solutions Ltd)' },
+      { kind: 'text', text: ' in the last 7 days. All four reviews share an unusually similar structure, vocabulary, and rating. The shared signals collectively cross the platform’s sock-puppet threshold (≥ 80% confidence) and trigger an automatic recommendation to remove the cluster pending Trust & Safety review.' },
+    ],
+    clusterLabel: 'Reviews in cluster — chronological',
+    clusterItems: [
+      { index: 1, atlasId: 'REV-2026-0742', reviewId: 'rev-742', target: 'Théo Lemaire', meta: 'Apr 24 · 11d ago', rating: 1, variant: 'warn', current: false },
+      { index: 2, atlasId: 'REV-2026-0758', reviewId: 'rev-758', target: 'Valentina Kraft', meta: 'Apr 27 · 8d ago', rating: 1, variant: 'warn', current: false },
+      { index: 3, atlasId: 'REV-2026-0815', reviewId: 'rev-815', target: 'Marcus Reyes', meta: 'Apr 29 · 6d ago', rating: 1, variant: 'warn', current: false },
+      { index: 4, atlasId: 'REV-2026-0834', target: 'Adesuwa Babatunde', meta: 'Apr 30 · 5d ago · current', rating: 1, variant: 'danger', current: true },
+    ],
+    similarityLabel: 'Pairwise content similarity — AI text-similarity model',
+    similarityHeaders: ['REV-742', 'REV-758', 'REV-815', 'REV-834'],
+    similarityRows: [
+      {
+        label: 'REV-742',
+        cells: [
+          { variant: 'diag', value: '—' },
+          { variant: 'heat-high', value: '88%' },
+          { variant: 'heat-high', value: '86%' },
+          { variant: 'heat-xhigh', value: '92%' },
+        ],
+      },
+      {
+        label: 'REV-758',
+        cells: [
+          { variant: 'heat-high', value: '88%' },
+          { variant: 'diag', value: '—' },
+          { variant: 'heat-high', value: '87%' },
+          { variant: 'heat-high', value: '89%' },
+        ],
+      },
+      {
+        label: 'REV-815',
+        cells: [
+          { variant: 'heat-high', value: '86%' },
+          { variant: 'heat-high', value: '87%' },
+          { variant: 'diag', value: '—' },
+          { variant: 'heat-high', value: '90%' },
+        ],
+      },
+      {
+        label: 'REV-834',
+        cells: [
+          { variant: 'heat-xhigh', value: '92%' },
+          { variant: 'heat-high', value: '89%' },
+          { variant: 'heat-high', value: '90%' },
+          { variant: 'diag', value: '—' },
+        ],
+      },
+    ],
+    captionSegments: [
+      { text: 'Threshold: ' },
+      { text: '<60% normal', color: 'success' },
+      { text: ' · ' },
+      { text: '60–80% suspicious', color: 'amber' },
+      { text: ' · ' },
+      { text: '80–90% high', color: 'danger' },
+      { text: ' · ' },
+      { text: '≥90% near-template', color: 'danger', bold: true },
+      { text: ' · cluster average 89%.' },
+    ],
+    signalsLabel: 'Detection signals — what AI flagged',
+    signals: [
+      { iconVariant: 'default', iconChar: '!', label: 'Same client account across all 4 reviews', detail: 'cl-178 / A2Z Solutions Ltd · joined Feb 14, 2026 · trust tier “New”' },
+      { iconVariant: 'default', iconChar: '!', label: 'Same IP block as suspended account', detail: '17.149.x.x → also linked to cl-091 (suspended Mar 5 for fraud) · 60-day separation' },
+      { iconVariant: 'default', iconChar: '!', label: 'Identical device fingerprint', detail: 'Browser+OS+Canvas hash matches 100% across all 4 review submissions' },
+      { iconVariant: 'warn', iconChar: '!', label: 'All targets are Tier-1 Atlas-vetted', detail: 'Adesuwa, Valentina, Marcus, Théo · 4 of cl-178’s last 6 hires · sharp selection bias' },
+      { iconVariant: 'warn', iconChar: '!', label: 'All ratings exactly 1 star', detail: 'No variance · reviewee averages range 4.61 → 4.92 · 0 prior 1-stars on any of the 4' },
+      { iconVariant: 'default', iconChar: '!', label: 'Compressed timeline · 7 days', detail: 'All 4 reviews posted Apr 24 → Apr 30 · no other 1-star reviews from this account in 80-day history' },
+      { iconVariant: 'default', iconChar: '!', label: 'Shared phrase library', detail: '“lack of professionalism” (4×) · “communication issues” (4×) · “would not recommend” (4×) · “serious clients” (3×)' },
+      { iconVariant: 'neutral', iconChar: '·', label: 'No reviews from any other source', detail: 'Each candidate has 0 reviews from the IP block · 0 from device fingerprint · 0 cross-corroboration' },
+    ],
+    recommendation: {
+      strongParts: ['Remove all 4 reviews', 'suspend cl-178 pending T&S review'],
+      plainParts: [' in cluster + ', '.'],
+      emPart: 'Notify each of the 4 reviewees with the reason. Do not notify cl-178 of suspension cause until T&S review concludes.',
+      deferLabel: 'Defer to T&S only',
+      deferActionKey: 'recommend-defer',
+      applyLabel: 'Apply recommendation →',
+      applyActionKey: 'recommend-apply',
+    },
+  },
+
+  // §04 — Reports & flags (Phase 13b-2, verbatim per admin.html L37667-37712)
+  flagsData: {
+    items: [
+      {
+        kind: 'system',
+        iconSvg: 'target',
+        source: 'Atlas pattern-detection system',
+        tag: 'SYSTEM',
+        time: 'Apr 30, 2026 · 16:44 UTC (2 min after post)',
+        reason: 'Sock-puppet cluster threshold exceeded · 4 reviews from same source (cl-178), 89% avg pairwise similarity, all 1-star, all Tier-1 targets, compressed 7-day timeline, IP block previously linked to suspended cl-091. Confidence 87%. Auto-hide triggered.',
+        status: 'flag-active',
+      },
+      {
+        kind: 'user',
+        iconSvg: 'user',
+        source: 'Adesuwa Babatunde (reviewee)',
+        tag: 'USER',
+        time: 'Apr 30, 2026 · 18:08 UTC',
+        reason: '“This review does not reflect our engagement. The client marked the work complete and released full payment three days ago without raising any concerns. The wording also matches reviews I’ve seen flagged on other Atlas candidates I know personally — this looks like a coordinated campaign.”',
+        status: 'flag-active',
+      },
+      {
+        kind: 'user',
+        iconSvg: 'user',
+        source: 'Daniel Kovács (Specialist · spec-001)',
+        tag: 'USER',
+        time: 'May 1, 2026 · 09:22 UTC',
+        reason: '“Owning Specialist for Adesuwa. The engagement (eng-247-a2z) closed cleanly — client marked complete, paid full amount, no flags during work. This 1-star arrived 36h after closure with no prior signal of dissatisfaction. Recommend full investigation of cl-178 across their other recent hires.”',
+        status: 'flag-active',
+      },
+    ],
+  },
+
+  // §05 — Moderation history (Phase 13b-2, verbatim per admin.html L37729-37801)
+  moderationData: {
+    events: [
+      {
+        variant: 'system',
+        actor: 'System',
+        actionSegments: [{ kind: 'text', text: 'posted publicly · default state on submission' }],
+        time: 'Apr 30 · 16:42 UTC',
+        detail: 'REV-2026-0834 created · author cl-178 · target cand-001 · rating 1.0 · auto-published per default policy.',
+      },
+      {
+        variant: 'danger',
+        actor: 'System (pattern-detection)',
+        actionSegments: [
+          { kind: 'text', text: 'flagged as ' },
+          { kind: 'strong', text: 'sock-puppet pattern' },
+          { kind: 'text', text: ' · auto-hidden from public' },
+        ],
+        time: 'Apr 30 · 16:44 UTC',
+        detail: 'Confidence 87% · cluster size 4 · auto-hide triggered (≥85% threshold) · review removed from candidate’s public profile within 2 minutes of post.',
+      },
+      {
+        variant: 'default',
+        actor: 'System',
+        actionSegments: [{ kind: 'text', text: 'notified Adesuwa Babatunde · review hidden pending review' }],
+        time: 'Apr 30 · 16:46 UTC',
+        detail: 'Reviewee notification sent · email + in-app · “A flagged review on your profile is being reviewed by Atlas moderation. It is not visible publicly while we investigate.”',
+      },
+      {
+        variant: 'default',
+        actor: 'Adesuwa Babatunde',
+        actionSegments: [{ kind: 'text', text: 'filed report on the review' }],
+        time: 'Apr 30 · 18:08 UTC',
+        detail: 'Report reason: “does not reflect engagement” · severity: high · attached: comparison with similar review on cand-014 (Théo Lemaire).',
+      },
+      {
+        variant: 'default',
+        actor: 'Daniel Kovács · Talent Specialist',
+        actionSegments: [{ kind: 'text', text: 'filed corroborating report' }],
+        time: 'May 1 · 09:22 UTC',
+        detail: 'Specialist report: clean engagement closure · no prior dissatisfaction signal · recommended full cl-178 investigation across recent hires.',
+      },
+      {
+        variant: 'admin',
+        actor: 'Sarah R. · Operations Admin',
+        actionSegments: [{ kind: 'text', text: 'opened investigation · assigned to self' }],
+        time: 'May 1 · 11:04 UTC',
+        detail: 'Investigation INV-2026-0193 created · scope: all 4 reviews in cluster + cl-178 account history · target: T&S decision within 5 business days.',
+      },
+      {
+        variant: 'admin',
+        actor: 'Sarah R. · Operations Admin',
+        actionSegments: [{ kind: 'text', text: 'added internal note · pending T&S' }],
+        time: 'May 2 · 14:38 UTC',
+        detail: '“Cluster signals strong. Awaiting T&S confirm on IP-block link to cl-091 before recommending cluster removal + cl-178 suspension. Holding all 4 reviews hidden.”',
+      },
+      {
+        variant: 'default',
+        actor: 'Wei Zhang · Trust & Safety Admin',
+        actionSegments: [{ kind: 'text', text: 'confirmed IP block link to cl-091 · recommended cluster removal' }],
+        time: 'May 5 · 10:12 UTC (today)',
+        detail: 'T&S confirms 17.149.x.x device fingerprint match between cl-178 and cl-091 (suspended Mar 5 for fraud). Recommends remove all 4 reviews + suspend cl-178 + flag for legal review on potential terms-of-service violations.',
+      },
+    ],
+  },
+
   linkedEngagementId: 'eng-247-a2z',
   linkedClientId: 'cl-178',
   linkedCandidateId: 'cand-001',
