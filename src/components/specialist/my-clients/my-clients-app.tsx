@@ -27,17 +27,18 @@ import {
   type ManagedClient,
 } from "@/lib/mock-data/specialist/my-clients";
 import {
-  WorkflowUnavailableModal,
-  type WorkflowKind,
-} from "@/components/specialist/shell/workflow-unavailable-modal";
+  BriefsPanel,
+  ContractsPanel,
+  InviteClientFormModal,
+  PausePanel,
+  TagsPanel,
+  TalentMatchPanel,
+  type ComposeBriefPayload,
+  type InvitePayload,
+  type PausePayload,
+} from "./panels";
 import { ClientRow } from "./client-row";
 import { ClientSheetContent } from "./client-sheet-content";
-
-/** Identifier for the open workflow modal — kind + subject. */
-type WorkflowModalState = { workflow: WorkflowKind; subjectName: string } | null;
-
-/** Body-less invite acknowledgement uses a generic subject. */
-const INVITE_SUBJECT = "the new client";
 
 const COLUMNS: ReadonlyArray<ColumnDef> = [
   { key: "client", label: "Client" },
@@ -48,6 +49,32 @@ const COLUMNS: ReadonlyArray<ColumnDef> = [
   { key: "brief", label: "Last brief" },
   { key: "actions", label: "" },
 ];
+
+/**
+ * Sheet-body mode for the slide-over sheet. Owned by MyClientsApp.
+ *
+ *   - "overview"      → render <ClientSheetContent> (hero / stats / actions)
+ *   - panel kinds     → render the corresponding inline panel
+ *
+ * The kebab items on each row open the sheet AND set the mode in one
+ * render (`setSheetId(c.id)` + `setSheetMode({mode:"panel",kind:...})`)
+ * — clicking "View contracts" from a row lands ON the contracts list,
+ * not on overview-where-you-have-to-click-again.
+ *
+ * Cross-client reset: whenever sheetId changes via the `openClient`
+ * helper, sheetMode resets to "overview".
+ */
+type ClientPanelKind =
+  | "contracts"
+  | "briefs"
+  | "briefs-new"
+  | "talent-match"
+  | "pause"
+  | "tags";
+
+type SheetMode =
+  | { mode: "overview" }
+  | { mode: "panel"; kind: ClientPanelKind };
 
 function applyFilters(
   clients: ReadonlyArray<ManagedClient>,
@@ -99,15 +126,14 @@ export function MyClientsApp() {
   const [search, setSearch] = useState<string>("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const [sheetMode, setSheetMode] = useState<SheetMode>({ mode: "overview" });
+  const [inviteOpen, setInviteOpen] = useState<boolean>(false);
 
-  /* Queued-flash trigger — used for BULK acknowledgements only here.
-     Single-entity workflow actions (sheet + kebab + Invite header)
-     use WorkflowUnavailableModal instead — see honesty-of-treatment
-     scaling rule in CONVERSION_LOG. */
+  /* Queued-flash trigger — used for BULK acknowledgements + panel
+     confirms (send-brief / suggest-talent / pause / invite). Single-
+     entity workflow actions on the sheet/kebab now open inline PANELS
+     instead of the WorkflowUnavailableModal. */
   const { flash, fireQueuedFlash } = useQueuedFlash();
-
-  /* Workflow modal state — null when closed; { workflow, subjectName } when open. */
-  const [workflowModal, setWorkflowModal] = useState<WorkflowModalState>(null);
 
   const cohortCounts = useMemo(() => {
     const counts: Record<string, number> = { all: managedClients.length };
@@ -151,49 +177,104 @@ export function MyClientsApp() {
   const sheetClient =
     sheetId !== null ? managedClients.find((c) => c.id === sheetId) : null;
 
-  /* Row + sheet workflow callbacks — all open WorkflowUnavailableModal
-     with the kind-specific copy + the client's company name. */
-  const openWorkflow = (workflow: WorkflowKind, subjectName: string) =>
-    setWorkflowModal({ workflow, subjectName });
+  /* ============================================================
+     Sheet open/close helpers — keep mode in sync with the client
+     ============================================================ */
 
-  const handleSendBrief = (c: ManagedClient) =>
-    openWorkflow("send-brief", c.companyName);
-  const handleSuggestTalent = (c: ManagedClient) =>
-    openWorkflow("suggest-talent", c.companyName);
-  const handleViewContracts = (c: ManagedClient) =>
-    openWorkflow("contracts", c.companyName);
-  const handleOpenBriefs = (c: ManagedClient) =>
-    openWorkflow("briefs", c.companyName);
-  const handleTagClient = (c: ManagedClient) =>
-    openWorkflow("tag-client", c.companyName);
-  const handlePauseClient = (c: ManagedClient) =>
-    openWorkflow("pause-client", c.companyName);
-
-  const rowCallbacks = {
-    onSendBrief: handleSendBrief,
-    onSuggestTalent: handleSuggestTalent,
-    onViewContracts: handleViewContracts,
-    onTagClient: handleTagClient,
-    onPauseClient: handlePauseClient,
+  /** Open a client's sheet at overview (used by row click + attention card). */
+  const openClientOverview = (id: string) => {
+    setSheetId(id);
+    setSheetMode({ mode: "overview" });
   };
+
+  /** Open a client's sheet AND jump straight to a panel (kebab actions). */
+  const openClientPanel = (id: string, kind: ClientPanelKind) => {
+    setSheetId(id);
+    setSheetMode({ mode: "panel", kind });
+  };
+
+  /** Close the sheet entirely (X / Esc / backdrop). */
+  const closeSheet = () => {
+    setSheetId(null);
+    setSheetMode({ mode: "overview" });
+  };
+
+  /** Return from a panel to the client's overview. */
+  const backToOverview = () => setSheetMode({ mode: "overview" });
+
+  /* ============================================================
+     Workflow handlers — fire queued flash + return to overview
+     (or close the modal) on confirm
+     ============================================================ */
+
+  const handleSendBrief = (
+    client: ManagedClient,
+    payload: ComposeBriefPayload,
+  ) => {
+    fireQueuedFlash(
+      `Brief queued for ${client.companyName} · ${payload.role}`,
+    );
+    setSheetMode({ mode: "overview" });
+  };
+
+  const handleSuggestTalent = (
+    result: { candidate: { fullName: string } },
+    client: ManagedClient,
+  ) => {
+    fireQueuedFlash(
+      `Suggested ${result.candidate.fullName} for ${client.companyName}`,
+    );
+  };
+
+  const handlePauseConfirm = (
+    client: ManagedClient,
+    payload: PausePayload,
+  ) => {
+    fireQueuedFlash(
+      `Pause queued for ${client.companyName} · ${payload.graceDays}-day grace`,
+    );
+    setSheetMode({ mode: "overview" });
+  };
+
+  const handleInviteConfirm = (payload: InvitePayload) => {
+    fireQueuedFlash(`Invite link queued for ${payload.companyName}`);
+    setInviteOpen(false);
+  };
+
+  /* ============================================================
+     Row + sheet callbacks
+     ============================================================ */
+
+  /* Sheet (overview) buttons → open the corresponding panel. The
+     `ClientSheetCallbacks` type signatures take a `ManagedClient` arg,
+     but these implementations don't need it — the panel reads the
+     active client from `sheetClient` (the sheet always belongs to
+     ONE client). Omitting the parameter is type-safe via TS's
+     contravariant function-arity rule. */
   const sheetCallbacks = {
-    onViewContracts: handleViewContracts,
-    onOpenBriefs: handleOpenBriefs,
-    onSuggestTalent: handleSuggestTalent,
-    onPauseClient: handlePauseClient,
+    onViewContracts: () => setSheetMode({ mode: "panel", kind: "contracts" }),
+    onOpenBriefs: () => setSheetMode({ mode: "panel", kind: "briefs" }),
+    onSuggestTalent: () =>
+      setSheetMode({ mode: "panel", kind: "talent-match" }),
+    onPauseClient: () => setSheetMode({ mode: "panel", kind: "pause" }),
   };
 
-  /* Bulk-action handlers — fire flash with N-clients copy + clear selection.
-     Multi-target acknowledgement (no specific entity) → flash, not modal. */
+  /* Row kebab → open sheet + jump to panel in one click. */
+  const rowCallbacks = {
+    onSendBrief: (c: ManagedClient) => openClientPanel(c.id, "briefs-new"),
+    onSuggestTalent: (c: ManagedClient) =>
+      openClientPanel(c.id, "talent-match"),
+    onViewContracts: (c: ManagedClient) =>
+      openClientPanel(c.id, "contracts"),
+    onTagClient: (c: ManagedClient) => openClientPanel(c.id, "tags"),
+    onPauseClient: (c: ManagedClient) => openClientPanel(c.id, "pause"),
+  };
+
+  /* Bulk-action handlers — fire flash with N-clients copy + clear selection. */
   const fireBulkFlash = (verb: string) => {
     fireQueuedFlash(`${verb} queued for ${selected.size} clients`);
     setSelected(new Set());
   };
-
-  /* Header "Invite client" handler — opens WorkflowUnavailableModal.
-     Workflow-style action that warrants drilling into a feature surface,
-     not just a flash acknowledgement. */
-  const handleInviteClient = () => openWorkflow("invite-client", INVITE_SUBJECT);
 
   const attentionCardData: ReadonlyArray<AttentionCardData> = useMemo(
     () =>
@@ -236,7 +317,7 @@ export function MyClientsApp() {
                 icon={<Plus className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />}
                 onClick={(e) => {
                   e.preventDefault();
-                  handleInviteClient();
+                  setInviteOpen(true);
                 }}
               >
                 Invite client
@@ -293,7 +374,7 @@ export function MyClientsApp() {
           label="⚠ Attention this week"
           sub={`Disputes, churn signals, and expansion opportunities · ${attentionCardData.length} flagged`}
           cards={attentionCardData}
-          onCardClick={setSheetId}
+          onCardClick={openClientOverview}
         />
 
         <RosterTable<ManagedClient>
@@ -305,7 +386,7 @@ export function MyClientsApp() {
           allSelected={allSelected}
           someSelected={someSelected}
           renderRow={(c) => <ClientRow c={c} callbacks={rowCallbacks} />}
-          onRowOpen={setSheetId}
+          onRowOpen={openClientOverview}
           empty={{
             title: "No clients match your filters",
             subtitle: "Try clearing the search or selecting a different cohort.",
@@ -316,46 +397,66 @@ export function MyClientsApp() {
       <RosterBulkBar
         count={selected.size}
         actions={[
-          {
-            key: "brief",
-            label: "Send brief request",
-            onClick: () => fireBulkFlash("Send brief request"),
-          },
-          {
-            key: "list",
-            label: "Add to list",
-            onClick: () => fireBulkFlash("Add to list"),
-          },
-          {
-            key: "tag",
-            label: "Tag",
-            onClick: () => fireBulkFlash("Tag"),
-          },
-          {
-            key: "pause",
-            label: "Pause",
-            tone: "danger",
-            onClick: () => fireBulkFlash("Pause"),
-          },
+          { key: "brief", label: "Send brief request", onClick: () => fireBulkFlash("Send brief request") },
+          { key: "list", label: "Add to list", onClick: () => fireBulkFlash("Add to list") },
+          { key: "tag", label: "Tag", onClick: () => fireBulkFlash("Tag") },
+          { key: "pause", label: "Pause", tone: "danger", onClick: () => fireBulkFlash("Pause") },
         ]}
         onClear={() => setSelected(new Set())}
       />
 
       <RosterSheet
         open={sheetClient !== null && sheetClient !== undefined}
-        onClose={() => setSheetId(null)}
+        onClose={closeSheet}
         ariaLabel="Client detail"
       >
         {sheetClient ? (
-          <ClientSheetContent c={sheetClient} callbacks={sheetCallbacks} />
+          sheetMode.mode === "overview" ? (
+            <ClientSheetContent c={sheetClient} callbacks={sheetCallbacks} />
+          ) : sheetMode.kind === "contracts" ? (
+            <ContractsPanel client={sheetClient} onBack={backToOverview} />
+          ) : sheetMode.kind === "briefs" ? (
+            <BriefsPanel
+              client={sheetClient}
+              onBack={backToOverview}
+              onSendBrief={handleSendBrief}
+            />
+          ) : sheetMode.kind === "briefs-new" ? (
+            <BriefsPanel
+              client={sheetClient}
+              onBack={backToOverview}
+              initialMode="compose"
+              onSendBrief={handleSendBrief}
+            />
+          ) : sheetMode.kind === "talent-match" ? (
+            <TalentMatchPanel
+              client={sheetClient}
+              onBack={backToOverview}
+              onSuggest={handleSuggestTalent}
+            />
+          ) : sheetMode.kind === "pause" ? (
+            <PausePanel
+              client={sheetClient}
+              onBack={backToOverview}
+              onConfirm={handlePauseConfirm}
+            />
+          ) : sheetMode.kind === "tags" ? (
+            /* key forces remount per client so applied-set lazy-init
+               picks up the right canonical assignments. */
+            <TagsPanel
+              key={sheetClient.id}
+              client={sheetClient}
+              onBack={backToOverview}
+            />
+          ) : null
         ) : null}
       </RosterSheet>
 
-      <WorkflowUnavailableModal
-        open={workflowModal !== null}
-        workflow={workflowModal?.workflow ?? "contracts"}
-        subjectName={workflowModal?.subjectName ?? ""}
-        onClose={() => setWorkflowModal(null)}
+      <InviteClientFormModal
+        key={inviteOpen ? "open" : "closed"}
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvite={handleInviteConfirm}
       />
 
       <ApprovedFlash {...flash} />

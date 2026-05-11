@@ -30,3 +30,8 @@ export * from "./reviews-approvals";
 export * from "./settings";
 export * from "./help";
 export * from "./topbar-feed";
+export * from "./client-contracts";
+export * from "./client-briefs";
+export * from "./client-hires";
+export * from "./client-tags";
+export * from "./client-talent-match";

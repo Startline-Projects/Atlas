@@ -3185,3 +3185,229 @@ remains at `z-[5]` (correct for its anchor context).
 | z-[40+] | Modal overlays (ReviewModal, etc.) | `queue-shared/review-modal.tsx` |
 
 ---
+
+## Session 7 — Client workflow surfaces (commit pending)
+
+Build real mock UI for the 7 client-side workflow buttons that
+previously rendered `WorkflowUnavailableModal` on `/specialist/my-clients`.
+Replaces modal acknowledgements with **inline panels** rendered inside
+the existing slide-over sheet, plus one form modal for the Invite
+trigger (which has no specific client subject).
+
+Net effect: clicking "View contracts" on a row or in the sheet now
+lands on a real contracts list for that client. Same shape for
+briefs, talent matching, hiring pause confirmation, and tag
+management. The Invite header button opens a structured invite form.
+
+### Architecture — inline sheet panels
+
+**State lifted to `MyClientsApp`.** New `sheetMode` state gates the
+sheet body:
+
+```tsx
+type ClientPanelKind =
+  | "contracts" | "briefs" | "briefs-new"
+  | "talent-match" | "pause" | "tags";
+
+type SheetMode =
+  | { mode: "overview" }
+  | { mode: "panel"; kind: ClientPanelKind };
+```
+
+`sheetId` (which client) stays as today; `sheetMode` controls which
+view of THAT client renders inside the sheet body. The orchestrator
+dispatches at the `<RosterSheet>` children slot — `ClientSheetContent`
+(overview) or one of the 5 panel components.
+
+**Cross-client reset.** `openClientOverview(id)` and `openClientPanel
+(id, kind)` setters both update `sheetId` AND `sheetMode` in one
+render. Opening a different client always resets to overview unless
+the kebab item explicitly requested a panel.
+
+**Back affordance.** `SheetPanelShell` renders a "← Back to client"
+button at the top of every panel. Distinct from the sheet's existing
+X (which closes the sheet entirely) — two destructive actions, two
+affordances.
+
+**No URL state.** Panel mode is local to the orchestrator. Matches the
+established no-URL-state precedent for sheet sub-modes across the
+conversion. Can be added later in one place if shareable links matter.
+
+### Files added (14) + 4 modified
+
+| File | Type | Notes |
+|---|---|---|
+| `lib/mock-data/specialist/client-contracts.ts` | NEW mock | 39 contracts × 12 clients. `contract-*` IDs join to `client-*` + `cand-*` |
+| `lib/mock-data/specialist/client-briefs.ts` | NEW mock | 32 briefs (open + closed). `brief-*` IDs join to `client-*` + `cand-*` (shortlist + hired). Includes `splitBriefs()` helper |
+| `lib/mock-data/specialist/client-hires.ts` | NEW mock | 26 hires lifecycle rows. `hire-*` IDs join to `client-*`, `cand-*`, `contract-*`, `DSP-*` (dispute backlink — Acme × Sofia → DSP-2026-04-12) |
+| `lib/mock-data/specialist/client-tags.ts` | NEW mock | 20-tag library × 12 client assignments. Tone-keyed pills (default / lime / amber / danger / navy) |
+| `lib/mock-data/specialist/client-talent-match.ts` | NEW derived | `rankPoolForClient(clientId)` returns top 5-8 candidates with score + band + reason. Deterministic; service swap later behind the same interface |
+| `lib/mock-data/specialist/index.ts` | MODIFIED | Re-exports 5 new modules |
+| `my-clients/panels/sheet-panel-shell.tsx` | NEW shared | Chrome (Back + title + subtitle + optional header action + body). 6 consumers at extraction time |
+| `my-clients/panels/contracts-panel.tsx` | NEW | List view + ContractCard × N + PreviewUnavailableModal for documents |
+| `my-clients/panels/contract-card.tsx` | NEW leaf | Status pill, terms, hours, billed, View document button |
+| `my-clients/panels/briefs-panel.tsx` | NEW | Tab strip (Open / Closed) + BriefCards. `compose` mode renders an inline new-brief form |
+| `my-clients/panels/brief-card.tsx` | NEW leaf | Status pill, scope, budget, shortlist count, SLA-tone Calendar |
+| `my-clients/panels/talent-match-panel.tsx` | NEW | Renders ranked candidates from `rankPoolForClient` + suggest callbacks |
+| `my-clients/panels/talent-match-row.tsx` | NEW leaf | Avatar, name, tier pill, rating, reason, Message link, Suggest button |
+| `my-clients/panels/pause-panel.tsx` | NEW | Consequences (active hires / contracts / monthly revenue) + grace-window picker (7/14/30) + required note + confirm |
+| `my-clients/panels/tags-panel.tsx` | NEW | Applied tags strip + library grouped by category + toggle |
+| `my-clients/panels/invite-client-form-modal.tsx` | NEW | Form modal wrapping ReviewModal. 4 required fields + optional note + email-regex validation |
+| `my-clients/panels/index.ts` | NEW barrel | Exports all 5 panels + InviteClientFormModal + payload types |
+| `my-clients/my-clients-app.tsx` | MODIFIED | New `sheetMode` state replaces `workflowModal`. Dispatch logic at `<RosterSheet>` children. 5 new workflow handlers (send-brief / suggest-talent / pause-confirm / invite-confirm + back-to-overview). Bulk handlers untouched. Removed all WorkflowUnavailableModal call sites. |
+| `my-clients/client-row.tsx` | UNCHANGED | Kebab callbacks unchanged — only the parent's handler implementations changed |
+| `my-clients/client-sheet-content.tsx` | UNCHANGED | Overview-only content; the orchestrator branches between this and the panels at the sheet's children slot |
+
+### Mock data totals (light tier)
+
+| Surface | Records | Cross-session joins |
+|---|---|---|
+| Contracts | 39 | client-* · cand-* (optional) |
+| Briefs | 32 | client-* · cand-* (shortlist + hired) |
+| Hires | 26 | client-* · cand-* · contract-* · DSP-* (1 dispute backlink) |
+| Tags | 12 client assignments × 20-tag library | client-* |
+| Talent match | derived per call | cand-* (existing pool) |
+
+Empty states are intentional and realistic — Helios Robotics has 1
+draft contract and 0 hires (onboarding stalled, matches its existing
+attention-card story). Sahara Logistics has all-completed contracts
+(historical client). The panels handle these cleanly.
+
+### Trigger updates (8 sites — all replaced)
+
+| Trigger | Before | After |
+|---|---|---|
+| Sheet "View contracts" | `WorkflowUnavailableModal kind="contracts"` | `setSheetMode({mode:"panel",kind:"contracts"})` → `<ContractsPanel>` |
+| Sheet "Open briefs" | `kind="briefs"` | `kind:"briefs"` → `<BriefsPanel>` (list mode) |
+| Sheet "Suggest new talent" | `kind="suggest-talent"` | `kind:"talent-match"` → `<TalentMatchPanel>` |
+| Sheet "Pause client" | `kind="pause-client"` | `kind:"pause"` → `<PausePanel>` |
+| Header "Invite client" | `kind="invite-client"` | `setInviteOpen(true)` → `<InviteClientFormModal>` |
+| Kebab "Send brief" | `kind="send-brief"` | `openClientPanel(c.id, "briefs-new")` → `<BriefsPanel>` (compose mode) |
+| Kebab "View contracts" | `kind="contracts"` | `openClientPanel(c.id, "contracts")` |
+| Kebab "Tag client" | `kind="tag-client"` | `openClientPanel(c.id, "tags")` |
+| Kebab "Suggest talent" | `kind="suggest-talent"` | `openClientPanel(c.id, "talent-match")` |
+| Kebab "Pause client" | `kind="pause-client"` | `openClientPanel(c.id, "pause")` |
+
+**Kebab one-click semantics:** clicking "View contracts" from a row
+opens the sheet AND lands on the contracts panel in one render —
+not "open sheet, see overview, click View contracts again." Same for
+the other 4 kebab actions.
+
+### Honest treatment carryover
+
+The panels themselves contain honest backend-blocked surfaces:
+- **Contracts panel** "View document" → `PreviewUnavailableModal kind="document"` per contract (2nd consumer of the modal extended; first being review-queue intro-video transcript)
+- **Briefs panel compose** confirm → queued flash "Brief queued for {company} · {role}"
+- **Talent match Suggest** → queued flash "Suggested {candidate} for {company}"
+- **Pause confirm** → queued flash "Pause queued for {company} · {N}-day grace"
+- **Invite confirm** → queued flash "Invite link queued for {company}"
+
+All match the locked honesty-of-treatment scaling:
+- Bulk actions stay on `useQueuedFlash` (multi-target acknowledgement)
+- Single-entity workflow actions now have real UI surfaces (was: WorkflowUnavailableModal)
+- The Invite header button moves from generic modal to a real form
+  modal — still backend-blocked, but with structured input
+
+### `SheetPanelShell` — new shared primitive
+
+Lives at `my-clients/panels/sheet-panel-shell.tsx`. **6 immediate
+consumers** in this commit (contracts / briefs-list / briefs-compose /
+talent-match / pause / tags). Pre-emptive extraction past the
+2-consumer threshold — well established by Session 6's MetricCard
+pattern.
+
+**API:**
+
+```tsx
+<SheetPanelShell
+  title="Contracts"
+  subtitle="3 active · $84.2k YTD"
+  onBack={() => setSheetMode({ mode: "overview" })}
+  headerAction={<button>+ New</button>}
+>
+  {/* per-panel body */}
+</SheetPanelShell>
+```
+
+Scoped to `my-clients/panels/` for now. If a candidate-side equivalent
+arrives in a future session, promote to `people-shared/`.
+
+### `WorkflowUnavailableModal` consumer count after Session 7
+
+| Surface | Sites | Status |
+|---|---|---|
+| `my-clients/my-clients-app.tsx` | 0 | ✓ All removed — panels replace |
+| `my-candidates/my-candidates-app.tsx` | 5 | Untouched (per Session 7 scope) |
+
+Modal type still declares 10 kinds; 7 of them (`contracts` / `briefs` /
+`send-brief` / `suggest-talent` / `tag-client` / `invite-client` /
+`pause-client`) become unused. **Kept in the type for now** to avoid
+churning the union when Session 8 may revisit candidate-side surfaces.
+Logged as future-polish prune item.
+
+### `WorkflowKind` pruning — deferred to future polish
+
+The unused 7 kinds cost nothing (no consumer references). A single
+cleanup commit can prune them when Session 8 candidate-side surfaces
+land — avoids churning the type twice.
+
+### Bulk actions — unchanged
+
+All 4 bulk-bar buttons (Send brief request / Add to list / Tag /
+Pause) still use `useQueuedFlash`. The "Pause" bulk action is
+deliberately *not* routed through `PausePanel` — bulk pauses are a
+multi-target acknowledgement ("Pause queued for 4 clients"), not a
+drill-into-one-client confirmation. Bulk-vs-single-entity rule
+preserved.
+
+### Cross-session ID coverage
+
+| ID prefix | Joins | Coverage |
+|---|---|---|
+| `contract-*` × 39 | `client-*` (all 12) · `cand-*` (8 of 13 referenced) | All 12 clients covered |
+| `brief-*` × 32 | `client-*` (12) · `cand-*` (shortlist + hired across 9) | All 12 clients covered |
+| `hire-*` × 26 | `client-*` · `cand-*` · `contract-*` (most) · `DSP-*` (1) | Helios has 0 hires (realistic — onboarding stalled) |
+| Tag library × 20 | `client-*` × 12 assignments | All 12 clients tagged |
+| Talent match | `cand-*` (pool of 13) | Computed per-client |
+
+**Acme × Sofia dispute backlink (`DSP-2026-04-12`)** referenced from
+`hire-acme-sofia` and `hire-quill-sofia`. Future "View linked dispute"
+affordance on hire rows can route into `/specialist/disputes` once we
+add a `?id=DSP-...` param to that view.
+
+### Future polish items (deferred)
+
+- **Brief deep-links** — `?briefId=brief-...` to share a specific brief view.
+- **Brief composer shortlist seeding** — pre-fill from the top-of-pool match.
+- **Talent match → add to brief** — when a "Suggest" lands, optionally append to a specific open brief.
+- **Hire row → linked dispute** — clickable backlink to the dispute view.
+- **Contracts document storage** — when storage service lands, populate `documentUrl` and replace the PreviewUnavailableModal with a real preview.
+- **`WorkflowKind` prune** — once Session 8 settles candidate-side, prune the 7 unused client-side kinds in a single cleanup commit.
+- **Cross-session ID backfill sweep** — still pending (engagement.clientId, FeedbackQuote.clientId, Hana/Kanya/Linh chat threads, my-clients hire rows clickable).
+- **Tag composer** — current panel toggles from the library; future "+ Custom tag" form is the natural extension.
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Bulk actions (4 buttons) on `useQueuedFlash` | ✓ Unchanged |
+| Topbar / sidebar / scroll-stack | ✓ Untouched |
+| All Sessions 1-6 routes | ✓ Build prerenders 39 pages including 18 specialist views |
+| Marketing landing | ✓ Byte-identical (no `globals.css` changes) |
+| `/specialist/my-candidates` | ✓ Untouched — `WorkflowUnavailableModal` 5 consumers stay |
+| `<RosterSheet>` shell | ✓ Untouched — only the children slot's content varies |
+| Sessions 1-6 mock data files | ✓ Untouched (5 NEW files added; `index.ts` extended additively) |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors, 0 new) preserved |
+
+### Summary
+
+- 8 workflow surfaces → 5 inline panels + 1 form modal + 2 reuse paths
+- 1 new shared primitive (`SheetPanelShell`) — 6 immediate consumers
+- 5 new mock-data files (~140 records: 39 contracts + 32 briefs + 26 hires + 20-tag library × 12 assignments + derived talent match)
+- 10 new components in `my-clients/panels/` + barrel
+- `WorkflowUnavailableModal` client-side consumer count: **0** (was 7)
+- All bulk actions stay on `useQueuedFlash`
+- No URL state, no new routes, no stacked sheets
+- All 5 candidate-side `WorkflowUnavailableModal` consumers untouched (Session 8 scope)
+
+---
