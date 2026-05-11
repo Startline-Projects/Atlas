@@ -88,6 +88,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/operations/engagements/');
     }
 
+    // Job Postings: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/jobs') {
+      return pathname === '/admin/operations/jobs'
+          || pathname.startsWith('/admin/operations/jobs/');
+    }
+
     return pathname === itemPathname;
   };
 

@@ -184,7 +184,7 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
               <div
                 key={row.id}
                 onClick={(e) => handleRowClick(e, row.id, row)}
-                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow || isClientRow || isSpecialistRow || isAdminRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? 'bg-[rgba(214,242,77,0.10)] selected' : 'hover:bg-[#FCF9F1]'}`}
+                className={`grid items-center gap-[14px] px-[18px] py-[12px] border-b border-dashed border-[var(--color-line-soft)] transition-colors duration-[120ms] ease text-[13px] relative last:border-b-0 ${isCandidateRow || isClientRow || isSpecialistRow || isAdminRow ? 'cursor-pointer' : ''} ${selectedRows.has(row.id) ? "bg-[rgba(214,242,77,0.10)] before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--lime-deep)] selected" : 'hover:bg-[#FCF9F1]'}`}
                 style={{ gridTemplateColumns: tableConfig.gridCols }}
                 role="row"
                 data-user-id={row.id}

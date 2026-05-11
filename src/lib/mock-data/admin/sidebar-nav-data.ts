@@ -6,6 +6,7 @@ import {
   ManagerNavIcon,
   OtherAdminsNavIcon,
   ActiveEngagementsNavIcon,
+  JobsNavIcon,
   ReviewsNavIcon,
   ReportsAnalyticsNavIcon,
   AlertTriangleIcon,
@@ -98,8 +99,8 @@ export const SIDEBAR_NAV = {
         {
           id: 'jobs',
           label: 'Job Postings',
-          pathname: '#job-postings',
-          icon: ClientsNavIcon,
+          pathname: '/admin/operations/jobs',
+          icon: JobsNavIcon,
         },
         {
           id: 'disputes',
