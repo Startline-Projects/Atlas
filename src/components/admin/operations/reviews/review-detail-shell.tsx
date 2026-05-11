@@ -5,12 +5,12 @@ import type { ReviewProfile } from '@/lib/mock-data/admin/review-profiles-data';
 import { ReviewHero } from './review-hero';
 import { ReviewActionsRow } from './review-actions-row';
 import { ReviewRail } from './review-rail';
-import { ReviewSubPlaceholder } from './sections/review-sub-placeholder';
 import { ReviewSubContent } from './sections/review-sub-content';
 import { ReviewSubContext } from './sections/review-sub-context';
 import { ReviewSubPattern } from './sections/review-sub-pattern';
 import { ReviewSubFlags } from './sections/review-sub-flags';
 import { ReviewSubModeration } from './sections/review-sub-moderation';
+import { ReviewSubAudit } from './sections/review-sub-audit';
 
 interface ReviewDetailShellProps {
   review: ReviewProfile;
@@ -47,77 +47,30 @@ export function ReviewDetailShell({ review }: ReviewDetailShellProps) {
       <ReviewHero review={review} />
       <ReviewActionsRow reviewId={review.id} />
 
-      {/* 2-col body: main + right rail (cd-body 280/32). main:min-h-screen guarantees grid row >= viewport so rail's sticky has scroll room even during Phase 13a placeholders. Harmless once Phase 13b real sections make main taller naturally. */}
+      {/* 2-col body: main + right rail (cd-body 280/32) — matches engagement/dispute/candidate shell structure for working sticky rail. */}
       <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-[32px] items-start max-[1100px]:grid-cols-1 max-[1100px]:gap-[24px]">
-        <main className="min-w-0 min-h-screen">
-          {review.contentData ? (
+        <main className="min-w-0">
+          {/* All 6 sections always render — every review has populated data via REV_834 canonical or stubReviewProfile derived stubs. §03/§04 handle their own clean empty states. */}
+          {review.contentData && (
             <ReviewSubContent data={review.contentData} sectionStatus={review.sections.content} />
-          ) : (
-            <ReviewSubPlaceholder
-              sectionId="rev-section-content"
-              num="01 · 06"
-              title="Review content"
-              statusText={review.sections.content.statusText}
-              statusVariant={review.sections.content.statusVariant}
-              phase="13b"
-            />
           )}
-          {review.contextData ? (
+          {review.contextData && (
             <ReviewSubContext data={review.contextData} sectionStatus={review.sections.context} />
-          ) : (
-            <ReviewSubPlaceholder
-              sectionId="rev-section-context"
-              num="02 · 06"
-              title="Engagement context"
-              statusText={review.sections.context.statusText}
-              statusVariant={review.sections.context.statusVariant}
-              phase="13b"
-            />
           )}
-          {review.patternData ? (
-            <ReviewSubPattern data={review.patternData} sectionStatus={review.sections.pattern} reviewId={review.id} />
-          ) : (
-            <ReviewSubPlaceholder
-              sectionId="rev-section-pattern"
-              num="03 · 06"
-              title="Pattern detection"
-              statusText={review.sections.pattern.statusText}
-              statusVariant={review.sections.pattern.statusVariant}
-              phase="13b"
-            />
-          )}
-          {review.flagsData ? (
-            <ReviewSubFlags data={review.flagsData} sectionStatus={review.sections.flags} />
-          ) : (
-            <ReviewSubPlaceholder
-              sectionId="rev-section-flags"
-              num="04 · 06"
-              title="Reports & flags"
-              statusText={review.sections.flags.statusText}
-              statusVariant={review.sections.flags.statusVariant}
-              phase="13b"
-            />
-          )}
-          {review.moderationData ? (
-            <ReviewSubModeration data={review.moderationData} sectionStatus={review.sections.moderation} />
-          ) : (
-            <ReviewSubPlaceholder
-              sectionId="rev-section-moderation"
-              num="05 · 06"
-              title="Moderation history"
-              statusText={review.sections.moderation.statusText}
-              statusVariant={review.sections.moderation.statusVariant}
-              phase="13b"
-            />
-          )}
-          <ReviewSubPlaceholder
-            sectionId="rev-section-audit"
-            num="06 · 06"
-            title="Admin audit log"
-            statusText={review.sections.audit.statusText}
-            statusVariant={review.sections.audit.statusVariant}
-            phase="13b"
+          <ReviewSubPattern
+            {...(review.patternData ? { data: review.patternData } : {})}
+            sectionStatus={review.sections.pattern}
+            reviewId={review.id}
           />
+          {review.flagsData && (
+            <ReviewSubFlags data={review.flagsData} sectionStatus={review.sections.flags} />
+          )}
+          {review.moderationData && (
+            <ReviewSubModeration data={review.moderationData} sectionStatus={review.sections.moderation} />
+          )}
+          {review.auditData && (
+            <ReviewSubAudit data={review.auditData} sectionStatus={review.sections.audit} />
+          )}
         </main>
 
         <ReviewRail review={review} />

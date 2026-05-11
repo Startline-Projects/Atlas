@@ -281,6 +281,25 @@ export interface ReviewModerationData {
   events: ReviewModEvent[];
 }
 
+// §06 — Admin audit log types (Phase 13b-3)
+export type AuditActorVariant = 'admin' | 'system' | 'spec' | 'user';
+export type AuditActionVariant = 'default' | 'danger';
+
+export interface ReviewAuditEntry {
+  timestamp: string;
+  actor: string;
+  actorVariant: AuditActorVariant;
+  action: string;
+  actionVariant: AuditActionVariant;
+  ipDev: string;
+}
+
+export interface ReviewAuditData {
+  entries: ReviewAuditEntry[];
+  footerText: string;
+  footerActionKey: string;
+}
+
 export interface ReviewProfile {
   id: string;
   atlasId: string;
@@ -317,6 +336,7 @@ export interface ReviewProfile {
   patternData?: ReviewPatternData;
   flagsData?: ReviewFlagsData;
   moderationData?: ReviewModerationData;
+  auditData?: ReviewAuditData;
   linkedEngagementId?: string;
   linkedClientId?: string;
   linkedCandidateId?: string;
@@ -1013,11 +1033,385 @@ const REV_834: ReviewProfile = {
     ],
   },
 
+  // §06 — Admin audit log (Phase 13b-3, verbatim per admin.html L37818-37892)
+  auditData: {
+    entries: [
+      { timestamp: 'May 5 · 10:14', actor: 'Aïsha (you)', actorVariant: 'admin', action: 'opened review detail · viewed pattern-detection panel', actionVariant: 'default', ipDev: '192.x · MBP' },
+      { timestamp: 'May 5 · 10:12', actor: 'Wei Zhang', actorVariant: 'admin', action: 'confirmed IP-block link · recommended cluster removal · added T&S note INV-2026-0193', actionVariant: 'default', ipDev: '10.x · admin' },
+      { timestamp: 'May 2 · 14:38', actor: 'Sarah R.', actorVariant: 'admin', action: 'added internal note: pending T&S confirm on IP-block link', actionVariant: 'default', ipDev: '10.x · admin' },
+      { timestamp: 'May 1 · 11:04', actor: 'Sarah R.', actorVariant: 'admin', action: 'opened INV-2026-0193 · self-assigned · target: 5 bdays', actionVariant: 'default', ipDev: '10.x · admin' },
+      { timestamp: 'May 1 · 09:22', actor: 'Daniel K.', actorVariant: 'spec', action: 'specialist report filed (corroborating)', actionVariant: 'default', ipDev: '10.x · spec' },
+      { timestamp: 'Apr 30 · 18:08', actor: 'Adesuwa B.', actorVariant: 'user', action: 'reviewee report filed', actionVariant: 'default', ipDev: 'user · cand' },
+      { timestamp: 'Apr 30 · 16:46', actor: 'SYSTEM', actorVariant: 'system', action: 'reviewee notification dispatched (email + in-app)', actionVariant: 'default', ipDev: 'internal' },
+      { timestamp: 'Apr 30 · 16:44', actor: 'SYSTEM', actorVariant: 'system', action: 'PATTERN FLAG · auto-hidden · cluster confidence 87%', actionVariant: 'danger', ipDev: 'internal' },
+      { timestamp: 'Apr 30 · 16:42', actor: 'cl-178', actorVariant: 'user', action: 'REV-2026-0834 submitted · rating 1.0 · 248 chars', actionVariant: 'default', ipDev: '17.149.x' },
+    ],
+    footerText: '· 2 earlier system events (cluster initialization on REV-742) — ',
+    footerActionKey: 'audit-expand',
+  },
+
   linkedEngagementId: 'eng-247-a2z',
   linkedClientId: 'cl-178',
   linkedCandidateId: 'cand-001',
   linkedSpecialistId: 'spec-001',
 };
+
+// ============================================================
+// STUB SECTION DATA HELPERS (Phase 13c — derived role-coherent
+// section content for the 9 non-canonical fixtures; rev-834
+// retains its canonical verbatim data and is NOT overwritten)
+// ============================================================
+
+function deriveHeadline(status: ReviewStatus, rating: number): string {
+  if (status === 'removed') return '“[Content removed by admin]”';
+  if (status === 'appealed') return '“Disputed review pending resolution”';
+  if (status === 'pattern') return '“Disappointing engagement experience”';
+  if (status === 'flagged') return '“Concerning engagement experience”';
+  if (rating >= 4) return '“Excellent engagement — strong recommendation”';
+  return '“Mixed engagement experience”';
+}
+
+function partyHrefFromId(id: string): string {
+  return id.startsWith('cl-') ? `/admin/users/clients/${id}` : `/admin/users/candidates/${id}`;
+}
+
+function stubContentData(row: ReviewListRow): ReviewContentData {
+  const reportsValue =
+    row.status === 'flagged' ? '2' :
+    row.status === 'pattern' ? '3' :
+    row.status === 'removed' ? '4' :
+    row.status === 'appealed' ? '1' : '0';
+
+  const dangerText =
+    row.status === 'removed' ? `PUBLIC: content removed by admin · ${row.statusSub}` :
+    row.status === 'pattern' ? 'PUBLIC: hidden pending T&S review (system auto-hide on flag threshold)' :
+    null;
+
+  return {
+    byline: {
+      avatarInitials: row.reviewer.avatarInitials,
+      avatarGradient: row.reviewer.avatarGradient,
+      name: row.reviewer.name,
+      ...(row.reviewer.metaIsReal
+        ? { realChip: row.reviewer.metaText.toUpperCase() }
+        : {}),
+      role: row.reviewer.metaText,
+    },
+    rating: Math.round(row.rating),
+    ratingNum: row.rating.toFixed(1),
+    headline: deriveHeadline(row.status, row.rating),
+    paragraphs: [
+      { segments: [{ kind: 'text', text: row.snippet }] },
+    ],
+    footerMeta: `— Posted ${row.postedDate} UTC · ${row.snippet.length} characters`,
+    footStats: [
+      { label: 'helpful', value: '0', bold: true },
+      { label: 'not helpful', value: '0', bold: true },
+      { label: 'reports', value: reportsValue, bold: true },
+      { label: 'public reactions', value: '0', bold: true },
+    ],
+    ...(dangerText ? { dangerStat: { text: dangerText } } : {}),
+  };
+}
+
+function stubContextData(row: ReviewListRow): ReviewContextData {
+  const engId = row.linkedEngagementId ?? (row.revieweeEngContext.split(' · ').pop() ?? '—');
+  const engHref = `/admin/operations/engagements/${engId}`;
+  const reviewerHref = partyHrefFromId(row.reviewer.id);
+  const revieweeHref = partyHrefFromId(row.reviewee.id);
+
+  const reviewerTitleChip: { text: string; color: 'super' | 'mute' } = row.reviewer.metaIsReal
+    ? { text: `REAL · ${row.reviewer.id}`, color: 'super' }
+    : { text: row.reviewer.id.toUpperCase(), color: 'mute' };
+
+  return {
+    cards: [
+      {
+        tag: 'ENGAGEMENT',
+        title: `${engId} · linked engagement`,
+        meta: row.revieweeEngContext,
+        details: [
+          { strongLabel: 'Linkage:', text: 'Review references this engagement' },
+          { strongLabel: 'Direction:', text: row.direction === 'cs' ? 'Client → Candidate' : 'Candidate → Client' },
+          { strongLabel: 'Posted:', text: `${row.postedDate} · ${row.postedRelative}` },
+        ],
+        actionKey: 'open-engagement',
+        href: engHref,
+      },
+      {
+        tag: 'REVIEWER',
+        title: row.reviewer.name,
+        titleChip: reviewerTitleChip,
+        meta: row.reviewer.metaText,
+        details: [
+          { strongLabel: 'Account:', text: row.reviewer.id },
+          { strongLabel: 'Side:', text: row.reviewer.directionChip === 'cl' ? 'Client account' : 'Candidate account' },
+          { strongLabel: 'Verification:', text: row.reviewer.metaIsReal ? 'Real legal entity on file' : 'Display name only' },
+        ],
+        actionKey: 'open-reviewer',
+        href: reviewerHref,
+      },
+      {
+        tag: 'REVIEWEE',
+        title: row.reviewee.name,
+        titleChip: { text: row.reviewee.id.toUpperCase(), color: 'mute' },
+        meta: row.reviewee.metaText,
+        details: [
+          { strongLabel: 'Account:', text: row.reviewee.id },
+          { strongLabel: 'Engagement:', text: row.revieweeEngContext },
+          { strongLabel: 'Rating received:', text: `${row.rating.toFixed(1)} / 5.0 ★` },
+        ],
+        actionKey: 'open-reviewee',
+        href: revieweeHref,
+      },
+    ],
+  };
+}
+
+function stubPatternData(row: ReviewListRow): ReviewPatternData | undefined {
+  if (row.rowVariant !== 'pattern') return undefined;
+  // rev-815 specifically — simpler derived stub (rev-834 has canonical full data)
+  const confidence = parseInt(row.statusSub.match(/(\d+)%/)?.[1] ?? '80', 10);
+  const shortId = row.atlasId.replace('REV-2026-0', 'REV-');
+
+  return {
+    severity: 'high',
+    headTitle: 'Sock-puppet cluster · part of 4-review pattern',
+    confidence,
+    summarySegments: [
+      { kind: 'text', text: 'This review is part of a ' },
+      { kind: 'strong', text: 'sock-puppet cluster' },
+      { kind: 'text', text: ' filed by client account ' },
+      { kind: 'mono', text: row.reviewer.id },
+      { kind: 'text', text: `. ${row.statusSub}. See REV-2026-0834 for full pattern analysis.` },
+    ],
+    clusterLabel: 'Reviews in cluster — chronological',
+    clusterItems: [
+      { index: 1, atlasId: 'REV-2026-0742', reviewId: 'rev-742', target: 'Théo Lemaire', meta: 'Apr 24', rating: 1, variant: 'warn', current: false },
+      { index: 2, atlasId: 'REV-2026-0758', reviewId: 'rev-758', target: 'Valentina Kraft', meta: 'Apr 27', rating: 1, variant: 'warn', current: false },
+      { index: 3, atlasId: row.atlasId, target: row.reviewee.name, meta: `${row.postedDate.split(',')[0]} · current`, rating: 1, variant: 'danger', current: true },
+      { index: 4, atlasId: 'REV-2026-0834', reviewId: 'rev-834', target: 'Adesuwa Babatunde', meta: 'Apr 30', rating: 1, variant: 'warn', current: false },
+    ],
+    similarityLabel: 'Pairwise content similarity — see canonical REV-834 for full matrix',
+    similarityHeaders: ['REV-742', 'REV-758', shortId, 'REV-834'],
+    similarityRows: [
+      { label: 'REV-742', cells: [{ variant: 'diag', value: '—' }, { variant: 'heat-high', value: '88%' }, { variant: 'heat-high', value: '86%' }, { variant: 'heat-xhigh', value: '92%' }] },
+      { label: 'REV-758', cells: [{ variant: 'heat-high', value: '88%' }, { variant: 'diag', value: '—' }, { variant: 'heat-high', value: '87%' }, { variant: 'heat-high', value: '89%' }] },
+      { label: shortId, cells: [{ variant: 'heat-high', value: '86%' }, { variant: 'heat-high', value: '87%' }, { variant: 'diag', value: '—' }, { variant: 'heat-high', value: '90%' }] },
+      { label: 'REV-834', cells: [{ variant: 'heat-xhigh', value: '92%' }, { variant: 'heat-high', value: '89%' }, { variant: 'heat-high', value: '90%' }, { variant: 'diag', value: '—' }] },
+    ],
+    captionSegments: [
+      { text: 'Cluster average ' },
+      { text: '89%', color: 'danger', bold: true },
+      { text: ' · derived stub — see REV-834 canonical for full analysis.' },
+    ],
+    signalsLabel: 'Detection signals — abbreviated',
+    signals: [
+      { iconVariant: 'default', iconChar: '!', label: 'Same client account across all 4 reviews', detail: `${row.reviewer.id} · ${row.reviewer.metaText}` },
+      { iconVariant: 'default', iconChar: '!', label: 'All ratings exactly 1 star', detail: '0 prior 1-stars on any cluster targets' },
+      { iconVariant: 'warn', iconChar: '!', label: 'Compressed 7-day timeline', detail: 'All 4 reviews posted Apr 24 → Apr 30' },
+      { iconVariant: 'neutral', iconChar: '·', label: 'Canonical analysis on REV-834', detail: 'Open REV-834 for full pattern detection breakdown' },
+    ],
+    recommendation: {
+      strongParts: ['Remove all 4 reviews', 'suspend reviewer account'],
+      plainParts: [' in cluster + ', '.'],
+      emPart: 'See REV-2026-0834 canonical recommendation for full action plan.',
+      deferLabel: 'Defer to T&S only',
+      deferActionKey: 'recommend-defer',
+      applyLabel: 'Apply recommendation →',
+      applyActionKey: 'recommend-apply',
+    },
+  };
+}
+
+function stubFlagsData(row: ReviewListRow): ReviewFlagsData {
+  const items: ReviewFlagItem[] = [];
+
+  if (row.status === 'pattern') {
+    items.push({
+      kind: 'system',
+      iconSvg: 'target',
+      source: 'Atlas pattern-detection system',
+      tag: 'SYSTEM',
+      time: `${row.postedDate} (auto-flag on post)`,
+      reason: `Sock-puppet cluster threshold exceeded · ${row.statusSub} · auto-hide triggered.`,
+      status: 'flag-active',
+    });
+    items.push({
+      kind: 'user',
+      iconSvg: 'user',
+      source: `${row.reviewee.name} (reviewee)`,
+      tag: 'USER',
+      time: `${row.postedDate} +2h`,
+      reason: '“This review does not reflect our engagement. Pattern matches similar reviews on other Atlas candidates.”',
+      status: 'flag-active',
+    });
+  } else if (row.status === 'flagged') {
+    items.push({
+      kind: 'user',
+      iconSvg: 'user',
+      source: `${row.reviewee.name} (reviewee)`,
+      tag: 'USER',
+      time: row.postedDate,
+      reason: `Flagged for review · ${row.statusSub}.`,
+      status: 'flag-active',
+    });
+  } else if (row.status === 'removed') {
+    items.push({
+      kind: 'resolved',
+      iconSvg: 'user',
+      source: 'Atlas Operations Admin',
+      tag: 'RESOLVED',
+      time: `${row.postedDate} (removal)`,
+      reason: `Removal reason: ${row.statusSub}. Content scrubbed from public view.`,
+      status: 'resolved',
+    });
+  } else if (row.status === 'appealed') {
+    items.push({
+      kind: 'user',
+      iconSvg: 'user',
+      source: `${row.reviewer.name} (reviewer · appealing)`,
+      tag: 'USER',
+      time: row.postedDate,
+      reason: `Appeal filed against removal · ${row.statusSub}.`,
+      status: 'flag-active',
+    });
+  }
+  // live: empty items array
+
+  return { items };
+}
+
+function stubModerationData(row: ReviewListRow): ReviewModerationData {
+  const events: ReviewModEvent[] = [
+    {
+      variant: 'system',
+      actor: 'System',
+      actionSegments: [{ kind: 'text', text: 'posted publicly · default state on submission' }],
+      time: `${row.postedDate} UTC`,
+      detail: `${row.atlasId} created · author ${row.reviewer.id} · target ${row.reviewee.id} · rating ${row.rating.toFixed(1)} · auto-published per default policy.`,
+    },
+  ];
+
+  if (row.status === 'pattern') {
+    events.push({
+      variant: 'danger',
+      actor: 'System (pattern-detection)',
+      actionSegments: [
+        { kind: 'text', text: 'flagged as ' },
+        { kind: 'strong', text: 'sock-puppet pattern' },
+        { kind: 'text', text: ' · auto-hidden from public' },
+      ],
+      time: `${row.postedDate} +2 min`,
+      detail: `Pattern threshold exceeded · ${row.statusSub} · review removed from public profile.`,
+    });
+  } else if (row.status === 'flagged') {
+    events.push({
+      variant: 'default',
+      actor: row.reviewee.name,
+      actionSegments: [{ kind: 'text', text: 'filed report on the review' }],
+      time: `${row.postedDate} +1d`,
+      detail: `Report reason: ${row.statusSub}.`,
+    });
+  } else if (row.status === 'removed') {
+    events.push({
+      variant: 'admin',
+      actor: 'Sarah R. · Operations Admin',
+      actionSegments: [
+        { kind: 'text', text: 'removed review · reason: ' },
+        { kind: 'strong', text: row.statusSub },
+      ],
+      time: `${row.postedDate} +2h`,
+      detail: 'Content scrubbed from public view · reviewee notified.',
+    });
+  } else if (row.status === 'appealed') {
+    events.push({
+      variant: 'admin',
+      actor: 'Sarah R. · Operations Admin',
+      actionSegments: [{ kind: 'text', text: 'removed review · reviewer appealed within 24h' }],
+      time: `${row.postedDate} +5h`,
+      detail: `Appeal opened by reviewer · ${row.statusSub} · pending resolution.`,
+    });
+  } else {
+    // live
+    events.push({
+      variant: 'default',
+      actor: 'System',
+      actionSegments: [{ kind: 'text', text: 'review remains live · no moderation actions' }],
+      time: `${row.postedDate} +1d`,
+      detail: `Review continues to be publicly visible · ${row.statusSub}.`,
+    });
+  }
+
+  return { events };
+}
+
+function stubAuditData(row: ReviewListRow): ReviewAuditData {
+  const submission: ReviewAuditEntry = {
+    timestamp: row.postedDate,
+    actor: row.reviewer.id,
+    actorVariant: 'user',
+    action: `${row.atlasId} submitted · rating ${row.rating.toFixed(1)} · ${row.snippet.length} chars`,
+    actionVariant: 'default',
+    ipDev: 'user · ip',
+  };
+
+  const entries: ReviewAuditEntry[] = [];
+
+  if (row.status === 'pattern') {
+    entries.push({
+      timestamp: `${row.postedDate} +2m`,
+      actor: 'SYSTEM',
+      actorVariant: 'system',
+      action: `PATTERN FLAG · auto-hidden · ${row.statusSub}`,
+      actionVariant: 'danger',
+      ipDev: 'internal',
+    });
+  } else if (row.status === 'flagged') {
+    entries.push({
+      timestamp: `${row.postedDate} +1d`,
+      actor: row.reviewee.id,
+      actorVariant: 'user',
+      action: `report filed by reviewee · ${row.statusSub}`,
+      actionVariant: 'default',
+      ipDev: 'user · ip',
+    });
+  } else if (row.status === 'removed') {
+    entries.push({
+      timestamp: `${row.postedDate} +2h`,
+      actor: 'Sarah R.',
+      actorVariant: 'admin',
+      action: `removed review · reason: ${row.statusSub}`,
+      actionVariant: 'danger',
+      ipDev: '10.x · admin',
+    });
+  } else if (row.status === 'appealed') {
+    entries.push({
+      timestamp: `${row.postedDate} +1d`,
+      actor: row.reviewer.id,
+      actorVariant: 'user',
+      action: `appeal filed against removal · ${row.statusSub}`,
+      actionVariant: 'default',
+      ipDev: 'user · ip',
+    });
+    entries.push({
+      timestamp: `${row.postedDate} +5h`,
+      actor: 'Sarah R.',
+      actorVariant: 'admin',
+      action: 'removed review · pending appeal review',
+      actionVariant: 'default',
+      ipDev: '10.x · admin',
+    });
+  }
+
+  entries.push(submission);
+
+  return {
+    entries,
+    footerText: '· derived stub · see REV-2026-0834 for canonical full audit log · ',
+    footerActionKey: 'audit-expand',
+  };
+}
 
 // ============================================================
 // STUB HELPER for 9 non-canonical fixtures
@@ -1080,12 +1474,39 @@ function stubReviewProfile(row: ReviewListRow): ReviewProfile {
       meta: `${row.statusSub} · stub data — canonical detail only for rev-834.`,
     },
     sections: {
-      content: sectionStatus('Stub · canonical detail only for rev-834', 'default'),
+      content: sectionStatus(
+        row.status === 'removed' ? 'Removed from public · admin action' :
+        row.status === 'pattern' ? 'Hidden from public · pattern detected' :
+        row.status === 'flagged' ? 'Visible · under moderation review' :
+        row.status === 'appealed' ? 'Hidden · appeal in progress' :
+        'Live · publicly visible',
+        row.status === 'pattern' || row.status === 'removed' ? 'warn' :
+        row.status === 'flagged' || row.status === 'appealed' ? 'warn' : 'default'
+      ),
       context: sectionStatus(row.revieweeEngContext, 'default'),
-      pattern: sectionStatus(row.status === 'pattern' ? row.statusSub : 'No pattern detected', row.status === 'pattern' ? 'danger' : 'default'),
-      flags: sectionStatus(row.status === 'flagged' ? row.statusSub : 'No active flags', row.status === 'flagged' ? 'danger' : 'default'),
-      moderation: sectionStatus('Stub · canonical only for rev-834', 'default'),
-      audit: sectionStatus('Stub · immutable log', 'neutral'),
+      pattern: sectionStatus(
+        row.status === 'pattern' ? row.statusSub : 'No pattern detected · review is clean',
+        row.status === 'pattern' ? 'danger' : 'neutral'
+      ),
+      flags: sectionStatus(
+        row.status === 'flagged' ? '1 active flag · under review' :
+        row.status === 'pattern' ? '2 active flags' :
+        row.status === 'removed' ? '1 flag · resolved' :
+        row.status === 'appealed' ? '1 flag · disputed' :
+        '0 active flags · review clean',
+        row.status === 'flagged' || row.status === 'pattern' ? 'danger' :
+        row.status === 'appealed' ? 'warn' : 'neutral'
+      ),
+      moderation: sectionStatus(
+        row.status === 'appealed' ? '2 events · derived stub' : '2 events · derived stub',
+        'default'
+      ),
+      audit: sectionStatus(
+        row.status === 'live' ? '1 entry · derived stub' :
+        row.status === 'appealed' ? '3 entries · derived stub' :
+        '2 entries · derived stub',
+        'neutral'
+      ),
     },
     tocMetas: {
       content: `${row.rating.toFixed(1)} ★`,
@@ -1128,6 +1549,16 @@ function stubReviewProfile(row: ReviewListRow): ReviewProfile {
   if (row.linkedEngagementId) profile.linkedEngagementId = row.linkedEngagementId;
   if (row.reviewer.id) profile.linkedClientId = row.reviewer.id;
   if (row.reviewee.id) profile.linkedCandidateId = row.reviewee.id;
+
+  // Phase 13c — derived section data stubs (rev-834 canonical NOT overwritten;
+  // pattern data is undefined for non-pattern reviews → placeholder fallback in shell)
+  profile.contentData = stubContentData(row);
+  profile.contextData = stubContextData(row);
+  const patternStub = stubPatternData(row);
+  if (patternStub) profile.patternData = patternStub;
+  profile.flagsData = stubFlagsData(row);
+  profile.moderationData = stubModerationData(row);
+  profile.auditData = stubAuditData(row);
 
   return profile;
 }

@@ -21,7 +21,7 @@ import type {
 } from '@/lib/mock-data/admin/review-profiles-data';
 
 interface ReviewSubPatternProps {
-  data: ReviewPatternData;
+  data?: ReviewPatternData;
   sectionStatus: ReviewSectionStatus;
   reviewId: string;
 }
@@ -189,6 +189,57 @@ function CaptionSegments({ segments }: { segments: SimilarityCaptionSegment[] })
 }
 
 export function ReviewSubPattern({ data, sectionStatus, reviewId }: ReviewSubPatternProps) {
+  // Clean empty state — when no pattern data exists for this review
+  if (!data) {
+    return (
+      <section
+        id="rev-section-pattern"
+        className="py-[36px] border-t border-[var(--line)] scroll-mt-[80px] [&:first-child]:border-t-0 [&:first-child]:pt-[12px]"
+      >
+        {/* cd-section-head (matches populated state) */}
+        <div className="flex items-baseline justify-between gap-[16px] mb-[22px] flex-wrap">
+          <div className="flex items-baseline gap-[14px] min-w-0">
+            <span className="font-mono text-[10.5px] tracking-[0.14em] text-[var(--ink-mute)] font-medium">
+              03 · 06
+            </span>
+            <h2 className="font-display text-[24px] font-medium tracking-[-0.02em] leading-[1.1] [font-variation-settings:'opsz'_96] m-0">
+              Pattern detection
+            </h2>
+          </div>
+          <span
+            className={cn(
+              "inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.14em] uppercase font-semibold py-[3px] pl-[8px] pr-[9px] rounded-full before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-current",
+              statusPillClass(sectionStatus.statusVariant)
+            )}
+          >
+            {sectionStatus.statusText}
+          </span>
+        </div>
+
+        {/* Clean empty state card — success-tinted with check icon */}
+        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] py-[24px] px-[28px] flex items-center gap-[18px]">
+          <div
+            aria-hidden="true"
+            className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 mb-[6px] leading-[1.2]">
+              No pattern detected
+            </h3>
+            <p className="font-mono text-[11px] text-[var(--ink-soft)] tracking-[0.02em] leading-[1.55] m-0">
+              AI pattern-detection model found no sock-puppet, template-language, or cluster signals. Review appears authentic per current model confidence thresholds.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Populated state — full pattern detection UI
   return (
     <section
       id="rev-section-pattern"

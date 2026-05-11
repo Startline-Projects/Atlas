@@ -152,11 +152,33 @@ export function ReviewSubFlags({ data, sectionStatus }: ReviewSubFlagsProps) {
       </div>
 
       {/* rv-flag-list — L13830-13833 */}
-      <div className="flex flex-col gap-[10px]">
-        {data.items.map((item, idx) => (
-          <FlagItemCard key={idx} item={item} />
-        ))}
-      </div>
+      {data.items.length > 0 ? (
+        <div className="flex flex-col gap-[10px]">
+          {data.items.map((item, idx) => (
+            <FlagItemCard key={idx} item={item} />
+          ))}
+        </div>
+      ) : (
+        // Clean empty state — for live reviews with zero flags
+        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] py-[24px] px-[28px] flex items-center gap-[18px]">
+          <div
+            aria-hidden="true"
+            className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 mb-[6px] leading-[1.2]">
+              No active flags
+            </h3>
+            <p className="font-mono text-[11px] text-[var(--ink-soft)] tracking-[0.02em] leading-[1.55] m-0">
+              No system flags, user reports, or moderation concerns on this review. It remains publicly visible and is considered clean by the platform.
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
