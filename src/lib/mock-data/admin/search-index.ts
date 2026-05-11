@@ -1,9 +1,9 @@
 /**
- * Phase 9d — Global Search Index
+ * Phase 9d + 10c — Global Search Index
  *
- * Flat searchable index across all 5 admin entity types:
+ * Flat searchable index across all 6 admin entity types:
  * candidates (8) + clients (6) + specialists (11) + manager (1) + admins (5)
- * = 31 records, built once at module load.
+ *   + engagements (8) = 39 records, built once at module load.
  */
 
 import { CANDIDATE_PROFILES } from './candidate-profiles-data';
@@ -11,13 +11,15 @@ import { CLIENT_PROFILES } from './client-profiles-data';
 import { SPECIALIST_PROFILES } from './specialist-profiles-data';
 import { MANAGER_PROFILES } from './manager-profiles-data';
 import { ADMIN_PROFILES } from './admin-profiles-data';
+import { ENGAGEMENT_PROFILES } from './engagement-profiles-data';
 
 export type SearchEntityType =
   | 'candidate'
   | 'client'
   | 'specialist'
   | 'manager'
-  | 'admin';
+  | 'admin'
+  | 'engagement';
 
 export interface SearchResult {
   entityType: SearchEntityType;
@@ -97,6 +99,17 @@ export const SEARCHABLE_INDEX: SearchResult[] = [
     initials: p.initials,
     avatarVariant: p.avatarVariant,
   })),
+  // 8 engagements
+  ...Object.values(ENGAGEMENT_PROFILES).map((p): SearchResult => ({
+    entityType: 'engagement',
+    id: p.id,
+    name: `${p.client.name} ↔ ${p.candidate.name}`,
+    meta: `${p.client.flag} ↔ ${p.candidate.flag} · ${p.status} · engaged ${p.engagedDate}`,
+    atlasId: p.atlasId,
+    href: `/admin/operations/engagements/${p.id}`,
+    initials: p.client.avatarInitials.charAt(0) + p.candidate.avatarInitials.charAt(0),
+    avatarVariant: idHashToVariant(p.id),
+  })),
 ];
 
 // ============================================================
@@ -126,6 +139,7 @@ const GROUP_ORDER: SearchEntityType[] = [
   'specialist',
   'manager',
   'admin',
+  'engagement',
 ];
 
 /** Group results by entityType in display order, capping each group */
@@ -148,6 +162,7 @@ export const ENTITY_TYPE_LABELS: Record<SearchEntityType, string> = {
   specialist: 'Specialists',
   manager: 'Manager',
   admin: 'Admins',
+  engagement: 'Engagements',
 };
 
 /** Short uppercase chip label */
@@ -157,4 +172,5 @@ export const ENTITY_TYPE_CHIPS: Record<SearchEntityType, string> = {
   specialist: 'SPEC',
   manager: 'MGR',
   admin: 'ADMIN',
+  engagement: 'ENG',
 };

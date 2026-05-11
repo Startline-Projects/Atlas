@@ -82,6 +82,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/users/admins/');
     }
 
+    // Active Engagements: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/engagements') {
+      return pathname === '/admin/operations/engagements'
+          || pathname.startsWith('/admin/operations/engagements/');
+    }
+
     return pathname === itemPathname;
   };
 

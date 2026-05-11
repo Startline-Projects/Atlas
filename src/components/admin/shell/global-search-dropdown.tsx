@@ -25,6 +25,8 @@ function chipVariantClass(type: SearchEntityType): string {
       return 'bg-[var(--amber-bg)] text-[var(--amber)]';
     case 'manager':
       return 'bg-[var(--cream-deep)] text-[var(--ink)]';
+    case 'engagement':
+      return 'bg-[rgba(214,242,77,0.4)] text-[var(--ink)]';
     case 'admin':
     default:
       return 'bg-[rgba(110,63,224,0.12)] text-[var(--super)]';

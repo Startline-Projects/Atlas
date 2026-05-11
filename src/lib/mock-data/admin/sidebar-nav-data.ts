@@ -92,7 +92,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'engagements',
           label: 'Active Engagements',
-          pathname: '#engagements',
+          pathname: '/admin/operations/engagements',
           icon: ActiveEngagementsNavIcon,
         },
         {

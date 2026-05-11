@@ -66,16 +66,27 @@ export function SpecialistRail({ rail }: SpecialistRailProps) {
         return;
       }
 
-      // Find the section whose top has crossed above the activation line
-      // and is closest to it from above (largest top value <= ACTIVATION_LINE).
+      // Find the section that *straddles* the activation line — top above the line AND
+      // bottom still below it. This is the section the user is currently reading. Without
+      // the bottom check, short sections that follow a tall section would erroneously win
+      // (their top would also be above the line, with a larger top value).
       let candidate: { id: string; top: number } | null = null;
       for (const id of sectionIds) {
         const el = document.getElementById(id);
         if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top <= ACTIVATION_LINE) {
-          if (!candidate || top > candidate.top) {
-            candidate = { id, top };
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= ACTIVATION_LINE && rect.bottom > ACTIVATION_LINE) {
+          candidate = { id, top: rect.top };
+        }
+      }
+      // Defensive fallback: if no section straddles, use last-top-above-line (old behavior).
+      if (!candidate) {
+        for (const id of sectionIds) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (top <= ACTIVATION_LINE) {
+            if (!candidate || top > candidate.top) candidate = { id, top };
           }
         }
       }
