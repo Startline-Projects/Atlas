@@ -40,8 +40,8 @@
  *
  * Anticipated future consumers:
  *   - candidate-profile/profile-hero.tsx (hero workflow buttons — landed in b58d1ef)
- *   - sourcing/sourcing-app.tsx (header "Import list" — `import-prospects` kind)
- *   - chat-shared/chat-header.tsx (More actions)
+ *   - sourcing/sourcing-app.tsx (header "Import list" — `import-prospects` kind, landed)
+ *   - chat-shared/chat-header.tsx (Voice call icon · `voice-call` kind · Step 8a)
  *   - disputes evidence ledger (some actions)
  *
  * Client Component (modal state owned by parent).
@@ -53,6 +53,7 @@ import {
   FileText,
   Mail,
   Pause,
+  Phone,
   RefreshCw,
   Send,
   Sparkles,
@@ -74,7 +75,8 @@ export type WorkflowKind =
   | "suggest-for-client"
   | "flag-recert"
   | "mark-unavailable"
-  | "import-prospects";
+  | "import-prospects"
+  | "voice-call";
 
 const KIND_ICON: Record<WorkflowKind, LucideIcon> = {
   contracts: FileText,
@@ -88,6 +90,7 @@ const KIND_ICON: Record<WorkflowKind, LucideIcon> = {
   "flag-recert": RefreshCw,
   "mark-unavailable": CalendarOff,
   "import-prospects": Upload,
+  "voice-call": Phone,
 };
 
 const KIND_TITLE: Record<WorkflowKind, string> = {
@@ -102,6 +105,7 @@ const KIND_TITLE: Record<WorkflowKind, string> = {
   "flag-recert": "Flag for re-cert",
   "mark-unavailable": "Mark unavailable",
   "import-prospects": "Import prospect list",
+  "voice-call": "Voice call",
 };
 
 const KIND_BODY: Record<WorkflowKind, (subject: string) => string> = {
@@ -127,6 +131,8 @@ const KIND_BODY: Record<WorkflowKind, (subject: string) => string> = {
     `Availability toggle lands when the engagements service is wired. This will mark ${s} unavailable for new client matches; existing engagements continue.`,
   "import-prospects": () =>
     `CSV ingest lands when the file storage service is wired. This will let you bulk-import prospects from LinkedIn Recruiter exports, referral spreadsheets, or AI-scout result sets.`,
+  "voice-call": (s) =>
+    `Voice calling lands when the telephony service is wired. This will start a 1-1 call with ${s} via the Atlas in-app bridge.`,
 };
 
 export function WorkflowUnavailableModal({

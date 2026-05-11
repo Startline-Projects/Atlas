@@ -3929,3 +3929,540 @@ button handlers and passes them down to `DisputeHeader`,
 - Audit-to-fix ratio: 100% (every Step 10 audit item landed)
 
 ---
+
+## Post-conversion polish — Step 8a: chat-header refit
+
+**Surfaces:** `/specialist/candidate-chat` + `/specialist/client-chat`
+(shared component cascade — single fix lands on both routes).
+**Scope:** Convert `chat-header.tsx` from Server → Client Component;
+wire the visible action row (Voice call icon · Schedule · Send brief)
++ a new `RowOverflowMenu` kebab + a mobile back button at `max-md:`
+breakpoint. Add `voice-call` kind to `WorkflowUnavailableModal`. Lift
+state in both `candidate-chat-app.tsx` and `client-chat-app.tsx` for
+SchedulingModal + workflow modal + `useQueuedFlash`.
+
+**Step 8b and 8c remain pending** (attachment cards + composer attach
+button; conv-rail Compose button) — deferred per the original Step 8
+audit recommendation.
+
+### Server → Client transition
+
+The chat-header was previously a Server Component rendering inert
+`<button>` placeholders. Adding `onClick` handlers as props requires
+the component to be a Client Component (event handlers can't be
+serialized across the server/client boundary unless they're Server
+Actions). Added `"use client"` directive.
+
+**No regression on rendering** — the chat-header is consumed only by
+already-Client orchestrators (`candidate-chat-app.tsx` and
+`client-chat-app.tsx`), both of which would have been client-side
+hydrated regardless.
+
+### 5 chat-header wirings (B2 · B3 · B4 · B7 · B8)
+
+| # | Element | Treatment | Dispatch |
+|---|---|---|---|
+| B2 | Voice call icon | `WorkflowUnavailableModal kind="voice-call"` (new kind) | candidate-only — hidden on client threads |
+| B3 | Schedule button | `SchedulingModal` (**3rd + 4th consumers — first dual-cascade site**) | both consumers |
+| B4 | Send brief button | `WorkflowUnavailableModal kind="send-brief"` (existing kind, finally consumed) | client-only |
+| B7 | More kebab | `RowOverflowMenu` (**3rd consumer**) — 4 items | both consumers |
+| B8 | Mobile back button (new) | `router.replace()` drops `?id=` | both consumers; renders at `max-md:` only |
+
+### `RowOverflowMenu` kebab item set (Q3 decision)
+
+Identical for both consumers — dispatched internally on
+`thread.kind` for the first item:
+
+| Item | Action | Both sides? |
+|---|---|---|
+| View profile / View client | `<Link>` to `/specialist/candidates/{candidateId}` OR `/specialist/my-clients` | yes — dispatched on `thread.kind` |
+| Search in conversation | warn flash "Search-in-thread queued — feature lands with search service" | yes |
+| Mute thread | warn flash "Muted {thread.title} for 8h" | yes |
+| *(divider)* | | |
+| Archive thread | warn flash "{thread.title} archived" | yes |
+
+**Schedule deliberately skipped from the kebab** — duplicates the
+visible-row action. View profile / View client **deliberately
+included** in the kebab even though it also lives in the visible row;
+provides a secondary discoverability path matching the standing
+RowOverflowMenu pattern from my-candidates + my-clients (kebab carries
+View-profile / Send-message / etc. duplications of visible row).
+
+Trigger styling: `renderTrigger` override keeps the existing 32×32
+`ActionIconButton` look (the kebab default trigger is 28×28); the
+chat-header's three-dot button is visually indistinguishable from
+before, only the click behavior changed.
+
+### New `WorkflowUnavailableModal` kind — `"voice-call"`
+
+Icon: `Phone` (lucide-react). Title: "Voice call". Body:
+
+> Voice calling lands when the telephony service is wired. This will
+> start a 1-1 call with {subject} via the Atlas in-app bridge.
+
+Subject = `thread.title` (e.g. "Anand Patel"). Mounted only on the
+candidate-chat side (telephony is candidate-only per Session 4
+convention — clients communicate via email and scheduled meetings,
+not 1:1 voice).
+
+Union grows to 12 kinds. Active consumers cover 5 kinds:
+`suggest-for-client`, `flag-recert`, `mark-unavailable`,
+`import-prospects`, `voice-call` + (the prior `send-brief` kind
+finally gets a consumer via B4). The other 6 client-side kinds
+(`contracts` / `briefs` / `suggest-talent` / `tag-client` /
+`invite-client` / `pause-client`) remain unused — prune still
+deferred until Session 8 settles candidate-side scope.
+
+### `SchedulingModal` — 3rd + 4th consumer sites
+
+| Surface | Subject format | Sites |
+|---|---|---|
+| `my-candidates/my-candidates-app.tsx` | `firstName` (split on space) | 1 (sheet) |
+| `candidate-profile/profile-app.tsx` | `firstName` | 1 (hero) |
+| `candidate-chat/candidate-chat-app.tsx` | `firstName` (split from `thread.title`) | **NEW — 1 (header)** |
+| `client-chat/client-chat-app.tsx` | `thread.title` (full company name) | **NEW — 1 (header)** |
+
+All 4 sites use **success-tone** flash per b58d1ef tone-consistency
+lock. Sub-line: `"Invite pending — scheduling service not yet wired"`
+on all 4. The only intentional divergence: candidate sites use the
+first-name token for friendliness ("Anand"), the client site uses
+the full title ("Acme Co") because companies don't split cleanly on
+whitespace.
+
+### Mobile back button (B8 — new affordance)
+
+Renders only at `max-md:` breakpoint (≤768px in Tailwind v4 defaults
+— same threshold where `ChatShell` hides the conv-rail). Each
+consumer passes its own route-aware handler:
+
+```ts
+// candidate-chat:
+router.replace("/specialist/candidate-chat");
+// client-chat:
+router.replace("/specialist/client-chat");
+```
+
+`router.replace()` (not `push`) — drops `?id=` without polluting back
+history. Lands the user on `<EmptyChatState>` which serves as the
+mobile-friendly "back to inbox" anchor.
+
+**Source HTML parity:** the source HTML has a `.cc-mobile-back`
+button (`<button class="cc-mobile-back" id="ccMobileBack">`) at the
+header start, hidden by default and shown via CSS media query. Build
+matches the source intent with Tailwind's `md:hidden` modifier.
+
+### Chat-header state ownership
+
+| State | Owner | Why |
+|---|---|---|
+| `schedulingFor` | each app | Each app's thread type differs (`CandidateChatThread` vs `ClientChatThread`) |
+| `workflowModal` | each app | Different `WorkflowKind` per app (`voice-call` vs `send-brief`) |
+| `useQueuedFlash` | each app | Mounted at app level alongside `<ApprovedFlash />` |
+| Kebab item open state | `RowOverflowMenu` internal | Per-trigger via `triggerId` (uses `thread.id` for isolation) |
+
+Chat-header itself is stateless — pure prop pipe. All handlers fire
+the appropriate parent callback. Mirrors the candidate-profile-hero
+pattern from b58d1ef.
+
+### Telephony / Send-brief asymmetry — locked
+
+The chat-header dispatches on `thread.kind` for the action set:
+
+- **Candidate threads:** `Voice call icon` · `Schedule` · `View profile` · `Kebab`
+- **Client threads:** `Schedule` · `Send brief` · `View client` · `Kebab`
+
+Voice call is candidate-only; Send brief is client-only. Source HTML
+encodes this asymmetry; the build now respects it via prop dispatch
+in `chat-header.tsx`:
+
+```tsx
+{thread.kind === "candidate" ? (
+  <CandidateActions ... />
+) : (
+  <ClientActions ... />
+)}
+```
+
+Each subcomponent receives only the props it needs (`onVoiceCall` for
+`CandidateActions`, `onSendBrief` for `ClientActions`). The kebab is
+shared — both action sets render the same `<ChatHeaderKebab />`.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `shell/workflow-unavailable-modal.tsx` | +6 / 0 (`voice-call` kind: import + union + 3 record entries) |
+| `chat-shared/chat-header.tsx` | Rewritten (~360 lines) — Server→Client, new props, RowOverflowMenu kebab, mobile back button, Action* helpers gain onClick |
+| `candidate-chat/candidate-chat-app.tsx` | +85 / −1 (state lift + 7 handlers + 3 modal/flash mounts) |
+| `client-chat/client-chat-app.tsx` | +85 / −1 (parallel — minus voice-call, plus send-brief) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### `RowOverflowMenu` consumer map after Step 8a
+
+| Surface | Sites |
+|---|---|
+| `my-candidates/candidate-row.tsx` | 1 (per-row kebab) |
+| `my-clients/client-row.tsx` | 1 (per-row kebab) |
+| `chat-shared/chat-header.tsx` | **NEW — 1 site, 2 consumer routes** (cascades to candidate-chat + client-chat) |
+
+### 8b / 8c remain pending
+
+- **8b — Attachment cards + composer attach button:**
+  - C7 message-attachment card click → `PreviewUnavailableModal kind="document"`
+  - D4 composer "Attach file" tool button → new `WorkflowUnavailableModal kind="attachment"` OR `PreviewUnavailableModal kind="document"`
+- **8c — Conv-rail "Compose" button:**
+  - Silent leave-inert per Q1 audit recommendation (niche admin gesture; honest title attribute already mitigates)
+
+Both items scoped in the Step 8 audit; deferred separately to keep
+8a's diff focused on the header refit.
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| `useQueuedFlash` backward compat | ✓ All existing callers unchanged |
+| `WorkflowKind` existing kinds | ✓ Union extended additively (now 12 kinds) |
+| `SchedulingModal` API | ✓ Unchanged; subject + onSchedule contract preserved |
+| `RowOverflowMenu` API | ✓ Unchanged; chat-header uses renderTrigger override |
+| Chat-shared other components (ConvRow / Composer / TemplatesPopover / etc.) | ✓ Untouched |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 5 chat-header wirings landed; 0 inert affordances in the header
+- `SchedulingModal` consumer count: 4 (all on success-tone)
+- `RowOverflowMenu` consumer count: 3 (chat-header cascades to both chat routes)
+- `WorkflowUnavailableModal` voice-call kind added; existing send-brief kind finally consumed
+- Server → Client transition for chat-header (cleanly isolated)
+- Mobile back button parity with source HTML restored
+- 8b + 8c remain explicitly pending
+
+---
+
+## Post-conversion polish — Step 11: reviews-approvals visual fidelity
+
+**Surface:** `/specialist/reviews`.
+**Scope:** Sticky-stack repair (primary bug — top-bands scrolled away
+on detail-pane scroll) + 3 minor drift fixes (filter chip container
+bg, decision bar Reject label, vestigial rail "All" chip removal).
+
+### Primary bug — Sticky-stack inheritance failure
+
+**The bug:** when user scrolled the detail pane on `/specialist/reviews`,
+the direction tabs (Awaiting / Submitted / Closed) and filter chips
+(All / Urgent / Tier promotion / Off-board / Rate change) scrolled
+away with content. Sibling queue surfaces (`/specialist/review-queue`,
+`/specialist/recert-queue`, `/specialist/disputes`) keep their tab
+strip pinned — reviews-approvals was the only queue-family surface
+where filter controls disappeared on scroll.
+
+**Root cause:** reviews-approvals was a Session 6.3 parallel fork
+that built its own `ReviewsDirectionTabs` and `ReviewsFilterChips`
+components instead of consuming `queue-shared/ReviewTabs`. The shared
+component carries `sticky top-[calc(36px+57px)] z-[5] bg-cream/95
+backdrop-blur-md backdrop-saturate-150` as part of its chrome — the
+fork inherited the visual styling but not the sticky positioning
+(silently dropped during fork). Same class of bug as the queue
+sticky-stack fix in commit `a1b67f7`.
+
+**The fix:** added sticky positioning + cream backdrop chrome to both
+bands, with stacked `top` offsets so they pin sequentially below the
+topbar without overlap:
+
+| Band | Sticky offset | z-index | Chrome |
+|---|---|---|---|
+| `RosterHeader` | not sticky (scrolls away — matches sibling `ReviewHeader` / `DisputeHeader` behavior) | — | — |
+| `ReviewsDirectionTabs` | `top-[calc(36px+57px)]` (= 93px, right below topbar) | `z-[5]` | `bg-cream/95 backdrop-blur-md backdrop-saturate-150 border-b border-line-soft` |
+| `ReviewsFilterChips` | `top-[calc(36px+57px+44px)]` (= 137px, right below direction tabs) | `z-[5]` | `bg-cream border-b border-line-soft` |
+| Rail (inside QueueShell) | `top-[calc(36px+57px)]` (unchanged) | default | `bg-paper border-r border-line-soft` |
+
+**44px offset calculation:** direction-tabs button = `text-[12.5px]
+py-3` → ~19px line-height + 24px vertical padding + 1px bottom border
+= 44px exactly. Filter chips' top edge meets direction tabs' bottom
+edge with no gap, no overlap.
+
+**Rail overlap behavior (accepted):** the rail's existing `sticky
+top-[calc(36px+57px)]` puts the rail's top edge at the same y as
+direction-tabs in the left column. With `z-[5]` on both bands and
+`z-default` on the rail, the bands render OVER the rail's top 88px
+when scrolled. The rail's internal sticky header ("Cases [N] ·
+Audit-logged · co-sign required") gets visually obscured in the
+overlap zone — acceptable trade-off because:
+- The rail header is static label info (count + caption), not
+  interactive
+- The rail's case list (rows below the header) remains visible below
+  the bands' bottom edge
+- The bands' filtering controls are the user's primary scroll-time
+  surface; their visibility wins over the rail header's
+
+### Sticky-stack convention — locked
+
+**Lock:** when a new surface forks from queue-shared, sticky
+positioning **must be replicated**, not silently dropped. Source
+HTML's implied sticky positioning (via CSS classes on the
+canonical view) is not optional — the build inherits both the
+visual styling AND the sticky behavior, OR documents the deliberate
+omission.
+
+This convention captures the lesson from this audit pass: Session
+6.3 inherited `ReviewTabs`-style visual chrome (text + active
+underline + count badge) without the sticky behavior. The fork was
+documented as visual-only but the missing sticky was a silent gap.
+Future forks: copy the FULL sticky+chrome bundle, or fork explicitly
+on both axes.
+
+### Secondary fixes
+
+| # | Fix | Before | After |
+|---|---|---|---|
+| F1 | Filter chips container bg | `bg-paper` | `bg-cream` — parity with sourcing polish (`f9c884f`) and my-clients / my-candidates `RosterCohorts` |
+| F2 | Decision bar Reject button label | "Reject" | "Reject recommendation" — source HTML wins on visible copy |
+| F3 | Vestigial rail "All [N]" filter chip | `filters={[{ key: "all", label: "All" }]}` | `filters={[]}` — outer filter-chips band already handles filtering; the rail chip was a redundant duplicate |
+
+**F3 verification:** `QueueRail`'s `activeFilter` state defaults to
+`defaultFilterKey ?? filters[0]?.key ?? "all"` — with `filters={[]}`
+the fallback chain resolves to `"all"`. Every row in `reviewsSnapshot`
+carries `"all"` in its `filterTags` (set by the `toRailRow` mapper),
+so the row-visibility check `c.filterTags.includes("all")` matches
+all rows. No row filtering breakage. QueueRail handles empty filters
+arrays gracefully without consumer-side guards.
+
+### `useQueuedFlash` migration — deferred (Step 11 scope)
+
+The reviews-approvals flash state machinery (`flashOpen` /
+`flashCaseId` / `flashVerb` / `flashTone` + `setTimeout`) remains
+bespoke. Same pattern still lives on `review-queue` and
+`recert-queue`. **Migration deferred** to a future batch cleanup
+that would migrate all 3 queue surfaces at once. No conflict drives
+the migration here (unlike disputes Step 10 where the new Step 10
+flashes conflicted with the existing bespoke escalation flash).
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `reviews-approvals/reviews-direction-tabs.tsx` | +9 docstring; container className gains sticky + bg-cream/95 + backdrop-blur |
+| `reviews-approvals/reviews-filter-chips.tsx` | +8 docstring; container className gains sticky + offset + bg-cream |
+| `reviews-approvals/reviews-decision-bar.tsx` | "Reject" → "Reject recommendation" (1 line) |
+| `reviews-approvals/reviews-app.tsx` | `filters={[{ key: "all", label: "All" }]}` → `filters={[]}` + explanatory comment |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| `QueueRail` shared primitive | ✓ Unchanged — empty-filters handling confirmed safe by existing default-key fallback |
+| `queue-shared/ReviewTabs` | ✓ Untouched — review-queue / recert-queue / disputes sticky behavior preserved |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Sibling queue sticky behavior | ✓ All 3 sibling surfaces (review-queue / recert-queue / disputes) keep their tab strip sticky as before |
+| Reviews-approvals modal + flash flows | ✓ Unchanged — only chrome adjustments |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- Primary bug fixed: top-band sticky-stack restored on reviews-approvals
+- Sticky-stack convention locked for future forks
+- Filter chip container bg-cream parity (3rd surface — my-clients, sourcing, reviews)
+- "Reject recommendation" source-fidelity label
+- Vestigial rail "All [N]" chip removed
+- `useQueuedFlash` migration deferred (batch cleanup later — review-queue + recert-queue + reviews-approvals share the same bespoke pattern)
+- Audit-to-fix ratio: 100% (every Step 11 audit item landed)
+
+---
+
+## Post-conversion polish — Step 12: performance / settings / help spot-checks
+
+**Surfaces:** `/specialist/performance`, `/specialist/settings`,
+`/specialist/help` + re-verification of `/specialist/reviews-approvals`
+post-Step 11.
+**Scope:** Last polish pass before Session 9. Tight surgical wirings
+to close the remaining inert affordances on Performance (1) and
+Settings (5 + 1 state lift). Help intentionally stays inert per
+Session 6.5 architectural decision — documented as locked.
+
+### Performance — 1 wiring
+
+| # | Site | Old state | New treatment |
+|---|---|---|---|
+| A2 | Header "Export" `RosterActionButton` | inert | `useQueuedFlash` warn-tone "Performance report queued for export — PDF service not yet wired" |
+
+`useQueuedFlash` hook + `ApprovedFlash` mount lifted into
+`performance-app.tsx`. First flash consumer on this surface.
+
+### Settings — 5 wirings + 1 state lift
+
+| # | Site | Old state | New treatment |
+|---|---|---|---|
+| B16 | Profile "Upload photo" button | inert (`e.preventDefault()`) | `useQueuedFlash` warn-tone "Avatar upload queued — file storage service not yet wired" |
+| B17 | Profile "Remove" button | inert | `useQueuedFlash` warn-tone "Avatar removed — change pending save" |
+| B18 | Security "View & regenerate" recovery codes | inert | Reuses existing `manage-2fa` modal — same handler the "Manage" button uses. Modal body already covers backup-codes inventory ("10 unused codes · last regenerated 47 days ago"). **No new modal kind.** |
+| B19 | Security "Sign out" per-session button | **wired UI, empty handler — worst misleading affordance in the audit** | **Real local-state removal + success-tone flash pair.** `activeSessions` lifted to `useState` inside `security-section.tsx`. Click removes the row from state AND fires `useQueuedFlash` success-tone "Signed out of {device}". Current session row continues to render the "CURRENT" pill (no sign-out affordance — matches source HTML). |
+| B20 | Data & Export 4 download buttons | all inert | Single `onExport(label)` handler factory; 4 call sites pass row-specific labels. Each fires `useQueuedFlash` warn-tone "{label} queued for export — data export service not yet wired". |
+
+### Settings approved-flash architecture — dual mount
+
+`settings-app.tsx` now mounts TWO `<ApprovedFlash>` components:
+
+1. **Bespoke flash** (existing) — drives the savebar Save confirm
+   ("Saved. N settings updated.") and the 4 decision-modal confirms
+   (change-password, manage-2fa, transfer-pool, request-deletion).
+   Sub-line: "Settings updated · audit-logged." Meta: "SETTINGS".
+2. **`useQueuedFlash` mount** (new, Step 12) — drives the
+   inert-button flashes (B16, B17, B19, B20).
+
+Mutually exclusive in practice — only one fires per click. Migrating
+the bespoke flash to `useQueuedFlash` is **deferred** per Q5 of
+Step 11 (review-queue + recert-queue + reviews-approvals + settings
+share the same bespoke pattern; would be a single batch-migration
+later if global consistency is wanted).
+
+### B19 callout — worst misleading affordance treated
+
+The previous `onSignOutSession` handler in `settings-app.tsx` was
+empty (`/* visual only */`). Clicks visually completed (button-press
+feedback) but the row stayed and no acknowledgement fired. **Worse
+than purely inert** because the user's gesture had no detectable
+effect.
+
+Treatment: section-owned local state + flash pair.
+
+```ts
+const [sessions, setSessions] = useState<ReadonlyArray<ActiveSession>>(
+  initialActiveSessions,
+);
+
+const handleSignOutSession = (id: string) => {
+  const session = sessions.find((s) => s.id === id);
+  if (!session) return;
+  setSessions((prev) => prev.filter((s) => s.id !== id));
+  fireQueuedFlash(`Signed out of ${session.device}`, { tone: "success" });
+};
+```
+
+The removal + flash together signal completion. Same local-state
+convention as `tags-panel` applied set, `integrations-section`
+connected toggle, and `sourcing` AddProspectModal stage selector —
+state lives in the section that owns the visible list, parent passes
+the flash trigger.
+
+Side benefit: `onSignOutSession` prop dropped from the
+`settings-app.tsx` `ActiveSectionPanel` prop surface — security-section
+is now self-contained for session management.
+
+### B18 callout — modal reuse, no new kind
+
+Recovery codes "View & regenerate" routes to the existing
+`manage-2fa` modal. Modal body already covers backup-codes
+inventory; no new modal kind. **Demonstrates the standing
+"if a modal already exists, reuse before forking" discipline** —
+same reasoning as Step 11 (`filters={[]}` reuses QueueRail's
+fallback rather than adding a prop).
+
+### Help — intentionally inert, locked
+
+~34 CTAs across `help-app.tsx` (suggestion chips × 8, topic cards × 6,
+article rows × 6, training cards × 6, contact CTAs × 3, section "all
+N" headers × 4, resume training × 1) **remain inert by design**.
+Session 6.5 directive 6 established this surface as marketing-style
+preview until the CMS service lands. Re-wiring them to flashes or
+modals would add code surface for no UX gain — the buttons still
+wouldn't lead to real content.
+
+**Lock:** when the CMS service lands, all CTAs become real `<Link>`
+elements to article / training / contact routes in a single sweep.
+Until then: do NOT relitigate in future polish passes. Top-of-file
+comment in `help-app.tsx` carries the verdict so future audit passes
+have the answer in-place.
+
+### Reviews-approvals — Step 11 re-verification
+
+| Check | Status |
+|---|---|
+| Direction tabs sticky at `top-[calc(36px+57px)]` z-[5] | ✓ |
+| Filter chips sticky at `top-[calc(36px+57px+44px)]` z-[5] | ✓ |
+| Both bands cream / cream-95 with backdrop blur | ✓ |
+| Rail no longer renders vestigial "All [N]" chip | ✓ |
+| Decision bar shows "Reject recommendation" | ✓ |
+| Sibling routes (review-queue / recert-queue / disputes) sticky behavior preserved | ✓ |
+
+No regressions detected.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `performance/performance-app.tsx` | Add useQueuedFlash + ApprovedFlash mount + handleExport (~10 lines) |
+| `settings/profile-section.tsx` | Accept `onAvatarUpload` / `onAvatarRemove` props; wire 2 buttons |
+| `settings/security-section.tsx` | Lift `activeSessions` to useState; accept `fireQueuedFlash` prop; wire B18 to existing `onManage2FA`; wire B19 with local removal + flash; drop `onSignOutSession` prop |
+| `settings/data-export-section.tsx` | Accept `onExport(label)` prop; wire 4 buttons |
+| `settings/settings-app.tsx` | Add useQueuedFlash + 3 handlers (avatar upload/remove, export) + drop `onSignOutSession`; add 2nd ApprovedFlash mount |
+| `help/help-app.tsx` | Top-of-file docstring lock confirming Session 6.5 visual-only directive |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### Polish series state after Step 12
+
+| Step | Surface | Status |
+|---|---|---|
+| Step 1 | Topbar polish | ✓ Landed |
+| Step 2 | Dashboard polish | ✓ Landed |
+| Step 3 | Review-queue polish | ✓ Landed |
+| Step 4 | Recert-queue polish | ✓ Landed |
+| Step 5 | My-candidates polish | ✓ Landed |
+| Step 6 | My-clients polish | ✓ Landed |
+| Step 7 | Candidate-profile polish | ✓ Landed |
+| Step 8a | Chat-header refit | ✓ Landed (Step 11 commit) |
+| Step 8b | Chat attachment cards + composer attach | ⏸ **Explicitly deferred at user's call** |
+| Step 8c | Conv-rail Compose button | ⏸ **Explicitly deferred at user's call** |
+| Step 9 | Sourcing polish | ✓ Landed |
+| Step 10 | Disputes polish | ✓ Landed |
+| Step 11 | Reviews-approvals visual fidelity | ✓ Landed |
+| Step 12 | Performance / Settings / Help spot-checks | ✓ **This commit** |
+
+**Polish complete for all audited surfaces. 8b + 8c remain
+explicitly deferred at user's call.** Session 9 (dedicated client
+pages — `/specialist/clients/[id]` etc.) is the next major step.
+
+### `useQueuedFlash` consumer map after Step 12
+
+| Surface | Sites added in Step 12 | Total sites |
+|---|---|---|
+| `performance/performance-app.tsx` | 1 (Export) | **NEW — 1** |
+| `settings/settings-app.tsx` | 3 (avatar upload + remove + export) | **NEW — 3** |
+| `settings/security-section.tsx` | 1 (Sign-out session) | **NEW — 1** |
+
+Plus existing consumers from prior polish (my-candidates, my-clients,
+candidate-profile, sourcing, disputes, candidate-chat, client-chat).
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Settings bespoke flash (save / modal confirms) | ✓ Unchanged |
+| Settings 4 modals (change-password / manage-2fa / transfer-pool / request-deletion) | ✓ Unchanged |
+| All notifications matrix toggles + quiet hours | ✓ Unchanged |
+| All preferences toggles + selects | ✓ Unchanged |
+| All integrations Connect/Manage | ✓ Unchanged |
+| Advanced toggles + danger zone | ✓ Unchanged |
+| Savebar Discard + Save | ✓ Unchanged |
+| Performance Period toggle + tabs | ✓ Unchanged |
+| Performance all read-only sections | ✓ Unchanged |
+| Help all ~34 CTAs | ✓ Intentionally inert per Session 6.5 (now documented) |
+| Reviews-approvals sticky stack + decision bar + filters | ✓ Step 11 holds |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- Performance: 1 inert affordance closed (Export)
+- Settings: 5 inert affordances closed + 1 state lift (Sign-out session — real local removal)
+- Help: ~34 CTAs locked as intentionally inert per Session 6.5
+- Reviews-approvals: Step 11 verified clean
+- `useQueuedFlash` migration of bespoke patterns still deferred — batch-migration candidate for a future global cleanup
+- Polish series state documented; 8b + 8c remain explicitly deferred
+- Audit-to-fix ratio: 100% (every Step 12 audit item landed; Help's "no fix" is itself a documented decision)
+
+---

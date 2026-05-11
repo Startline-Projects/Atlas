@@ -16,6 +16,16 @@
  *     Per directive 5: "don't auto-show again on the same conversation
  *     in the same session".
  *
+ *   - **Step 8a additions:**
+ *     - `schedulingFor`: active thread for SchedulingModal (3rd
+ *       consumer site after my-candidates + candidate-profile)
+ *     - `workflowModal`: active workflow + subject for
+ *       WorkflowUnavailableModal (`voice-call` kind only on this
+ *       surface)
+ *     - `useQueuedFlash`: drives ApprovedFlash overlay for both the
+ *       schedule confirm (success-tone, locked per b58d1ef) and
+ *       kebab actions (warn-tone for Search / Mute / Archive)
+ *
  * URL state:
  *   - useSearchParams() to read the active id (no useState mirror —
  *     URL is the source of truth)
@@ -36,6 +46,7 @@ import {
   CANDIDATE_CHAT_TEMPLATES,
 } from "@/lib/mock-data/specialist/candidate-chats";
 import type {
+  CandidateChatThread,
   ChatMessage,
   ConversationFilter,
 } from "@/lib/mock-data/specialist/chat-types";
@@ -51,6 +62,17 @@ import {
   MessageList,
   type FilterDef,
 } from "@/components/specialist/chat-shared";
+import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
+import { useQueuedFlash } from "@/components/specialist/people-shared";
+import {
+  SchedulingModal,
+  formatSchedulePartsForFlash,
+  type SchedulePayload,
+} from "@/components/specialist/shell/scheduling-modal";
+import {
+  WorkflowUnavailableModal,
+  type WorkflowKind,
+} from "@/components/specialist/shell/workflow-unavailable-modal";
 
 const FILTERS: ReadonlyArray<FilterDef> = CANDIDATE_CHAT_FILTERS.map((f) => ({
   key: f.key as ConversationFilter,
@@ -59,6 +81,10 @@ const FILTERS: ReadonlyArray<FilterDef> = CANDIDATE_CHAT_FILTERS.map((f) => ({
 
 /** Migration-note caption per CONVERSION_LOG. */
 const COMPOSER_STATUS = "Encrypted in transit";
+
+/** Workflow-modal state slot. Only the `voice-call` kind fires from
+ *  this surface today; slot is generic for future additions. */
+type WorkflowModalState = { workflow: WorkflowKind; subjectName: string } | null;
 
 export function CandidateChatApp() {
   const router = useRouter();
@@ -85,6 +111,16 @@ export function CandidateChatApp() {
   const [dismissedSuggestions, setDismissedSuggestions] = useState<
     ReadonlySet<string>
   >(new Set());
+
+  /* Step 8a — Scheduling modal state (3rd consumer of SchedulingModal). */
+  const [schedulingFor, setSchedulingFor] =
+    useState<CandidateChatThread | null>(null);
+
+  /* Step 8a — Workflow modal slot (currently only `voice-call`). */
+  const [workflowModal, setWorkflowModal] = useState<WorkflowModalState>(null);
+
+  /* Step 8a — Single queued-flash for schedule confirm + kebab acks. */
+  const { flash, fireQueuedFlash } = useQueuedFlash();
 
   /* ---- Handlers ---- */
 
@@ -160,6 +196,68 @@ export function CandidateChatApp() {
     });
   }, [activeThread]);
 
+  /* ---- Step 8a chat-header callbacks ---- */
+
+  /* Mobile back — drops `?id=` and lands on the empty state. */
+  const handleMobileBack = useCallback(() => {
+    router.replace("/specialist/candidate-chat");
+  }, [router]);
+
+  /* Schedule check-in → opens SchedulingModal pointing at activeThread. */
+  const handleSchedule = useCallback(() => {
+    if (!activeThread) return;
+    setSchedulingFor(activeThread);
+  }, [activeThread]);
+
+  /* Schedule confirm → success-tone flash per b58d1ef tone-consistency
+     lock. First-token of the thread title for the friendly-name prefix
+     ("Anand" rather than "Anand Patel"). */
+  const handleScheduleConfirm = useCallback(
+    (payload: SchedulePayload) => {
+      if (!schedulingFor) return;
+      const firstName =
+        schedulingFor.title.split(" ")[0] ?? schedulingFor.title;
+      const parts = formatSchedulePartsForFlash(payload);
+      fireQueuedFlash(
+        `Scheduled. ${firstName} · ${parts}${payload.videoCall ? " · video link queued" : ""}`,
+        {
+          tone: "success",
+          tail: "Invite pending — scheduling service not yet wired",
+        },
+      );
+      setSchedulingFor(null);
+    },
+    [schedulingFor, fireQueuedFlash],
+  );
+
+  /* Voice call icon → WorkflowUnavailableModal kind="voice-call". */
+  const handleVoiceCall = useCallback(() => {
+    if (!activeThread) return;
+    setWorkflowModal({
+      workflow: "voice-call",
+      subjectName: activeThread.title,
+    });
+  }, [activeThread]);
+
+  /* Kebab — Search in conversation. */
+  const handleSearchInThread = useCallback(() => {
+    fireQueuedFlash(
+      "Search-in-thread queued — feature lands with search service",
+    );
+  }, [fireQueuedFlash]);
+
+  /* Kebab — Mute thread. */
+  const handleMute = useCallback(() => {
+    if (!activeThread) return;
+    fireQueuedFlash(`Muted ${activeThread.title} for 8h`);
+  }, [activeThread, fireQueuedFlash]);
+
+  /* Kebab — Archive thread. */
+  const handleArchive = useCallback(() => {
+    if (!activeThread) return;
+    fireQueuedFlash(`${activeThread.title} archived`);
+  }, [activeThread, fireQueuedFlash]);
+
   /* ---- Derived view-model for the active thread ---- */
 
   const activeMessages = useMemo<ReadonlyArray<ChatMessage>>(() => {
@@ -180,47 +278,74 @@ export function CandidateChatApp() {
   /* ---- Render ---- */
 
   return (
-    <ChatShell
-      rail={
-        <ConvRail
-          title={CANDIDATE_CHAT_LIST_TITLE}
-          threads={candidateChatThreads}
-          filters={FILTERS}
-          activeId={activeThread?.id ?? null}
-          onSelect={handleSelect}
-        />
-      }
-      main={
-        <main className="bg-cream sticky top-[calc(36px+57px)] flex h-[calc(100vh-36px-57px)] min-w-0 flex-col">
-          {activeThread ? (
-            <>
-              <ChatHeader thread={activeThread} />
-              <ContextStrip cells={activeThread.contextStrip} />
-              <MessageList messages={activeMessages} />
-              {showAiPanel && activeThread.aiSuggestion ? (
-                <AiSuggestPanel
-                  suggestion={activeThread.aiSuggestion}
-                  onUse={handleAiUse}
-                  onDismiss={handleAiDismiss}
+    <>
+      <ChatShell
+        rail={
+          <ConvRail
+            title={CANDIDATE_CHAT_LIST_TITLE}
+            threads={candidateChatThreads}
+            filters={FILTERS}
+            activeId={activeThread?.id ?? null}
+            onSelect={handleSelect}
+          />
+        }
+        main={
+          <main className="bg-cream sticky top-[calc(36px+57px)] flex h-[calc(100vh-36px-57px)] min-w-0 flex-col">
+            {activeThread ? (
+              <>
+                <ChatHeader
+                  thread={activeThread}
+                  onMobileBack={handleMobileBack}
+                  onSchedule={handleSchedule}
+                  onVoiceCall={handleVoiceCall}
+                  onSearchInThread={handleSearchInThread}
+                  onMute={handleMute}
+                  onArchive={handleArchive}
                 />
-              ) : null}
-              <Composer
-                placeholder={`Message ${activeThread.title.split(" ")[0]}…`}
-                value={composerValue}
-                onValueChange={handleComposerChange}
-                onSend={handleSend}
-                onAiTrigger={
-                  activeThread.aiSuggestion ? handleAiTrigger : undefined
-                }
-                templates={CANDIDATE_CHAT_TEMPLATES}
-                statusCaption={COMPOSER_STATUS}
-              />
-            </>
-          ) : (
-            <EmptyChatState />
-          )}
-        </main>
-      }
-    />
+                <ContextStrip cells={activeThread.contextStrip} />
+                <MessageList messages={activeMessages} />
+                {showAiPanel && activeThread.aiSuggestion ? (
+                  <AiSuggestPanel
+                    suggestion={activeThread.aiSuggestion}
+                    onUse={handleAiUse}
+                    onDismiss={handleAiDismiss}
+                  />
+                ) : null}
+                <Composer
+                  placeholder={`Message ${activeThread.title.split(" ")[0]}…`}
+                  value={composerValue}
+                  onValueChange={handleComposerChange}
+                  onSend={handleSend}
+                  onAiTrigger={
+                    activeThread.aiSuggestion ? handleAiTrigger : undefined
+                  }
+                  templates={CANDIDATE_CHAT_TEMPLATES}
+                  statusCaption={COMPOSER_STATUS}
+                />
+              </>
+            ) : (
+              <EmptyChatState />
+            )}
+          </main>
+        }
+      />
+
+      <SchedulingModal
+        key={schedulingFor?.id ?? "closed"}
+        open={schedulingFor !== null}
+        subjectName={schedulingFor?.title ?? ""}
+        onClose={() => setSchedulingFor(null)}
+        onSchedule={handleScheduleConfirm}
+      />
+
+      <WorkflowUnavailableModal
+        open={workflowModal !== null}
+        workflow={workflowModal?.workflow ?? "voice-call"}
+        subjectName={workflowModal?.subjectName ?? ""}
+        onClose={() => setWorkflowModal(null)}
+      />
+
+      <ApprovedFlash {...flash} />
+    </>
   );
 }
