@@ -4,13 +4,29 @@
  * User menu — anchored under the topbar avatar pill. ~260px wide.
  *
  *   Header  · avatar tile + display name + role/category caption
- *   Body    · menu items (Settings, My profile, Help & support)
+ *   Body    · 4 menu items (Settings, My profile, Performance,
+ *             Help & support)
  *   Footer  · Sign out (subtle red text, e.preventDefault)
  *
- * Settings + Help routes navigate via Next.js <Link>. "My profile" is
- * a placeholder — no `/specialist/me` route exists; documented in
- * CONVERSION_LOG as future polish. "Sign out" is e.preventDefault
- * pending the auth integration.
+ * All 4 body items navigate via Next.js `<Link>` — none are placeholders.
+ * "My profile" deep-links to `/specialist/settings?section=profile`
+ * (the Profile panel inside settings). This matches source HTML's
+ * `data-route="settings"` on both "My profile" and "Account settings"
+ * (both items routed to the same settings page in source). Step 13
+ * fix: "My profile" was previously inert on a misread that it needed
+ * a dedicated `/specialist/me` route — source HTML never intended
+ * that.
+ *
+ * Working hours / Out of office (present in source HTML) are
+ * intentionally omitted — source-intended inert affordances ≠ useful
+ * affordances in the build.
+ *
+ * "Sign out" stays `e.preventDefault` pending the auth integration.
+ *
+ * Convention (locked, Step 13):
+ *   Topbar menu items must route to real destinations. Source HTML's
+ *   `data-route` attributes are authoritative — verify the target
+ *   route exists before assuming a placeholder/inert state.
  *
  * Closes on Esc, click outside, item click.
  *
@@ -20,7 +36,13 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LifeBuoy, LogOut, Settings, UserCircle2 } from "lucide-react";
+import {
+  BarChart3,
+  LifeBuoy,
+  LogOut,
+  Settings,
+  UserCircle2,
+} from "lucide-react";
 import { currentUser } from "@/lib/mock-data/specialist/current-user";
 
 const TRIGGER_KEY = "user";
@@ -135,11 +157,17 @@ export function TopbarUserMenu({
           label="Settings"
           onClose={onClose}
         />
-        <MenuButton
+        <MenuLink
+          href="/specialist/settings?section=profile"
           icon={UserCircle2}
           label="My profile"
           onClose={onClose}
-          /* No /specialist/me route — visual-only placeholder. */
+        />
+        <MenuLink
+          href="/specialist/performance"
+          icon={BarChart3}
+          label="Performance"
+          onClose={onClose}
         />
         <MenuLink
           href="/specialist/help"
@@ -204,33 +232,6 @@ function MenuLink({
   );
 }
 
-function MenuButton({
-  icon: Icon,
-  label,
-  onClose,
-}: {
-  icon: typeof Settings;
-  label: string;
-  onClose: () => void;
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-        className="text-ink hover:bg-cream flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-medium transition-colors"
-      >
-        <Icon
-          className="text-ink-mute h-4 w-4 flex-shrink-0"
-          strokeWidth={1.6}
-          aria-hidden="true"
-        />
-        {label}
-      </button>
-    </li>
-  );
-}
+/* MenuButton helper removed in Step 13 — all body items now route to
+   real destinations via MenuLink. If a future inert button is ever
+   needed (e.g. a sign-out style action), restore from git history. */

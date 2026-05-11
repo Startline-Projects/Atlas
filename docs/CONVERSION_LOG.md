@@ -4466,3 +4466,112 @@ candidate-profile, sourcing, disputes, candidate-chat, client-chat).
 - Audit-to-fix ratio: 100% (every Step 12 audit item landed; Help's "no fix" is itself a documented decision)
 
 ---
+
+## Post-conversion polish — Step 13: topbar user menu parity fix
+
+**Surface:** topbar avatar dropdown (`shell/topbar-user-menu.tsx`).
+**Scope:** Fix the inert "My profile" item (user-reported bug) +
+restore the missing "Performance" item per source HTML for full
+parity.
+
+### Root cause
+
+The build's "My profile" item was shipped as a `MenuButton` with
+`e.preventDefault()` — inert. The component's docstring and an inline
+comment claimed the item was a "placeholder" because "no
+`/specialist/me` route exists." **This was a misread of source HTML
+intent.**
+
+Source HTML's avatar dropdown (lines 14018–14054):
+
+```html
+<div class="am-item" data-route="settings">My profile</div>
+<div class="am-item" data-route="settings">Account settings</div>
+```
+
+Both items routed to the **same** `data-route="settings"` target.
+They're two labels for one destination — the user's profile-management
+surface lives inside settings under `?section=profile`. Source never
+intended a separate `/specialist/me` route; the build invented one
+that didn't exist and then declared the absence as a "missing route"
+that needed deferral.
+
+### Fix
+
+| Item | Before | After |
+|---|---|---|
+| **My profile** | `MenuButton` inert (e.preventDefault) | `MenuLink` → `/specialist/settings?section=profile` |
+| **Performance** | Missing from menu | `MenuLink` → `/specialist/performance` (NEW item; lucide `BarChart3` icon) |
+
+Final menu order (4 body items + footer):
+
+1. Settings → `/specialist/settings`
+2. **My profile** → `/specialist/settings?section=profile` (FIXED)
+3. **Performance** → `/specialist/performance` (NEW per source parity)
+4. Help & support → `/specialist/help`
+5. Sign out (footer, inert pending auth)
+
+`MenuButton` helper is removed (no remaining consumers — all body
+items route via `MenuLink`).
+
+### Source HTML parity
+
+Source HTML user-menu had 6 body items + 2 dividers + Sign out:
+
+| Source item | Build status |
+|---|---|
+| My profile (data-route="settings") | ✓ Wired (was inert) |
+| Account settings (data-route="settings") | ✓ Same target as Settings entry (collapsed into one item) |
+| Performance (data-route="performance") | ✓ Wired (was missing) |
+| Help & resources (data-route="help") | ✓ Wired |
+| Working hours (no data-route, inert in source) | Intentionally omitted |
+| Out of office (no data-route, inert in source) | Intentionally omitted |
+| Sign out (id="signOutBtn") | Inert pending auth (matches source intent) |
+
+**Working hours / Out of office** stay omitted — source-intended
+inert affordances ≠ useful affordances in the build. If/when those
+features get real routes, they'll land alongside their routes in a
+single sweep.
+
+### Convention — locked
+
+**Topbar menu items must route to real destinations. Source HTML's
+`data-route` attributes are authoritative — verify the target route
+exists before assuming a placeholder/inert state.**
+
+Past polish steps occasionally treated inert items as "future polish"
+when the actual target route already existed in the build — same
+class of misread that produced this bug. Going forward: any topbar /
+nav menu item that looks "inert by design" should be cross-checked
+against source HTML's `data-route` and the existing route table
+before deferring.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `shell/topbar-user-menu.tsx` | "My profile" MenuButton → MenuLink; Performance MenuLink added; BarChart3 import; docstring updated; MenuButton helper removed |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Topbar notifications popover | ✓ Unchanged |
+| Topbar messages popover | ✓ Unchanged |
+| Topbar search input | ✓ Unchanged |
+| User menu Esc / click-outside / window-resize close | ✓ Unchanged (same portal pattern) |
+| User menu Settings / Help links | ✓ Unchanged |
+| Sign out (footer, intentionally inert) | ✓ Unchanged |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- "My profile" no longer inert — routes to `/specialist/settings?section=profile`
+- "Performance" added to menu — restores source HTML parity
+- `MenuButton` helper removed (no remaining consumers)
+- Convention locked: source HTML `data-route` is authoritative for nav items
+
+---
