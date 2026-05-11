@@ -174,19 +174,26 @@ export function DisputesTable({ rows }: DisputesTableProps) {
                 isUrgent
                   ? 'pl-[11px] pr-[14px] border-l-[3px] border-l-[var(--danger)]'
                   : 'px-[14px]',
-                // Background priority: selected wins, else urgent/escalated tint, else default hover
-                isSelected
-                  ? 'bg-[rgba(214,242,77,0.10)]'
-                  : isUrgent
-                    ? 'bg-[rgba(194,65,43,0.05)] hover:bg-[rgba(194,65,43,0.10)]'
-                    : isEscalated
-                      ? 'bg-[rgba(194,65,43,0.025)] hover:bg-[#FCF9F1]'
-                      : 'hover:bg-[#FCF9F1]',
-                // Lime ::before selection stripe: only when selected AND NOT urgent
-                // (urgent rows keep their 3px red border-left as the priority indicator —
-                // urgency overrides selection per user-preferred visual coherence)
-                isSelected && !isUrgent &&
-                  "before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--lime-deep)]"
+                // Background priority — urgent/escalated semantics preserved on selection
+                // (red-tint stays red, just darker; default goes lime)
+                isUrgent
+                  ? (isSelected
+                      ? 'bg-[rgba(194,65,43,0.18)] hover:bg-[rgba(194,65,43,0.22)]'
+                      : 'bg-[rgba(194,65,43,0.05)] hover:bg-[rgba(194,65,43,0.10)]')
+                  : isEscalated
+                    ? (isSelected
+                        ? 'bg-[rgba(194,65,43,0.12)] hover:bg-[rgba(194,65,43,0.16)]'
+                        : 'bg-[rgba(194,65,43,0.025)] hover:bg-[#FCF9F1]')
+                    : (isSelected
+                        ? 'bg-[rgba(214,242,77,0.10)]'
+                        : 'hover:bg-[#FCF9F1]'),
+                // Selection stripe: lime for default rows (keeps Phase 11a pattern);
+                // urgent rows already have 3px danger border-left; escalated rows get
+                // a 2px danger ::before stripe on selection to signal both states.
+                isSelected && !isUrgent && !isEscalated &&
+                  "before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--lime-deep)]",
+                isSelected && isEscalated &&
+                  "before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--danger)]"
               )}
               style={{ gridTemplateColumns: GRID_COLUMNS }}
             >

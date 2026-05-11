@@ -143,6 +143,168 @@ export interface DisputeQuickFact {
   ddColor?: 'super' | 'amber' | 'success';
 }
 
+// ============================================================
+// Phase 12b — Section data shapes
+// ============================================================
+
+export type EvidenceIconKind = 'pdf' | 'image' | 'csv' | 'code';
+
+export interface EvidenceItem {
+  kind: EvidenceIconKind;
+  name: string;
+  meta: string;
+  reviewed: boolean;
+}
+
+export interface PartyByline {
+  initials: string;
+  gradient: string;
+  name: string;
+  role: string;
+}
+
+export interface DisputeQuote { text: string; cite: string }
+export interface DisputeAmount { label: string; value: string; suffix: string }
+
+// Inline-rich paragraph (renders <strong> and <em> via segments)
+export type RichSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'strong'; text: string }
+  | { kind: 'em'; text: string };
+export type RichParagraph = RichSegment[];
+
+export interface DisputeClaim {
+  statusText: string;
+  tagText: string;           // "CLAIMANT" or "RESPONDENT"
+  tagVariant: 'claimant' | 'respondent';
+  headVariant: 'claim' | 'response';
+  title: string;
+  filedMeta: string;
+  byline: PartyByline;
+  reasonCategoryLabel?: string;
+  reasonCategoryMeta?: string;
+  bodyParagraphs: RichParagraph[];
+  bullets?: string[];
+  quote: DisputeQuote;
+  amount: DisputeAmount;
+  evidenceHead: string;
+  evidence: EvidenceItem[];
+}
+
+export interface DisputeResponse {
+  statusText: string;
+  tagText: string;
+  tagVariant: 'respondent';
+  headVariant: 'response';
+  title: string;
+  filedMeta: string;
+  byline: PartyByline;
+  bodyParagraphs: RichParagraph[];
+  quote: DisputeQuote;
+  amount: DisputeAmount;
+  evidenceHead: string;
+  evidence: EvidenceItem[];
+}
+
+export interface ReviewItem { text: string; by: string; checked: boolean }
+
+export interface ConvoMsg {
+  initials: string;
+  gradient: string;
+  from: string;
+  time: string;
+  tagLabel: string;
+  tagFlagged: boolean;
+  text: string;
+}
+
+export interface DisputeInvestigation {
+  statusText: string;
+  headTitle: string;
+  headMeta: string;
+  notesLabel: string;
+  notesText: string;       // preserve-whitespace; component renders with whitespace-pre-wrap + parses **strong** / *em*
+  reviewLabel: string;
+  reviewItems: ReviewItem[];
+  convoLabel: string;
+  convoText: RichParagraph;
+  convoCardHeadTitle: string;
+  convoCardHeadMeta: string;
+  convoMsgs: ConvoMsg[];
+}
+
+export interface DisputeDecisionSide {
+  tagLabel: string;
+  tagVariant: 'client' | 'candidate';
+  name: string;
+  amount: string;
+  amountSign: 'neg' | 'pos';
+  meta: string;
+}
+
+export interface DisputeDecision {
+  statusText: string;
+  headTitle: string;
+  signatureState: 'draft' | 'locked';
+  signatureBadgeText: string;
+  allocations: { client: DisputeDecisionSide; candidate: DisputeDecisionSide };
+  rationaleLabel: string;
+  rationaleParagraphs: RichParagraph[];
+  footText: RichParagraph;
+  forceLockLabel: string;
+}
+
+export type AuditTagVariant = 'default' | 'signin' | 'override';
+
+export interface AuditEntry {
+  time: string;
+  verb: string;
+  target: string;
+  details: string;
+  refId?: string;
+  tagLabel: string;
+  tagVariant: AuditTagVariant;
+  dataCat?: 'signin' | 'override';
+}
+
+export interface AuditDay {
+  dateLabel: string;
+  countLabel: string;
+  entries: AuditEntry[];
+}
+
+export interface DisputeAuditLog {
+  statusText: string;
+  adminOnly: true;
+  adminOnlyLabel: string;
+  headTitle: string;
+  headMeta: string;
+  days: AuditDay[];
+  escalationBanner: {
+    variant: 'amber' | 'danger' | 'success';
+    label: string;
+    paragraphs: RichParagraph[];
+  };
+}
+
+export interface LinkedCard {
+  role: string;
+  avatarKind: 'icon' | 'initials';
+  avatarGradient: string;
+  initials?: string;
+  iconKind?: 'file';
+  name: string;
+  realChip?: string;
+  meta: string;
+  href: string;
+  actionKey: string;
+}
+
+export interface DisputeLinkedContext {
+  statusText: string;
+  cards: LinkedCard[];
+}
+
 export interface DisputeProfile {
   id: string;
   atlasId: string;
@@ -165,6 +327,13 @@ export interface DisputeProfile {
   tocMetas: { claim: string; response: string; investigation: string; decision: string; audit: string; linked: string };
   tocOkFlags: { claim: boolean; response: boolean; investigation: boolean; decision: boolean; audit: boolean; linked: boolean };
   tocMetaVariants: { claim?: 'warn'; response?: 'warn'; investigation?: 'warn'; decision?: 'warn'; audit?: 'warn'; linked?: 'warn' };
+  // Phase 12b section data
+  claim: DisputeClaim;
+  response: DisputeResponse;
+  investigation: DisputeInvestigation;
+  decision: DisputeDecision;
+  auditLog: DisputeAuditLog;
+  linkedContext: DisputeLinkedContext;
 }
 
 export interface DisputesFilterChip {
@@ -284,6 +453,294 @@ const DSP_144: DisputeProfile = {
   },
   tocOkFlags: { claim: true, response: true, investigation: true, decision: false, audit: true, linked: true },
   tocMetaVariants: { decision: 'warn' },
+  // ===== Phase 12b: 6 sections =====
+  claim: {
+    statusText: 'Filed by claimant · 6 days 14 hours ago',
+    tagText: 'CLAIMANT',
+    tagVariant: 'claimant',
+    headVariant: 'claim',
+    title: "Stefan Müller's claim",
+    filedMeta: 'Filed Apr 24, 2026 14:08 CET · via in-thread Dispute control',
+    byline: {
+      initials: 'SM',
+      gradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+      name: 'Stefan Müller',
+      role: 'Founder, Studio Berlin (Atelier Werkraum GmbH) · cl-002',
+    },
+    reasonCategoryLabel: 'Work Quality',
+    reasonCategoryMeta: 'most common after Hours Tracking',
+    bodyParagraphs: [
+      [
+        { kind: 'text', text: 'The DevOps deliverable for Milestone 2 does not meet the specification we agreed in the contract. Tomás was contracted to set up a Kubernetes cluster on AWS with proper IAM scoping, monitoring (Prometheus + Grafana), and CI/CD pipelines for our 4 services. What we received is a working cluster, but:' },
+      ],
+      [
+        { kind: 'text', text: 'Per the milestone agreement, milestone 2 acceptance criteria explicitly includes "service-scoped IAM" and "service-specific dashboards." I am requesting ' },
+        { kind: 'strong', text: '60% refund of milestone 2 ($2,550)' },
+        { kind: 'text', text: " for the gap between agreed scope and delivered work. I'm willing to pay the remaining 40% ($1,700) for the work that was completed correctly." },
+      ],
+    ],
+    bullets: [
+      'IAM uses a single broad role for all services rather than per-service scoping (security concern)',
+      'Grafana dashboards are generic Prometheus templates · no service-specific metrics',
+      'CI/CD only covers 2 of 4 services · Tomás said the remaining 2 were "out of scope" (they were not)',
+    ],
+    quote: {
+      text: '"Atlas time-tracking data shows Tomás logged 47 hours on this milestone. The CI/CD half-build alone explains maybe 15-20 of those hours. The remaining IAM and dashboard gaps are not partial-credit issues — they\'re scope items he chose not to do."',
+      cite: '— Stefan Müller, dispute submission, Apr 24 14:08 CET',
+    },
+    amount: { label: 'REQUESTED REFUND', value: '$2,550', suffix: '· 60% of milestone 2 escrow' },
+    evidenceHead: 'EVIDENCE SUBMITTED · 5 FILES',
+    evidence: [
+      { kind: 'pdf', name: 'Milestone-2-spec.pdf', meta: 'PDF · 142 KB · signed Apr 1', reviewed: true },
+      { kind: 'image', name: 'aws-iam-screenshot.png', meta: 'PNG · 1.2 MB · captured Apr 23', reviewed: true },
+      { kind: 'image', name: 'grafana-dashboards.png', meta: 'PNG · 890 KB · captured Apr 23', reviewed: true },
+      { kind: 'pdf', name: 'slack-thread-export.pdf', meta: 'PDF · 312 KB · 38 messages', reviewed: true },
+      { kind: 'pdf', name: 'github-pr-comments.pdf', meta: 'PDF · 78 KB · 14 comments', reviewed: true },
+    ],
+  },
+  response: {
+    statusText: 'Filed Apr 25, 2026 · 22h after claim',
+    tagText: 'RESPONDENT',
+    tagVariant: 'respondent',
+    headVariant: 'response',
+    title: "Tomás Oliveira's response",
+    filedMeta: 'Filed Apr 25, 2026 11:42 WET · within Atlas-recommended 24h window',
+    byline: {
+      initials: 'TO',
+      gradient: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+      name: 'Tomás Oliveira',
+      role: 'DevOps Engineer · cand-019 · Lisbon, Portugal',
+    },
+    bodyParagraphs: [
+      [{ kind: 'text', text: "I disagree with Stefan's interpretation of the milestone scope, and the requested 60% refund is excessive. I believe the work delivered substantially meets the agreed milestone, with one legitimate gap that I'm willing to address." }],
+      [
+        { kind: 'strong', text: 'On IAM scoping:' },
+        { kind: 'text', text: ' The original spec said "appropriate IAM for the cluster," not "per-service IAM." Per-service IAM scoping is a security best practice but requires significant additional work (estimated 12–15h) that wasn\'t budgeted. I raised this in our Slack on Apr 12 and Stefan agreed to defer it. I have screenshots of that conversation.' },
+      ],
+      [
+        { kind: 'strong', text: 'On Grafana dashboards:' },
+        { kind: 'text', text: ' I delivered the four standard Prometheus dashboards (Node, Pods, Deployments, Ingress). The spec said "Grafana setup with monitoring" — service-specific dashboards were never explicitly listed as deliverables. I\'m happy to build them but they were not in scope.' },
+      ],
+      [
+        { kind: 'strong', text: 'On CI/CD coverage:' },
+        { kind: 'text', text: ' This is the legitimate gap. I covered 2 of 4 services. The spec says "CI/CD for the platform services" without listing all four. I read it as the two main services. ' },
+        { kind: 'em', text: "I'm willing to credit back $850 (50% of pro-rated time on those 2 services)." },
+      ],
+    ],
+    quote: {
+      text: '"I want to resolve this fairly. I\'m not contesting that the CI/CD coverage is incomplete by Stefan\'s reading. But the IAM and dashboard items were not in the agreed scope, and 60% is asking me to give back work that was actually done correctly. A $850 credit covers the ambiguous portion."',
+      cite: '— Tomás Oliveira, response, Apr 25 11:42 WET',
+    },
+    amount: { label: 'COUNTER-OFFER', value: '$850', suffix: '· 20% of milestone 2 (CI/CD pro-rata)' },
+    evidenceHead: 'RESPONDENT EVIDENCE · 4 FILES',
+    evidence: [
+      { kind: 'image', name: 'slack-iam-defer-Apr12.png', meta: 'PNG · 642 KB · 4 messages', reviewed: true },
+      { kind: 'pdf', name: 'milestone-2-spec-annotated.pdf', meta: 'PDF · 168 KB · my reading', reviewed: true },
+      { kind: 'csv', name: 'time-log-export.csv', meta: 'CSV · 22 KB · 47h logged', reviewed: true },
+      { kind: 'code', name: 'git-history-summary.pdf', meta: 'PDF · 94 KB · 38 commits', reviewed: true },
+    ],
+  },
+  investigation: {
+    statusText: 'Daniel Kovács · 6 days investigating · 14 actions logged',
+    headTitle: "Daniel's investigation workspace",
+    headMeta: 'Editable until decision locked · admin can read · candidate + client cannot see',
+    notesLabel: "DANIEL'S NOTES ON THE CASE",
+    notesText: `**Apr 30, 2026 · 16:18 CET — Updated.** Both parties reviewed at length. After re-reading the milestone-2 spec four times, the truth is genuinely in the middle:
+
+**On IAM:** The spec says "appropriate IAM for the cluster" which is ambiguous. Tomás *did* raise the per-service-vs-shared distinction in Slack Apr 12, and Stefan *did* say "let's defer that" — but the deferral was specifically for "per-service IAM with rotation policies" not the broader scoping. I think Tomás reasonably interpreted that as deferring all per-service work, and Stefan reasonably remembers it as deferring only the rotation piece. **Genuinely ambiguous.**
+
+**On Grafana dashboards:** The spec says "Grafana setup with monitoring." That's ambiguous as written. Industry standard for "monitoring" on a 4-service platform would include service-specific dashboards. But it's not unreasonable to read "monitoring" as just "the four core Prometheus dashboards." **Tomás's reading is defensible but on the thin side.**
+
+**On CI/CD:** This one is clearer. The spec is genuinely silent on coverage scope. Tomás picking 2 of 4 was a unilateral decision, even if the spec didn't explicitly require all 4. **Tomás owes more than $850 here.**
+
+**Recommendation:** Split the difference. $1,700 refund to Stefan (40% of milestone 2). $2,550 released to Tomás. This treats CI/CD as Tomás's gap (worth ~$1,200), and the IAM + dashboard ambiguity as a 50/50 split (worth ~$500 to client side).`,
+    reviewLabel: 'EVIDENCE REVIEWED · 9 ITEMS',
+    reviewItems: [
+      { text: 'Milestone-2 spec PDF · re-read 3×', by: 'Apr 25 18:14', checked: true },
+      { text: 'AWS IAM screenshots vs. industry baseline', by: 'Apr 26 10:42', checked: true },
+      { text: 'Grafana dashboards — quality assessed', by: 'Apr 26 14:18', checked: true },
+      { text: 'Slack Apr 12 IAM-defer thread · key', by: 'Apr 27 09:08', checked: true },
+      { text: 'Time-tracker logs · 47h breakdown', by: 'Apr 27 14:42', checked: true },
+      { text: 'Git history · 38 commits · file scope', by: 'Apr 28 11:14', checked: true },
+      { text: 'GitHub PR comments · stakeholder review', by: 'Apr 28 16:48', checked: true },
+      { text: 'Slack thread export · 38-msg history', by: 'Apr 29 10:08', checked: true },
+      { text: 'External AWS DevOps consultant 2nd opinion', by: 'declined · cost', checked: false },
+    ],
+    convoLabel: 'CONVERSATIONS WITH PARTIES',
+    convoText: [
+      { kind: 'text', text: 'Daniel held ' },
+      { kind: 'strong', text: '3 calls with each party' },
+      { kind: 'text', text: ' over the last 6 days · 1× joint mediation call (Apr 28) · 14 messages exchanged in admin-only thread · all calls recorded with consent and stored under DSP-2026-0144 audit trail.' },
+    ],
+    convoCardHeadTitle: 'Key conversation excerpts',
+    convoCardHeadMeta: '3 of 142 messages · selected by Daniel as decisional',
+    convoMsgs: [
+      {
+        initials: 'SM', gradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+        from: 'Stefan Müller', time: 'Apr 12, 2026 · 14:42 CET',
+        tagLabel: 'FLAGGED · KEY', tagFlagged: true,
+        text: "\"Yeah let's defer the per-service IAM with rotation for now — that's a lot of work and we can come back to it. Get the cluster running first.\"",
+      },
+      {
+        initials: 'TO', gradient: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+        from: 'Tomás Oliveira', time: 'Apr 12, 2026 · 14:48 CET',
+        tagLabel: 'FLAGGED · KEY', tagFlagged: true,
+        text: '"OK 👍 will use a single IAM role for the cluster for now. Let me know when you want to revisit per-service."',
+      },
+      {
+        initials: 'SM', gradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+        from: 'Stefan Müller', time: 'Apr 18, 2026 · 09:14 CET',
+        tagLabel: 'CI/CD', tagFlagged: false,
+        text: '"Where are the pipelines for the other two services? I assumed all four. Can you also do those before we mark m2 complete?"',
+      },
+    ],
+  },
+  decision: {
+    statusText: 'Drafted Apr 30 · awaiting both-party acknowledgement',
+    headTitle: 'Proposed split: 40% client / 60% candidate',
+    signatureState: 'draft',
+    signatureBadgeText: 'DRAFT · NOT LOCKED',
+    allocations: {
+      client: {
+        tagLabel: 'CLIENT REFUND', tagVariant: 'client',
+        name: 'Stefan Müller (Studio Berlin)',
+        amount: '−$1,700', amountSign: 'neg',
+        meta: '40% of milestone 2 escrow refunded · less than the $2,550 requested',
+      },
+      candidate: {
+        tagLabel: 'CANDIDATE PAYOUT', tagVariant: 'candidate',
+        name: 'Tomás Oliveira',
+        amount: '+$2,550', amountSign: 'pos',
+        meta: '60% of milestone 2 escrow released · more than the $850 counter-offer',
+      },
+    },
+    rationaleLabel: "DANIEL'S RATIONALE",
+    rationaleParagraphs: [
+      [
+        { kind: 'strong', text: 'CI/CD coverage is the one clear gap.' },
+        { kind: 'text', text: ' Tomás chose to cover 2 of 4 services unilaterally, and the spec is silent on scope. That gap is worth approximately $1,200 of the disputed amount.' },
+      ],
+      [
+        { kind: 'strong', text: 'IAM scoping and Grafana dashboards are genuinely ambiguous.' },
+        { kind: 'text', text: ' The Apr 12 Slack exchange shows Stefan deferring "per-service IAM with rotation" — a narrower deferral than Tomás interpreted, but a real one. Splitting the remaining $1,000 of disputed amount 50/50 reflects that ambiguity fairly.' },
+      ],
+      [
+        { kind: 'text', text: 'Net result: ' },
+        { kind: 'strong', text: '$1,700 refund to Stefan ($1,200 + $500), $2,550 released to Tomás.' },
+        { kind: 'text', text: ' Both parties get a result they can live with — neither got what they asked for, but neither lost decisively. Decision ' },
+        { kind: 'em', text: 'does not' },
+        { kind: 'text', text: ' require either party to redo work.' },
+      ],
+    ],
+    footText: [
+      { kind: 'strong', text: 'Status:' },
+      { kind: 'text', text: ' Stefan acknowledged Apr 30 17:42 CET. ' },
+      { kind: 'strong', text: "Tomás's ack pending" },
+      { kind: 'text', text: ' — last seen 4h ago. Auto-locks at SLA breach (May 1, 14:08 CET) if not contested.' },
+    ],
+    forceLockLabel: 'Force-lock decision now →',
+  },
+  auditLog: {
+    statusText: 'Visible only to admin · neither party can see',
+    adminOnly: true,
+    adminOnlyLabel: 'ADMIN-ONLY',
+    headTitle: 'Investigation activity · who did what',
+    headMeta: '14 actions over 6 days · all timestamps in CET',
+    days: [
+      {
+        dateLabel: 'Today · April 30, 2026', countLabel: '3 events',
+        entries: [
+          { time: '5:42 PM', verb: 'Decision drafted', target: '40/60 split proposed', details: '$1,700 refund to client · $2,550 released to candidate', refId: 'DSP-DEC-2026-0144-D1', tagLabel: 'DECISION', tagVariant: 'default' },
+          { time: '5:38 PM', verb: 'Notes updated', target: 'Daniel Kovács (spec-001)', details: 'Final analysis added · 412 words · CI/CD as clear gap, rest as ambiguity', tagLabel: 'NOTES', tagVariant: 'default' },
+          { time: '10:14 AM', verb: 'SLA warning fired', target: 'Stage-3 ≤ 24h to breach', details: 'Auto-notification sent to Daniel · CC: Aïsha (admin) · escalation timer started', tagLabel: 'SLA', tagVariant: 'default' },
+        ],
+      },
+      {
+        dateLabel: 'April 29, 2026', countLabel: '3 events',
+        entries: [
+          { time: '4:18 PM', verb: 'Joint mediation call held', target: 'all 3 parties + Daniel', details: '52 minutes · recording in evidence · both parties present · no resolution but constructive', refId: 'CALL-2026-0144-J1', tagLabel: 'CALL', tagVariant: 'default' },
+          { time: '11:48 AM', verb: '1-on-1 call · Tomás', target: '28 min · scope discussion', details: 'Tomás stuck on $850 figure but acknowledges CI/CD gap · open to higher number with rationale', tagLabel: 'CALL', tagVariant: 'default' },
+          { time: '9:08 AM', verb: 'Slack thread reviewed', target: 'Apr 12 IAM-defer key exchange', details: 'Daniel flagged the Apr 12 14:42 + 14:48 messages as decisional · "per-service IAM with rotation" specifically', tagLabel: 'REVIEW', tagVariant: 'default' },
+        ],
+      },
+      {
+        dateLabel: 'Apr 27–28, 2026', countLabel: '5 events',
+        entries: [
+          { time: 'Apr 28', verb: '1-on-1 call · Stefan', target: '34 min · scope walkthrough', details: "Stefan willing to come down from 60% if Daniel's rationale is sound · open to 40% if CI/CD is treated as Tomás's gap", tagLabel: 'CALL', tagVariant: 'default' },
+          { time: 'Apr 28', verb: 'Stage 2 mediation closed', target: '5-bday SLA elapsed without resolution', details: 'Auto-escalated to Stage 3 (Specialist decision) · Daniel assumes decision-maker role', tagLabel: 'STAGE', tagVariant: 'default' },
+          { time: 'Apr 27', verb: 'All 9 evidence items reviewed', target: '8 from parties + 1 system', details: 'Time-tracker logs · Git history · Slack export · all 4 PDFs · 3 screenshots · external consultant declined', tagLabel: 'REVIEW', tagVariant: 'default' },
+          { time: 'Apr 28', verb: 'Mediator (Stage 2)', target: 'Lukas C. (T&S team)', details: 'Held 2-hour facilitated discussion · neither party budged · constructive but not resolutive', refId: 'MED-2026-0144', tagLabel: 'MEDIATION', tagVariant: 'signin', dataCat: 'signin' },
+          { time: 'Apr 27', verb: 'Stage 1 closed', target: '48h direct-resolution elapsed', details: 'Parties did not reach agreement in-thread · auto-escalated to Stage 2 (Mediation)', tagLabel: 'STAGE', tagVariant: 'default' },
+        ],
+      },
+      {
+        dateLabel: 'Apr 24–25, 2026', countLabel: '3 events',
+        entries: [
+          { time: 'Apr 25', verb: 'Respondent filed', target: 'Tomás Oliveira', details: '$850 counter-offer · 4 evidence files attached · within 24h response window', tagLabel: 'FILED', tagVariant: 'default' },
+          { time: 'Apr 24', verb: 'Specialist auto-assigned', target: 'Daniel Kovács (existing eng-004 owner)', details: 'Routing rule: dispute owner = engagement specialist · no manual reassignment', tagLabel: 'ROUTING', tagVariant: 'default' },
+          { time: 'Apr 24', verb: 'Dispute opened', target: 'Stefan Müller (claimant)', details: 'Filed via in-thread Dispute control · 5 evidence files · escrow milestone-2 auto-paused at $4,250', refId: 'DSP-2026-0144 created', tagLabel: 'CREATED', tagVariant: 'override', dataCat: 'override' },
+        ],
+      },
+    ],
+    escalationBanner: {
+      variant: 'amber',
+      label: 'REASONS FOR PENDING ESCALATION',
+      paragraphs: [
+        [
+          { kind: 'strong', text: 'If Tomás contests the proposed decision' },
+          { kind: 'text', text: " (he has 36h to do so), the case auto-escalates to Stage 4 (Admin decision) — which lands on your desk. Tomás's $850 counter is significantly below Daniel's $2,550 candidate-side proposal, but Daniel's split arguably gives Tomás more than he asked for ($2,550 vs his $1,700 = $850 counter-implied). " },
+          { kind: 'strong', text: 'Likelihood of escalation:' },
+          { kind: 'text', text: ' low (≤25%). Stefan has already acknowledged.' },
+        ],
+      ],
+    },
+  },
+  linkedContext: {
+    statusText: 'Engagement, parties, and history',
+    cards: [
+      {
+        role: 'ENGAGEMENT',
+        avatarKind: 'icon',
+        avatarGradient: 'linear-gradient(135deg, #DCA294, #8B4F47)',
+        iconKind: 'file',
+        name: 'eng-004 · DevOps fixed-price',
+        meta: '$8,500 total · $4,250 escrow held · paused since dispute',
+        href: '/admin/operations/engagements/eng-004',
+        actionKey: 'open-engagement',
+      },
+      {
+        role: 'CLIENT (CLAIMANT)',
+        avatarKind: 'initials',
+        avatarGradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+        initials: 'SB',
+        name: 'Studio Berlin',
+        realChip: 'REAL: ATELIER WERKRAUM',
+        meta: 'cl-002 · Berlin DE · 1 prior dispute (resolved) · KYB verified',
+        href: '/admin/users/clients/cl-002-7e1b3f',
+        actionKey: 'open-client',
+      },
+      {
+        role: 'CANDIDATE (RESPONDENT)',
+        avatarKind: 'initials',
+        avatarGradient: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+        initials: 'TO',
+        name: 'Tomás Oliveira',
+        meta: 'cand-019 · Lisbon PT · 4 lifetime hires · 0 prior disputes',
+        href: '/admin/users/candidates/cand-019',
+        actionKey: 'open-candidate',
+      },
+      {
+        role: 'OWNING SPECIALIST',
+        avatarKind: 'initials',
+        avatarGradient: 'linear-gradient(135deg, #7BA8D9, #3F6CA1)',
+        initials: 'DK',
+        name: 'Daniel Kovács',
+        meta: 'spec-001 · Engineering specialist · 4.6/5 audit rating · 12 disputes/yr avg',
+        href: '/admin/users/specialists/spec-001',
+        actionKey: 'open-specialist',
+      },
+    ],
+  },
 };
 
 // ============================================================
@@ -378,6 +835,143 @@ function stubProfile(row: DisputeListRow): DisputeProfile {
       linked: !!row.linkedEngagementId,
     },
     tocMetaVariants: {},
+    // Phase 12b stub sections
+    claim: {
+      statusText: `Filed by claimant · ${row.elapsedSub.replace(/^opened /, '')}`,
+      tagText: 'CLAIMANT',
+      tagVariant: 'claimant',
+      headVariant: 'claim',
+      title: `${row.partyA}'s claim`,
+      filedMeta: row.elapsedSub,
+      byline: {
+        initials: row.partyA.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+        gradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+        name: row.partyA,
+        role: row.pairSecondary,
+      },
+      reasonCategoryLabel: row.reasonTagLabel,
+      reasonCategoryMeta: 'per Atlas dispute category',
+      bodyParagraphs: [
+        [{ kind: 'text', text: `Claim filed regarding ${row.reasonTagLabel.toLowerCase()} on ${row.pairSecondary}.` }],
+      ],
+      quote: { text: '"(stub claim — Phase 12b detail data only canonical for dsp-144)"', cite: `— ${row.partyA}` },
+      amount: { label: 'CLAIMED AMOUNT', value: '—', suffix: '' },
+      evidenceHead: 'EVIDENCE SUBMITTED · STUB',
+      evidence: [],
+    },
+    response: {
+      statusText: stageNum >= 2 ? 'Filed · stub data' : 'Not yet filed',
+      tagText: 'RESPONDENT',
+      tagVariant: 'respondent',
+      headVariant: 'response',
+      title: `${row.partyB}'s response`,
+      filedMeta: 'Stub data — canonical only for dsp-144',
+      byline: {
+        initials: row.partyB.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+        gradient: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+        name: row.partyB,
+        role: row.pairSecondary,
+      },
+      bodyParagraphs: [[{ kind: 'text', text: '(Stub response — Phase 12b detail data only canonical for dsp-144.)' }]],
+      quote: { text: '"(stub)"', cite: `— ${row.partyB}` },
+      amount: { label: 'COUNTER-OFFER', value: '—', suffix: '' },
+      evidenceHead: 'RESPONDENT EVIDENCE · STUB',
+      evidence: [],
+    },
+    investigation: {
+      statusText: `${row.owner.name} · ${row.elapsedLabel} · stub`,
+      headTitle: `${row.owner.name}'s investigation workspace`,
+      headMeta: 'Editable until decision locked',
+      notesLabel: "SPECIALIST'S NOTES",
+      notesText: '(Stub notes — canonical only for dsp-144.)',
+      reviewLabel: 'EVIDENCE REVIEWED · STUB',
+      reviewItems: [],
+      convoLabel: 'CONVERSATIONS',
+      convoText: [{ kind: 'text', text: 'Stub data.' }],
+      convoCardHeadTitle: 'Key conversation excerpts',
+      convoCardHeadMeta: 'stub · 0 messages',
+      convoMsgs: [],
+    },
+    decision: {
+      statusText: stageNum >= 4 ? 'Drafted · stub data' : 'No decision yet',
+      headTitle: 'Proposed split (stub)',
+      signatureState: stageNum >= 4 ? 'draft' : 'draft',
+      signatureBadgeText: stageNum >= 4 ? 'DRAFT · NOT LOCKED' : 'PENDING',
+      allocations: {
+        client: { tagLabel: 'CLIENT REFUND', tagVariant: 'client', name: row.partyA, amount: '—', amountSign: 'neg', meta: 'Stub — no decision data' },
+        candidate: { tagLabel: 'CANDIDATE PAYOUT', tagVariant: 'candidate', name: row.partyB, amount: '—', amountSign: 'pos', meta: 'Stub — no decision data' },
+      },
+      rationaleLabel: 'RATIONALE',
+      rationaleParagraphs: [[{ kind: 'text', text: '(Stub rationale — canonical only for dsp-144.)' }]],
+      footText: [{ kind: 'text', text: 'Stub foot text.' }],
+      forceLockLabel: 'Force-lock decision now →',
+    },
+    auditLog: {
+      statusText: 'Visible only to admin · neither party can see',
+      adminOnly: true,
+      adminOnlyLabel: 'ADMIN-ONLY',
+      headTitle: 'Investigation activity (stub)',
+      headMeta: 'Stub audit · canonical only for dsp-144',
+      days: [
+        {
+          dateLabel: row.elapsedSub,
+          countLabel: '1 event',
+          entries: [
+            { time: 'now', verb: 'Dispute opened', target: row.partyA, details: row.pairSecondary, tagLabel: 'CREATED', tagVariant: 'override', dataCat: 'override' },
+          ],
+        },
+      ],
+      escalationBanner: {
+        variant: 'amber',
+        label: 'STUB BANNER',
+        paragraphs: [[{ kind: 'text', text: '(Canonical audit detail only for dsp-144.)' }]],
+      },
+    },
+    linkedContext: {
+      statusText: 'Engagement, parties, and history',
+      cards: [
+        ...(row.linkedEngagementId ? [{
+          role: 'ENGAGEMENT',
+          avatarKind: 'icon' as const,
+          avatarGradient: 'linear-gradient(135deg, #DCA294, #8B4F47)',
+          iconKind: 'file' as const,
+          name: row.linkedEngagementId,
+          meta: row.pairSecondary,
+          href: `/admin/operations/engagements/${row.linkedEngagementId}`,
+          actionKey: 'open-engagement',
+        }] : []),
+        {
+          role: row.status === 'urgent' ? 'CLIENT (CLAIMANT)' : 'CLAIMANT',
+          avatarKind: 'initials' as const,
+          avatarGradient: 'linear-gradient(135deg, #C9C2A4, #7A745A)',
+          initials: row.partyA.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+          name: row.partyA,
+          meta: row.pairSecondary,
+          href: '#',
+          actionKey: 'open-claimant',
+        },
+        {
+          role: 'RESPONDENT',
+          avatarKind: 'initials' as const,
+          avatarGradient: 'linear-gradient(135deg, #B5C7A8, #5C7A4D)',
+          initials: row.partyB.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+          name: row.partyB,
+          meta: row.pairSecondary,
+          href: '#',
+          actionKey: 'open-respondent',
+        },
+        {
+          role: 'OWNING ' + (row.owner.isAdmin ? 'ADMIN' : 'SPECIALIST'),
+          avatarKind: 'initials' as const,
+          avatarGradient: row.owner.variant === 'ad' ? 'var(--ink)' : 'linear-gradient(135deg, #7BA8D9, #3F6CA1)',
+          initials: row.owner.initials,
+          name: row.owner.name,
+          meta: `${row.statusPillText} · stub`,
+          href: '#',
+          actionKey: 'open-owner',
+        },
+      ],
+    },
   };
   if (row.linkedEngagementId) {
     profile.linkedEngagementId = row.linkedEngagementId;

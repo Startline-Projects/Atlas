@@ -13,6 +13,7 @@ import { MANAGER_PROFILES } from './manager-profiles-data';
 import { ADMIN_PROFILES } from './admin-profiles-data';
 import { ENGAGEMENT_PROFILES } from './engagement-profiles-data';
 import { JOB_PROFILES } from './job-profiles-data';
+import { DISPUTE_PROFILES } from './dispute-profiles-data';
 
 export type SearchEntityType =
   | 'candidate'
@@ -21,7 +22,8 @@ export type SearchEntityType =
   | 'manager'
   | 'admin'
   | 'engagement'
-  | 'job';
+  | 'job'
+  | 'dispute';
 
 export interface SearchResult {
   entityType: SearchEntityType;
@@ -123,6 +125,17 @@ export const SEARCHABLE_INDEX: SearchResult[] = [
     initials: p.client.avatarInitials,
     avatarVariant: idHashToVariant(p.id),
   })),
+  // 10 disputes (Phase 12b)
+  ...Object.values(DISPUTE_PROFILES).map((p): SearchResult => ({
+    entityType: 'dispute',
+    id: p.id,
+    name: `${p.claimant.name} ↔ ${p.respondent.name}`,
+    meta: `${p.atlasId} · ${p.statusPillText} · ${p.titleItalic} · ${p.openedMeta}`,
+    atlasId: p.atlasId,
+    href: `/admin/operations/disputes/${p.id}`,
+    initials: `${p.claimant.avatarInitials.charAt(0)}${p.respondent.avatarInitials.charAt(0)}`,
+    avatarVariant: idHashToVariant(p.id),
+  })),
 ];
 
 // ============================================================
@@ -154,6 +167,7 @@ const GROUP_ORDER: SearchEntityType[] = [
   'admin',
   'engagement',
   'job',
+  'dispute',
 ];
 
 /** Group results by entityType in display order, capping each group */
@@ -178,6 +192,7 @@ export const ENTITY_TYPE_LABELS: Record<SearchEntityType, string> = {
   admin: 'Admins',
   engagement: 'Engagements',
   job: 'Jobs',
+  dispute: 'Disputes',
 };
 
 /** Short uppercase chip label */
@@ -189,4 +204,5 @@ export const ENTITY_TYPE_CHIPS: Record<SearchEntityType, string> = {
   admin: 'ADMIN',
   engagement: 'ENG',
   job: 'JOB',
+  dispute: 'DSP',
 };

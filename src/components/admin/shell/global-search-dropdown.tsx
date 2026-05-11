@@ -29,6 +29,8 @@ function chipVariantClass(type: SearchEntityType): string {
       return 'bg-[rgba(214,242,77,0.4)] text-[var(--ink)]';
     case 'job':
       return 'bg-[rgba(232,118,58,0.15)] text-[var(--amber)]';
+    case 'dispute':
+      return 'bg-[var(--danger-bg)] text-[var(--danger)]';
     case 'admin':
     default:
       return 'bg-[rgba(110,63,224,0.12)] text-[var(--super)]';
