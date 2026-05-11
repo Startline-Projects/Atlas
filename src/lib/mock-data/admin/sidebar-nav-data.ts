@@ -121,7 +121,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'reports',
           label: 'Reports & Analytics',
-          pathname: '#reports',
+          pathname: '/admin/operations/reports',
           icon: ReportsAnalyticsNavIcon,
         },
       ],
