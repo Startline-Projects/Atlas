@@ -271,7 +271,14 @@ export function ReviewsApp() {
               count={visibleRows.length}
               countTone="danger"
               subtitle="Audit-logged · co-sign required"
-              filters={[{ key: "all", label: "All" }]}
+              /* Step 11: empty filters array drops the vestigial "All [N]"
+                 chip from the rail header. The outer direction-tabs +
+                 filter-chips bands already handle filtering — the rail
+                 chip was redundant. QueueRail's defaultFilterKey
+                 fallback resolves to "all" with no chips rendered, and
+                 every row carries "all" in its filterTags so the
+                 active-filter check passes for every row. */
+              filters={[]}
               defaultFilterKey="all"
               candidates={visibleRows.map((r) => ({
                 ...r,

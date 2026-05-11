@@ -7,8 +7,16 @@
  * an arrow icon for direction (down for incoming, up for outgoing,
  * check for closed). Shape divergence is real.
  *
- * Sits above the filter chip row inside the rail header band. Active
- * tab gets ink fg + 2px ink underline.
+ * Sits above the filter chip row, sticky to the bottom of the topbar
+ * (`top-[calc(36px+57px)]`). Step 11 polish brought this band to
+ * sibling parity (review-queue / recert-queue / disputes all use the
+ * same sticky chrome `bg-cream/95 backdrop-blur-md backdrop-saturate-150`).
+ * The filter-chip row below is sticky too, offset down by this nav's
+ * height (~44px) so the two bands stack without overlap.
+ *
+ * Z-index z-[5] matches the queue-shared/ReviewTabs convention so the
+ * rail's sticky header (z-default) sits below this strip when their
+ * y-positions overlap in the left column.
  *
  * Client Component (controlled by parent's direction state).
  */
@@ -44,7 +52,7 @@ export function ReviewsDirectionTabs({
     <nav
       role="tablist"
       aria-label="Review direction"
-      className="border-line-soft bg-paper flex gap-0 overflow-x-auto border-b px-9 max-md:px-5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+      className="border-line-soft bg-cream/95 sticky top-[calc(36px+57px)] z-[5] flex gap-0 overflow-x-auto border-b px-9 backdrop-blur-md backdrop-saturate-150 max-md:px-5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
     >
       {REVIEW_DIRECTIONS.map((dir) => {
         const isActive = active === dir.key;

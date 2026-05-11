@@ -9,6 +9,14 @@
  * incoming items whose filterKey === "urgent" OR whose slaTone is
  * "danger").
  *
+ * Step 11 polish: brought to sticky-stack parity with the queue
+ * surfaces. Sticky offset = topbar + direction-tabs height (44px),
+ * so this band pins immediately below the direction tabs when user
+ * scrolls. Container bg changed from `bg-paper` → `bg-cream` to
+ * match the my-clients / my-candidates / sourcing filter-row
+ * convention (commit f9c884f) — the chips themselves carry the
+ * paper-vs-cream visual contrast, the container is page-tone.
+ *
  * Client Component.
  */
 
@@ -28,7 +36,7 @@ export function ReviewsFilterChips({
   onChange: (next: ReviewsFilterKey) => void;
 }) {
   return (
-    <div className="border-line-soft flex flex-wrap items-center gap-2 border-b bg-paper px-9 py-2.5 max-md:px-5">
+    <div className="border-line-soft sticky top-[calc(36px+57px+44px)] z-[5] flex flex-wrap items-center gap-2 border-b bg-cream px-9 py-2.5 max-md:px-5">
       <div className="flex flex-wrap gap-1.5">
         {REVIEWS_FILTERS.map((f) => {
           const isActive = active === f.key;

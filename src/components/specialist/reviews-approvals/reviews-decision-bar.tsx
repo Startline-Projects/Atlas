@@ -62,7 +62,7 @@ export function ReviewsDecisionBar({
             className="border-danger text-danger hover:bg-danger hover:text-paper inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition-colors"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
-            Reject
+            Reject recommendation
           </button>
           <button
             type="button"
