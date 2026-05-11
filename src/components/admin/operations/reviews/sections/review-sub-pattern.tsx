@@ -216,22 +216,57 @@ export function ReviewSubPattern({ data, sectionStatus, reviewId }: ReviewSubPat
           </span>
         </div>
 
-        {/* Clean empty state card — success-tinted with check icon */}
-        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] py-[24px] px-[28px] flex items-center gap-[18px]">
-          <div
-            aria-hidden="true"
-            className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+        {/* Rich clean-state card — success-tinted with detection pipeline summary */}
+        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] overflow-hidden">
+          {/* Head with checkmark badge */}
+          <div className="py-[20px] px-[24px] flex items-center gap-[16px] border-b border-dashed border-[rgba(46,125,84,0.3)]">
+            <div
+              aria-hidden="true"
+              className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 leading-[1.2]">
+                No pattern detected
+              </h3>
+              <p className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.14em] uppercase font-semibold mt-[4px] m-0">
+                AI similarity model · cleared
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 mb-[6px] leading-[1.2]">
-              No pattern detected
-            </h3>
-            <p className="font-mono text-[11px] text-[var(--ink-soft)] tracking-[0.02em] leading-[1.55] m-0">
-              AI pattern-detection model found no sock-puppet, template-language, or cluster signals. Review appears authentic per current model confidence thresholds.
+
+          {/* Body — pipeline summary */}
+          <div className="py-[18px] px-[24px]">
+            <p className="text-[13.5px] text-[var(--ink-soft)] leading-[1.6] m-0">
+              This review was processed through the AI pattern-detection pipeline and cleared all sock-puppet, template-language, and cluster-coordination checks. No signals exceeded the platform&rsquo;s authenticity thresholds.
+            </p>
+
+            {/* 4 signal checks — 2-col grid */}
+            <div className="grid grid-cols-2 gap-[10px] mt-[14px]">
+              <div className="flex items-center gap-[8px]">
+                <span aria-hidden="true" className="text-[var(--success)] font-bold text-[14px] leading-none">✓</span>
+                <span className="text-[12.5px] text-[var(--ink-soft)]">No template-language match</span>
+              </div>
+              <div className="flex items-center gap-[8px]">
+                <span aria-hidden="true" className="text-[var(--success)] font-bold text-[14px] leading-none">✓</span>
+                <span className="text-[12.5px] text-[var(--ink-soft)]">No cluster-coordination signal</span>
+              </div>
+              <div className="flex items-center gap-[8px]">
+                <span aria-hidden="true" className="text-[var(--success)] font-bold text-[14px] leading-none">✓</span>
+                <span className="text-[12.5px] text-[var(--ink-soft)]">No suspicious IP/device pattern</span>
+              </div>
+              <div className="flex items-center gap-[8px]">
+                <span aria-hidden="true" className="text-[var(--success)] font-bold text-[14px] leading-none">✓</span>
+                <span className="text-[12.5px] text-[var(--ink-soft)]">No rapid-submission anomaly</span>
+              </div>
+            </div>
+
+            {/* Footer meta */}
+            <p className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.02em] leading-[1.55] mt-[14px] pt-[12px] border-t border-dashed border-[var(--line-soft)] m-0">
+              Last scan completed on submission · Model confidence: 96% authentic · No action required
             </p>
           </div>
         </div>

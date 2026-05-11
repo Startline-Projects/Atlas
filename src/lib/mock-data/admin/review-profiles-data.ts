@@ -1071,6 +1071,26 @@ function deriveHeadline(status: ReviewStatus, rating: number): string {
   return '“Mixed engagement experience”';
 }
 
+function deriveSecondParagraph(row: ReviewListRow): string {
+  if (row.status === 'pattern') {
+    return `This review has been auto-hidden by the AI pattern-detection system (${row.statusSub}). See §03 below for full pattern analysis and recommended action. The review is part of a wider cluster being investigated by Trust & Safety.`;
+  }
+  if (row.status === 'removed') {
+    return `Original content has been removed from public view by Atlas Operations admin action (${row.statusSub}). The reviewee&rsquo;s public profile no longer displays this review; full audit trail is preserved in §06 below.`;
+  }
+  if (row.status === 'appealed') {
+    return `${row.reviewer.name} has appealed the removal of this review. The appeal is pending Trust & Safety review; content remains hidden from public view pending resolution. See §05 for moderation timeline.`;
+  }
+  if (row.status === 'flagged') {
+    return `This review has been flagged for moderation review (${row.statusSub}). Atlas Operations is evaluating the report; the review remains publicly visible while under review per platform policy.`;
+  }
+  // live
+  if (row.rating >= 4) {
+    return `${row.reviewer.name} has authored ${row.direction === 'cs' ? 'a client-side' : 'a candidate-side'} review based on the engagement referenced in §02 below. The review remains publicly visible and has been indexed for platform search. ${row.statusSub}.`;
+  }
+  return `Review posted publicly per default policy. No moderation actions taken to date · ${row.statusSub}. Engagement context detailed in §02 below.`;
+}
+
 function partyHrefFromId(id: string): string {
   return id.startsWith('cl-') ? `/admin/users/clients/${id}` : `/admin/users/candidates/${id}`;
 }
@@ -1102,8 +1122,9 @@ function stubContentData(row: ReviewListRow): ReviewContentData {
     headline: deriveHeadline(row.status, row.rating),
     paragraphs: [
       { segments: [{ kind: 'text', text: row.snippet }] },
+      { segments: [{ kind: 'text', text: deriveSecondParagraph(row) }] },
     ],
-    footerMeta: `— Posted ${row.postedDate} UTC · ${row.snippet.length} characters`,
+    footerMeta: `— Posted ${row.postedDate} UTC · ${row.snippet.length} characters · authored by ${row.reviewer.name} · ${row.direction === 'cs' ? 'candidate-side' : 'client-side'} review`,
     footStats: [
       { label: 'helpful', value: '0', bold: true },
       { label: 'not helpful', value: '0', bold: true },
@@ -1134,6 +1155,7 @@ function stubContextData(row: ReviewListRow): ReviewContextData {
           { strongLabel: 'Linkage:', text: 'Review references this engagement' },
           { strongLabel: 'Direction:', text: row.direction === 'cs' ? 'Client → Candidate' : 'Candidate → Client' },
           { strongLabel: 'Posted:', text: `${row.postedDate} · ${row.postedRelative}` },
+          { strongLabel: 'Closure:', text: row.rating >= 4 ? 'Clean · marked complete by both parties' : row.status === 'pattern' || row.status === 'flagged' ? 'Closed · review under investigation' : 'Closed · standard timeline' },
         ],
         actionKey: 'open-engagement',
         href: engHref,
@@ -1147,6 +1169,7 @@ function stubContextData(row: ReviewListRow): ReviewContextData {
           { strongLabel: 'Account:', text: row.reviewer.id },
           { strongLabel: 'Side:', text: row.reviewer.directionChip === 'cl' ? 'Client account' : 'Candidate account' },
           { strongLabel: 'Verification:', text: row.reviewer.metaIsReal ? 'Real legal entity on file' : 'Display name only' },
+          { strongLabel: 'Trust tier:', text: row.reviewer.metaIsReal ? 'Verified · standard tier' : 'Standard tier · display name only' },
         ],
         actionKey: 'open-reviewer',
         href: reviewerHref,
@@ -1160,6 +1183,7 @@ function stubContextData(row: ReviewListRow): ReviewContextData {
           { strongLabel: 'Account:', text: row.reviewee.id },
           { strongLabel: 'Engagement:', text: row.revieweeEngContext },
           { strongLabel: 'Rating received:', text: `${row.rating.toFixed(1)} / 5.0 ★` },
+          { strongLabel: 'Tier:', text: row.reviewee.id.startsWith('cl-') ? 'Active client account' : 'Atlas-vetted candidate' },
         ],
         actionKey: 'open-reviewee',
         href: revieweeHref,
@@ -1283,6 +1307,7 @@ function stubFlagsData(row: ReviewListRow): ReviewFlagsData {
 }
 
 function stubModerationData(row: ReviewListRow): ReviewModerationData {
+  // Base events — universal for all 10 reviews (3 system events on submission)
   const events: ReviewModEvent[] = [
     {
       variant: 'system',
@@ -1290,6 +1315,20 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
       actionSegments: [{ kind: 'text', text: 'posted publicly · default state on submission' }],
       time: `${row.postedDate} UTC`,
       detail: `${row.atlasId} created · author ${row.reviewer.id} · target ${row.reviewee.id} · rating ${row.rating.toFixed(1)} · auto-published per default policy.`,
+    },
+    {
+      variant: 'system',
+      actor: 'System',
+      actionSegments: [{ kind: 'text', text: 'indexed for public search · added to reviewee profile' }],
+      time: `${row.postedDate} +1m`,
+      detail: `Review surfaced on ${row.reviewee.id}'s public profile and indexed in Atlas search · 0 reports at this time.`,
+    },
+    {
+      variant: 'system',
+      actor: 'System',
+      actionSegments: [{ kind: 'text', text: `notified ${row.reviewee.name} of new review` }],
+      time: `${row.postedDate} +2m`,
+      detail: 'Reviewee notification dispatched · email + in-app · standard new-review template.',
     },
   ];
 
@@ -1302,8 +1341,15 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
         { kind: 'strong', text: 'sock-puppet pattern' },
         { kind: 'text', text: ' · auto-hidden from public' },
       ],
-      time: `${row.postedDate} +2 min`,
-      detail: `Pattern threshold exceeded · ${row.statusSub} · review removed from public profile.`,
+      time: `${row.postedDate} +5m`,
+      detail: `Pattern threshold exceeded · ${row.statusSub} · review removed from public profile pending T&S review.`,
+    });
+    events.push({
+      variant: 'admin',
+      actor: 'Sarah R. · Operations Admin',
+      actionSegments: [{ kind: 'text', text: 'opened cluster investigation · assigned to self' }],
+      time: `${row.postedDate} +1d`,
+      detail: 'Investigation opened · scope: full cluster + reviewer account history · pending T&S confirmation within 5 business days.',
     });
   } else if (row.status === 'flagged') {
     events.push({
@@ -1311,7 +1357,14 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
       actor: row.reviewee.name,
       actionSegments: [{ kind: 'text', text: 'filed report on the review' }],
       time: `${row.postedDate} +1d`,
-      detail: `Report reason: ${row.statusSub}.`,
+      detail: `Report reason: ${row.statusSub} · reviewee requested moderation review.`,
+    });
+    events.push({
+      variant: 'admin',
+      actor: 'Sarah R. · Operations Admin',
+      actionSegments: [{ kind: 'text', text: 'review held pending investigation' }],
+      time: `${row.postedDate} +1d 2h`,
+      detail: 'Manual review queued · standard 48h SLA · reviewer and reviewee notified of investigation.',
     });
   } else if (row.status === 'removed') {
     events.push({
@@ -1322,15 +1375,29 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
         { kind: 'strong', text: row.statusSub },
       ],
       time: `${row.postedDate} +2h`,
-      detail: 'Content scrubbed from public view · reviewee notified.',
+      detail: 'Content scrubbed from public view · reviewee notified of removal action.',
+    });
+    events.push({
+      variant: 'system',
+      actor: 'System',
+      actionSegments: [{ kind: 'text', text: 'removal reason logged · archived for audit' }],
+      time: `${row.postedDate} +2h 1m`,
+      detail: `Full content snapshot archived · ${row.atlasId} marked 'removed' across all surfaces · public profile updated.`,
     });
   } else if (row.status === 'appealed') {
     events.push({
       variant: 'admin',
       actor: 'Sarah R. · Operations Admin',
-      actionSegments: [{ kind: 'text', text: 'removed review · reviewer appealed within 24h' }],
+      actionSegments: [{ kind: 'text', text: 'removed review · awaiting appeal review' }],
       time: `${row.postedDate} +5h`,
-      detail: `Appeal opened by reviewer · ${row.statusSub} · pending resolution.`,
+      detail: `Initial removal action · ${row.statusSub} · standard appeal window opened (72h).`,
+    });
+    events.push({
+      variant: 'default',
+      actor: row.reviewer.name,
+      actionSegments: [{ kind: 'text', text: 'submitted appeal · review under T&S review' }],
+      time: `${row.postedDate} +6h`,
+      detail: 'Appeal documentation filed by reviewer · scheduled Trust & Safety review within 5 business days.',
     });
   } else {
     // live
@@ -1339,7 +1406,7 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
       actor: 'System',
       actionSegments: [{ kind: 'text', text: 'review remains live · no moderation actions' }],
       time: `${row.postedDate} +1d`,
-      detail: `Review continues to be publicly visible · ${row.statusSub}.`,
+      detail: `Review continues to be publicly visible · ${row.statusSub} · no concerns raised.`,
     });
   }
 
@@ -1347,20 +1414,31 @@ function stubModerationData(row: ReviewListRow): ReviewModerationData {
 }
 
 function stubAuditData(row: ReviewListRow): ReviewAuditData {
-  const submission: ReviewAuditEntry = {
-    timestamp: row.postedDate,
-    actor: row.reviewer.id,
-    actorVariant: 'user',
-    action: `${row.atlasId} submitted · rating ${row.rating.toFixed(1)} · ${row.snippet.length} chars`,
-    actionVariant: 'default',
-    ipDev: 'user · ip',
-  };
-
+  // Entries rendered newest-first (chronological reverse, matching admin.html convention)
   const entries: ReviewAuditEntry[] = [];
 
+  // Most recent: current admin view
+  entries.push({
+    timestamp: 'May 5 · 10:14',
+    actor: 'Aïsha (you)',
+    actorVariant: 'admin',
+    action: 'opened review detail · viewed all 6 sections',
+    actionVariant: 'default',
+    ipDev: '192.x · MBP',
+  });
+
+  // Status-derived entries (between admin view and submission pipeline)
   if (row.status === 'pattern') {
     entries.push({
-      timestamp: `${row.postedDate} +2m`,
+      timestamp: `${row.postedDate} +1d`,
+      actor: 'Sarah R.',
+      actorVariant: 'admin',
+      action: 'opened cluster investigation · assigned to self',
+      actionVariant: 'default',
+      ipDev: '10.x · admin',
+    });
+    entries.push({
+      timestamp: `${row.postedDate} +5m`,
       actor: 'SYSTEM',
       actorVariant: 'system',
       action: `PATTERN FLAG · auto-hidden · ${row.statusSub}`,
@@ -1368,6 +1446,14 @@ function stubAuditData(row: ReviewListRow): ReviewAuditData {
       ipDev: 'internal',
     });
   } else if (row.status === 'flagged') {
+    entries.push({
+      timestamp: `${row.postedDate} +1d 2h`,
+      actor: 'Sarah R.',
+      actorVariant: 'admin',
+      action: 'review held pending investigation',
+      actionVariant: 'default',
+      ipDev: '10.x · admin',
+    });
     entries.push({
       timestamp: `${row.postedDate} +1d`,
       actor: row.reviewee.id,
@@ -1385,9 +1471,17 @@ function stubAuditData(row: ReviewListRow): ReviewAuditData {
       actionVariant: 'danger',
       ipDev: '10.x · admin',
     });
+    entries.push({
+      timestamp: `${row.postedDate} +2h 1m`,
+      actor: 'SYSTEM',
+      actorVariant: 'system',
+      action: 'removal reason logged · content archived',
+      actionVariant: 'default',
+      ipDev: 'internal',
+    });
   } else if (row.status === 'appealed') {
     entries.push({
-      timestamp: `${row.postedDate} +1d`,
+      timestamp: `${row.postedDate} +6h`,
       actor: row.reviewer.id,
       actorVariant: 'user',
       action: `appeal filed against removal · ${row.statusSub}`,
@@ -1398,13 +1492,47 @@ function stubAuditData(row: ReviewListRow): ReviewAuditData {
       timestamp: `${row.postedDate} +5h`,
       actor: 'Sarah R.',
       actorVariant: 'admin',
-      action: 'removed review · pending appeal review',
+      action: 'removed review · awaiting appeal review',
       actionVariant: 'default',
       ipDev: '10.x · admin',
     });
   }
 
-  entries.push(submission);
+  // Universal system pipeline entries (always present, newest-first)
+  entries.push({
+    timestamp: `${row.postedDate} +2m`,
+    actor: 'SYSTEM',
+    actorVariant: 'system',
+    action: 'reviewee notification dispatched (email + in-app)',
+    actionVariant: 'default',
+    ipDev: 'internal',
+  });
+  entries.push({
+    timestamp: `${row.postedDate} +1m`,
+    actor: 'SYSTEM',
+    actorVariant: 'system',
+    action: 'AI pattern scan completed · indexed for public search',
+    actionVariant: 'default',
+    ipDev: 'internal',
+  });
+  entries.push({
+    timestamp: `${row.postedDate} +30s`,
+    actor: 'SYSTEM',
+    actorVariant: 'system',
+    action: 'content policy check passed · auto-publish authorized',
+    actionVariant: 'default',
+    ipDev: 'internal',
+  });
+
+  // Oldest: submission entry
+  entries.push({
+    timestamp: row.postedDate,
+    actor: row.reviewer.id,
+    actorVariant: 'user',
+    action: `${row.atlasId} submitted · rating ${row.rating.toFixed(1)} · ${row.snippet.length} chars`,
+    actionVariant: 'default',
+    ipDev: 'user · ip',
+  });
 
   return {
     entries,
@@ -1498,13 +1626,13 @@ function stubReviewProfile(row: ReviewListRow): ReviewProfile {
         row.status === 'appealed' ? 'warn' : 'neutral'
       ),
       moderation: sectionStatus(
-        row.status === 'appealed' ? '2 events · derived stub' : '2 events · derived stub',
+        row.status === 'live' ? '4 events · derived stub' : '5 events · derived stub',
         'default'
       ),
       audit: sectionStatus(
-        row.status === 'live' ? '1 entry · derived stub' :
-        row.status === 'appealed' ? '3 entries · derived stub' :
-        '2 entries · derived stub',
+        row.status === 'live' ? '5 entries · derived stub' :
+        row.status === 'appealed' ? '7 entries · derived stub' :
+        '6 entries · derived stub',
         'neutral'
       ),
     },

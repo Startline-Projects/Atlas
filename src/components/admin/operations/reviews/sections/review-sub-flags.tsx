@@ -159,22 +159,53 @@ export function ReviewSubFlags({ data, sectionStatus }: ReviewSubFlagsProps) {
           ))}
         </div>
       ) : (
-        // Clean empty state — for live reviews with zero flags
-        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] py-[24px] px-[28px] flex items-center gap-[18px]">
-          <div
-            aria-hidden="true"
-            className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+        // Rich clean-state card — for live reviews with zero flags
+        <div className="bg-[var(--success-bg)] border border-[rgba(46,125,84,0.3)] rounded-[var(--r-md)] overflow-hidden">
+          {/* Head with checkmark badge */}
+          <div className="py-[20px] px-[24px] flex items-center gap-[16px] border-b border-dashed border-[rgba(46,125,84,0.3)]">
+            <div
+              aria-hidden="true"
+              className="w-[44px] h-[44px] rounded-full bg-[var(--success)] text-[var(--paper)] grid place-items-center flex-shrink-0"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 leading-[1.2]">
+                No active flags
+              </h3>
+              <p className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.14em] uppercase font-semibold mt-[4px] m-0">
+                Reports system · clean record
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h3 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] m-0 mb-[6px] leading-[1.2]">
-              No active flags
-            </h3>
-            <p className="font-mono text-[11px] text-[var(--ink-soft)] tracking-[0.02em] leading-[1.55] m-0">
-              No system flags, user reports, or moderation concerns on this review. It remains publicly visible and is considered clean by the platform.
+
+          {/* Body — explanatory copy + 3-stat grid */}
+          <div className="py-[18px] px-[24px]">
+            <p className="text-[13.5px] text-[var(--ink-soft)] leading-[1.6] m-0">
+              This review has not been flagged or reported by any user, system check, or moderation pipeline. The review remains publicly visible with no content concerns raised.
+            </p>
+
+            {/* 3-stat grid */}
+            <div className="grid grid-cols-3 gap-[12px] mt-[14px] py-[14px] border-y border-dashed border-[var(--line-soft)]">
+              <div className="text-center">
+                <div className="font-display text-[22px] font-medium text-[var(--success)] leading-[1] [font-variant-numeric:tabular-nums]">0</div>
+                <div className="font-mono text-[9.5px] tracking-[0.14em] uppercase text-[var(--ink-mute)] mt-[4px] font-semibold">System flags</div>
+              </div>
+              <div className="text-center">
+                <div className="font-display text-[22px] font-medium text-[var(--success)] leading-[1] [font-variant-numeric:tabular-nums]">0</div>
+                <div className="font-mono text-[9.5px] tracking-[0.14em] uppercase text-[var(--ink-mute)] mt-[4px] font-semibold">User reports</div>
+              </div>
+              <div className="text-center">
+                <div className="font-display text-[22px] font-medium text-[var(--success)] leading-[1] [font-variant-numeric:tabular-nums]">0</div>
+                <div className="font-mono text-[9.5px] tracking-[0.14em] uppercase text-[var(--ink-mute)] mt-[4px] font-semibold">Resolved</div>
+              </div>
+            </div>
+
+            {/* Footer meta */}
+            <p className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.02em] leading-[1.55] mt-[14px] m-0">
+              No flags raised since post · No moderation action required
             </p>
           </div>
         </div>
