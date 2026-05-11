@@ -43,7 +43,7 @@ export function SourceFilterChips({
   visibleCount: number;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-line-soft border-y bg-paper px-9 py-2.5 max-md:px-5">
+    <div className="flex flex-wrap items-center gap-3 border-line-soft border-y bg-cream px-9 py-2.5 max-md:px-5">
       <div className="flex flex-wrap gap-1.5">
         {SOURCING_SOURCE_FILTERS.map((f) => {
           const isActive = f.key === active;

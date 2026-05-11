@@ -28,12 +28,16 @@ export function KanbanColumn({
   count,
   isApplied,
   emptyLabel,
+  onAddClick,
   children,
 }: {
   def: SourcingStageDef;
   count: number;
   isApplied: boolean;
   emptyLabel: string;
+  /** Clicking the column-header "+" opens AddProspectModal with this
+   *  column's stage pre-selected. Wired by the kanban-board parent. */
+  onAddClick?: (() => void) | undefined;
   children: React.ReactNode;
 }) {
   const isEmpty = count === 0;
@@ -70,7 +74,8 @@ export function KanbanColumn({
         <button
           type="button"
           aria-label={`Add to ${def.title}`}
-          className="border-line text-ink-mute hover:bg-cream hover:border-ink-mute hover:border-solid hover:text-ink grid h-[22px] w-[22px] place-items-center rounded-[5px] border border-dashed transition-colors"
+          onClick={onAddClick}
+          className="border-line text-ink-mute hover:bg-cream hover:border-ink-mute hover:border-solid hover:text-ink grid h-[22px] w-[22px] cursor-pointer place-items-center rounded-[5px] border border-dashed transition-colors"
         >
           <Plus className="h-2.5 w-2.5" strokeWidth={2} aria-hidden="true" />
         </button>

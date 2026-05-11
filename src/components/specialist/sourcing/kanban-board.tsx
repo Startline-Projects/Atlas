@@ -20,6 +20,7 @@
 import {
   SOURCING_STAGES,
   type SourcingProspect,
+  type SourcingStage,
 } from "@/lib/mock-data/specialist/sourcing";
 import { KanbanColumn } from "./kanban-column";
 import { ProspectCard } from "./prospect-card";
@@ -27,9 +28,23 @@ import { ProspectCard } from "./prospect-card";
 export function KanbanBoard({
   prospects,
   onSelect,
+  onColumnAdd,
+  onAdvance,
+  onMessage,
+  onReject,
 }: {
   prospects: ReadonlyArray<SourcingProspect>;
   onSelect: (id: string) => void;
+  /** Per-column "+" clicks bubble up here with the column's stage —
+   *  the parent (SourcingApp) opens AddProspectModal with that stage
+   *  pre-filled. */
+  onColumnAdd?: ((stage: SourcingStage) => void) | undefined;
+  /** Card hover-action callbacks — passed through to each ProspectCard.
+   *  Parent (SourcingApp) owns flash-firing logic; this component is
+   *  a pure pipe. */
+  onAdvance?: ((p: SourcingProspect) => void) | undefined;
+  onMessage?: ((p: SourcingProspect) => void) | undefined;
+  onReject?: ((p: SourcingProspect) => void) | undefined;
 }) {
   return (
     <div
@@ -51,6 +66,7 @@ export function KanbanBoard({
                 ? "No conversions yet this month."
                 : "No prospects here."
             }
+            {...(onColumnAdd ? { onAddClick: () => onColumnAdd(def.key) } : {})}
           >
             {stageProspects.map((p) => (
               <ProspectCard
@@ -58,6 +74,9 @@ export function KanbanBoard({
                 prospect={p}
                 isApplied={def.key === "applied"}
                 onSelect={onSelect}
+                {...(onAdvance ? { onAdvance } : {})}
+                {...(onMessage ? { onMessage } : {})}
+                {...(onReject ? { onReject } : {})}
               />
             ))}
           </KanbanColumn>

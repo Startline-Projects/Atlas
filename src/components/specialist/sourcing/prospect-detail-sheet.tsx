@@ -100,10 +100,22 @@ export function ProspectDetailSheet({
   prospect,
   open,
   onClose,
+  onAdvance,
+  onMessage,
+  onAddNote,
+  onReject,
 }: {
   prospect: SourcingProspect | undefined;
   open: boolean;
   onClose: () => void;
+  /** Footer action callbacks — each receives the prospect so the
+   *  parent can fire a stage-aware flash (Advance) or interpolate the
+   *  firstName. Optional — if omitted the buttons no-op silently
+   *  (same shape as ProspectCard hover-actions). */
+  onAdvance?: ((p: SourcingProspect) => void) | undefined;
+  onMessage?: ((p: SourcingProspect) => void) | undefined;
+  onAddNote?: ((p: SourcingProspect) => void) | undefined;
+  onReject?: ((p: SourcingProspect) => void) | undefined;
 }) {
   if (!prospect) {
     return (
@@ -285,19 +297,19 @@ export function ProspectDetailSheet({
 
       {/* Actions footer */}
       <div className="bg-paper grid grid-cols-2 gap-2 px-8 pt-[18px] pb-8">
-        <ActionBtn variant="primary">
+        <ActionBtn variant="primary" onClick={() => onAdvance?.(prospect)}>
           <ArrowRight className="h-3 w-3" strokeWidth={1.7} />
           Advance to next stage
         </ActionBtn>
-        <ActionBtn>
+        <ActionBtn onClick={() => onMessage?.(prospect)}>
           <MessageSquare className="h-3 w-3" strokeWidth={1.5} />
           Send message
         </ActionBtn>
-        <ActionBtn>
+        <ActionBtn onClick={() => onAddNote?.(prospect)}>
           <StickyNote className="h-3 w-3" strokeWidth={1.5} />
           Add note
         </ActionBtn>
-        <ActionBtn variant="danger">
+        <ActionBtn variant="danger" onClick={() => onReject?.(prospect)}>
           <XIcon className="h-3 w-3" strokeWidth={1.7} />
           Reject prospect
         </ActionBtn>
@@ -353,9 +365,11 @@ function ProspectBio({ html }: { html: string }) {
 function ActionBtn({
   children,
   variant = "default",
+  onClick,
 }: {
   children: React.ReactNode;
   variant?: "default" | "primary" | "danger";
+  onClick?: () => void;
 }) {
   const cls =
     variant === "primary"
@@ -366,9 +380,9 @@ function ActionBtn({
   return (
     <button
       type="button"
-      onClick={(e) => e.preventDefault()}
+      onClick={onClick}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 font-body text-[12.5px] transition-colors",
+        "inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 font-body text-[12.5px] transition-colors cursor-pointer",
         cls,
       )}
     >

@@ -101,10 +101,22 @@ export function ProspectCard({
   prospect,
   isApplied,
   onSelect,
+  onAdvance,
+  onMessage,
+  onReject,
 }: {
   prospect: SourcingProspect;
   isApplied: boolean;
   onSelect: (id: string) => void;
+  /** Hover-action callbacks. Each receives the prospect so the parent
+   *  can fire a stage-aware flash (Advance) or use the firstName /
+   *  stage label in the message. Optional — when omitted (parent didn't
+   *  wire them) the buttons no-op silently. Same shape as
+   *  ProspectDetailSheet so a click in the kanban + the same click in
+   *  the sheet fire identical flashes. */
+  onAdvance?: ((p: SourcingProspect) => void) | undefined;
+  onMessage?: ((p: SourcingProspect) => void) | undefined;
+  onReject?: ((p: SourcingProspect) => void) | undefined;
 }) {
   return (
     <article
@@ -219,15 +231,18 @@ export function ProspectCard({
           label="Advance"
           variant="advance"
           icon={<ArrowRight className="h-2.5 w-2.5" strokeWidth={2} />}
+          onClick={() => onAdvance?.(prospect)}
         />
         <HoverAction
           label="Message"
           icon={<MessageSquare className="h-2.5 w-2.5" strokeWidth={2} />}
+          onClick={() => onMessage?.(prospect)}
         />
         <HoverAction
           label="Reject"
           variant="reject"
           icon={<XIcon className="h-2.5 w-2.5" strokeWidth={2} />}
+          onClick={() => onReject?.(prospect)}
         />
       </div>
     </article>
@@ -238,10 +253,12 @@ function HoverAction({
   label,
   icon,
   variant,
+  onClick,
 }: {
   label: string;
   icon: React.ReactNode;
   variant?: "advance" | "reject";
+  onClick: () => void;
 }) {
   const cls =
     variant === "advance"
@@ -253,8 +270,11 @@ function HoverAction({
     <button
       type="button"
       onClick={(e) => {
+        /* stopPropagation prevents the parent `article role="button"`
+           card-click from firing (which would open the detail sheet).
+           Same pattern as the cross-session conversion `Link` above. */
         e.stopPropagation();
-        e.preventDefault();
+        onClick();
       }}
       className={cn(
         "border-line-soft text-ink-soft inline-flex flex-1 items-center justify-center gap-1 rounded-[5px] border px-2 py-1 font-body text-[10.5px] transition-colors",

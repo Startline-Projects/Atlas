@@ -3547,3 +3547,166 @@ Both confirm flashes use the locked success-tone + same message format.
 - Audit-to-fix ratio: 100% (every interactive gap found has a treatment landed)
 
 ---
+
+## Post-conversion polish — Step 9: sourcing tab interactions
+
+**Surface:** `/specialist/sourcing`.
+**Scope:** Wire 9 inert interactive sites + filter-container parity +
+new `WorkflowUnavailableModal` kind for CSV import + stage-aware
+milestone flash convention.
+
+### Visual fidelity — filter-chip container parity
+
+my-clients and my-candidates use `RosterCohorts` from
+`people-shared/` which renders a `bg-cream` container with `bg-paper`
+chip pills — the chips stand out against the cream tray. Sourcing
+uses a bespoke `SourceFilterChips` component that was using
+`bg-paper` for the container, so the chips merged visually with their
+own background. **Fix:** container `bg-paper` → `bg-cream` (1-line
+change). Chip pills themselves unchanged. Sourcing now matches the
+my-clients / my-candidates filter-row look.
+
+`RosterCohorts` itself unchanged — my-clients and my-candidates
+filter rows untouched.
+
+### 9 interactive sites wired
+
+| # | Site | Old state | New treatment |
+|---|---|---|---|
+| 1 | Card hover "Advance" | inert | `useQueuedFlash` success-tone, **stage-aware copy** |
+| 2 | Card hover "Message" | inert | `useQueuedFlash` warn-tone "Message queued for {first}…" |
+| 3 | Card hover "Reject" | inert | `useQueuedFlash` warn-tone "Rejected. {first}…" |
+| 4 | Sheet footer "Advance" | inert | reuses card Advance handler (stage-aware) |
+| 5 | Sheet footer "Send message" | inert | reuses card Message handler |
+| 6 | Sheet footer "Add note" | inert | `useQueuedFlash` warn-tone "Note saved on {first}…" |
+| 7 | Sheet footer "Reject prospect" | inert | reuses card Reject handler |
+| 8 | Column "+" buttons (×4) | inert | opens `AddProspectModal` with `defaultStage` pre-fill |
+| 9 | Header "Import list" | inert | `WorkflowUnavailableModal kind="import-prospects"` |
+| 10 | `AddProspectModal` submit | visual-only (no flash) | `useQueuedFlash` success-tone "Added {name} to {stageLabel}…" |
+
+Cards and sheet share the same handler instances — clicking Advance
+in the kanban row vs. clicking Advance in the slide-over fire
+identical flash messages. Single source of truth for action copy.
+
+### Stage-aware milestone flash — new convention
+
+**Locked rule:** when a workflow action has the same UI affordance
+across stages but one stage is a milestone, vary the flash copy by
+stage rather than introducing a separate affordance. **Visual
+symmetry wins over editorial weight by gesture.**
+
+Concrete application: the Advance action ships as a single hover
+button on every prospect card AND a single primary footer button on
+every sheet, regardless of stage. The flash copy is the only thing
+that varies:
+
+| Transition | Flash heading |
+|---|---|
+| Sourced → Contacted | `Advanced. {first} → Contacted` (success-tone) |
+| Contacted → Engaged | `Advanced. {first} → Engaged` (success-tone) |
+| **Engaged → Applied** | `Converted. {first} joins the Atlas pool · welcome flow pending` (success-tone, **milestone**) |
+| Applied → terminal | `{first} is already in the pool — view profile to continue` (warn-tone, honest no-op) |
+
+Rationale: adding a separate "Convert to candidate" button on
+Engaged-stage cards/sheets only would create asymmetry across stages
+(why does the Engaged sheet have 5 buttons but Sourced has 4?). The
+milestone copy gives the gesture its editorial weight without
+breaking the visual grid.
+
+Precedent for stage-conditional terminal-state flash: my-candidates
+Schedule confirm uses success-tone with the action verb in the
+message string ("Scheduled.") rather than a separate "Done" tone —
+same principle (b58d1ef).
+
+### New `WorkflowUnavailableModal` kind
+
+**`"import-prospects"`** — Upload icon, title "Import prospect list",
+body:
+
+> CSV ingest lands when the file storage service is wired. This will
+> let you bulk-import prospects from LinkedIn Recruiter exports,
+> referral spreadsheets, or AI-scout result sets.
+
+Subject parameter ignored (CSV import has no clicked entity). Caller
+passes `subjectName="prospect pipeline"` so the `aria-label` reads
+naturally.
+
+Union grows to 11 kinds; 4 currently consumed (`suggest-for-client`,
+`flag-recert`, `mark-unavailable`, `import-prospects`). 7 client-side
+kinds (`contracts` / `briefs` / `send-brief` / `suggest-talent` /
+`tag-client` / `invite-client` / `pause-client`) still unused — prune
+deferred until Session 8 settles candidate-side scope.
+
+### `AddProspectModal` — `defaultStage` prop + `onAdd` callback
+
+- `defaultStage?: SourcingStage` — pre-selects the stage `<select>`.
+  Caller re-keys the modal via `key={addState.open ? "open-${stage}" :
+  "closed"}` so the lazy-init `useState(defaultStage)` picks up fresh
+  defaults per remount. Defensive fallback: if `defaultStage` is
+  "applied" (which is excluded from `ADD_STAGES`), the modal initializes
+  with "sourced".
+- `onAdd?: (payload: AddProspectPayload) => void` — fires before
+  `onClose`. Payload carries trimmed `name` + final `stage` only
+  (everything the parent needs for the flash copy).
+- Removed the explicit reset-to-defaults block inside `handleAdd`;
+  it's unreachable now because the parent re-keys on every open.
+
+### State lift in `SourcingApp`
+
+| Slot | Shape |
+|---|---|
+| `addState` | `{ open: boolean; defaultStage: SourcingStage }` — header + column-add + modal share this |
+| `workflowModal` | `{ workflow: WorkflowKind; subjectName: string } \| null` — currently only Import; slot is generic for future workflow buttons |
+| `flash` | `useQueuedFlash` — mounts `<ApprovedFlash />` |
+
+Callback handlers all defined in `SourcingApp` and passed down:
+- `handleAdvance(p)` / `handleMessage(p)` / `handleReject(p)` — wired
+  to both kanban hover-actions AND sheet footer (identical instances)
+- `handleAddNote(p)` — sheet footer only
+- `handleAddSubmit(payload)` — fires `Added ${name} to ${stageLabel}` flash
+
+### `WorkflowUnavailableModal` consumer map after Step 9
+
+| Surface | Sites | Status |
+|---|---|---|
+| `my-clients/my-clients-app.tsx` | 0 | Replaced by panels (Session 7) |
+| `my-candidates/my-candidates-app.tsx` | 5 | Untouched |
+| `candidate-profile/profile-app.tsx` | 2 | Active since b58d1ef |
+| `sourcing/sourcing-app.tsx` | 1 | **NEW** (`import-prospects`) |
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `sourcing/source-filter-chips.tsx` | +1 / −1 (bg-paper → bg-cream) |
+| `sourcing/kanban-column.tsx` | +6 / −1 (onAddClick prop) |
+| `sourcing/kanban-board.tsx` | +20 / 0 (onColumnAdd + 3 hover callbacks) |
+| `sourcing/prospect-card.tsx` | +27 / −5 (3 callbacks + HoverAction onClick) |
+| `sourcing/prospect-detail-sheet.tsx` | +25 / −5 (4 callbacks + ActionBtn onClick) |
+| `sourcing/add-prospect-modal.tsx` | +35 / −7 (defaultStage prop + AddProspectPayload + onAdd) |
+| `sourcing/sourcing-app.tsx` | +145 / −12 (state lift + handlers + mounts) |
+| `shell/workflow-unavailable-modal.tsx` | +6 / 0 (`import-prospects` kind) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| `RosterCohorts` filter rows on my-clients + my-candidates | ✓ Untouched |
+| All Sessions 1-7 routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| `useQueuedFlash` backward-compat | ✓ All existing warn-tone callers unchanged |
+| `WorkflowKind` existing kinds | ✓ Union extended additively |
+| `AddProspectModal` callers without `defaultStage` | ✓ Default = "sourced" preserves old behavior |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 9 interactive sites wired — 0 inert affordances remain on sourcing
+- Stage-aware milestone flash convention locked
+- 1 new `WorkflowUnavailableModal` kind (`import-prospects`)
+- `AddProspectModal` gets `defaultStage` prop + `onAdd` callback
+- Filter-chip container parity restored across my-clients / my-candidates / sourcing
+- Audit-to-fix ratio: 100% (every Step 9 audit item landed)
+
+---

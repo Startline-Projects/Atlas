@@ -18,35 +18,72 @@ import { Plus } from "lucide-react";
 import {
   SOURCING_STAGES,
   SOURCING_SOURCE_FILTERS,
+  type SourcingStage,
 } from "@/lib/mock-data/specialist/sourcing";
 import { ReviewModal } from "@/components/specialist/queue-shared/review-modal";
 
+/* Per-column "+" buttons open the modal pre-filled to that stage. The
+   stage selector itself excludes "applied" — Applied is a derived
+   conversion state (back-references a cand-* id), not a stage you add
+   prospects directly into. If a caller passes defaultStage="applied",
+   we fall back to "sourced" rather than render an invalid initial
+   state. */
 const ADD_STAGES = SOURCING_STAGES.filter((s) => s.key !== "applied");
 const ADD_SOURCES = SOURCING_SOURCE_FILTERS.filter((s) => s.key !== "all");
+
+const VALID_ADD_STAGE_KEYS = new Set(ADD_STAGES.map((s) => s.key));
+
+export type AddProspectPayload = {
+  /** Trimmed name (always non-empty — submit is gated on this). */
+  name: string;
+  /** Final stage selection — one of the non-Applied ADD_STAGES keys. */
+  stage: SourcingStage;
+};
 
 export function AddProspectModal({
   open,
   onClose,
+  defaultStage = "sourced",
+  onAdd,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Starting stage pre-selected in the stage <select>. Defaults to
+   *  "sourced". Used by per-column "+" buttons to pre-fill which
+   *  column the prospect is being added to. State reset semantics: the
+   *  parent should re-key the modal on each open
+   *  (`key={addState.open ? addState.defaultStage : "closed"}`) so the
+   *  lazy-init `useState(defaultStage)` picks up fresh defaults per
+   *  remount — same pattern as SchedulingModal. */
+  defaultStage?: SourcingStage;
+  /** Fired on confirm with the trimmed name + final stage. Parent
+   *  typically fires a success-tone queued-flash. Visual-only — no
+   *  persistence; the prospect doesn't actually land in the board this
+   *  session. */
+  onAdd?: ((payload: AddProspectPayload) => void) | undefined;
 }) {
+  const initialStage: string = VALID_ADD_STAGE_KEYS.has(defaultStage)
+    ? defaultStage
+    : "sourced";
+
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [source, setSource] = useState<string>("linkedin");
-  const [stage, setStage] = useState<string>("sourced");
+  const [stage, setStage] = useState<string>(initialStage);
   const [reason, setReason] = useState("");
 
   const canAdd = name.trim().length > 0;
 
   function handleAdd() {
     if (!canAdd) return;
-    // Visual-only this session. Reset + close.
-    setName("");
-    setLocation("");
-    setSource("linkedin");
-    setStage("sourced");
-    setReason("");
+    /* Fire parent callback BEFORE close — parent fires the queued
+       flash. The modal is re-keyed by the parent on every open, so
+       explicit reset of local state is unnecessary (the next mount
+       picks up fresh lazy-init defaults). */
+    onAdd?.({
+      name: name.trim(),
+      stage: stage as SourcingStage,
+    });
     onClose();
   }
 
