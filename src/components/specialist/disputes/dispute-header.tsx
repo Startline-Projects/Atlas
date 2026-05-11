@@ -18,6 +18,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { ChevronRight, FileText, Download, ShieldAlert } from "lucide-react";
 import type { Dispute } from "@/lib/mock-data/specialist/disputes";
 import { cn } from "@/lib/utils/cn";
@@ -60,9 +61,17 @@ const STATE_PILL: Record<
 export function DisputeHeader({
   dispute,
   onEscalate,
+  onJumpToAuditTab,
+  onExportPdf,
 }: {
   dispute: Dispute;
   onEscalate: () => void;
+  /** B3 — jumps the tab strip to the Audit log tab. Owned by parent
+   *  (DisputeDetail) because that's where activeTab lives. */
+  onJumpToAuditTab?: (() => void) | undefined;
+  /** B4 — fires the parent's queued-flash with "Case PDF queued for
+   *  export…" copy. */
+  onExportPdf?: (() => void) | undefined;
 }) {
   const pill = STATE_PILL[dispute.state];
   return (
@@ -71,7 +80,16 @@ export function DisputeHeader({
         aria-label="Breadcrumb"
         className="mb-2 flex items-center gap-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-ink-mute"
       >
-        <span>Disputes</span>
+        {/* B1 — source HTML has the "Disputes" segment as a hash link;
+            build now wires it to drop `?id=` and land on the
+            default-resolved dispute (per DISPUTE_DEFAULT_ID). Functions
+            as a "return to disputes index" breadcrumb. */}
+        <Link
+          href="/specialist/disputes"
+          className="hover:text-ink-soft transition-colors"
+        >
+          Disputes
+        </Link>
         <ChevronRight
           className="h-3 w-3 text-line"
           strokeWidth={1.5}
@@ -119,11 +137,11 @@ export function DisputeHeader({
           </div>
         </div>
         <div className="flex flex-shrink-0 gap-1.5">
-          <ActionBtn>
+          <ActionBtn onClick={onJumpToAuditTab}>
             <FileText className="h-3 w-3" strokeWidth={1.5} />
             Audit log
           </ActionBtn>
-          <ActionBtn>
+          <ActionBtn onClick={onExportPdf}>
             <Download className="h-3 w-3" strokeWidth={1.5} />
             Export PDF
           </ActionBtn>
@@ -144,7 +162,7 @@ function ActionBtn({
 }: {
   children: React.ReactNode;
   variant?: "default" | "primary";
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
 }) {
   return (
     <button

@@ -11,17 +11,30 @@
  *   - decision  → decision summary (if resolved/escalated) OR placeholder for the unresolved decision form
  *   - audit     → audit log placeholder
  *
- * Active tab state lives here (default "overview").
+ * Active tab state lives here (default "overview"). Step 10 added:
+ *   - `previewState` — shared by E4b timeline attachments + E5b
+ *     evidence View buttons. All preview kinds map to
+ *     PreviewUnavailableModal kind="document" (mock data only carries
+ *     document-class evidence; pdf/doc/image/spreadsheet all fit the
+ *     "document" kind's body copy).
+ *   - Jump-to-tab handlers exposed to DisputeHeader (B3 Audit log)
+ *     and DisputeDecisionBar (F3 decision form / view details).
+ *   - Flash handlers for B4 Export PDF + F2 Save draft, calling the
+ *     parent's `fireQueuedFlash`.
  *
- * Client Component (owns activeTab + escalation modal triggers).
+ * Client Component (owns activeTab + previewState + jump/flash handlers).
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   DISPUTE_DECISION_LABEL,
   type Dispute,
+  type DisputeEvidenceItem,
+  type DisputeTimelineAttachment,
 } from "@/lib/mock-data/specialist/disputes";
 import type { TabDef } from "@/lib/mock-data/specialist/queue-types";
+import type { FireQueuedFlashOpts } from "@/components/specialist/people-shared";
+import { PreviewUnavailableModal } from "@/components/specialist/shell/preview-unavailable-modal";
 import { ReviewTabs } from "@/components/specialist/queue-shared/review-tabs";
 import { SectionFrame } from "@/components/specialist/queue-shared/section-frame";
 import { DisputeHeader } from "./dispute-header";
@@ -37,10 +50,24 @@ type Props = {
   dispute: Dispute;
   /** Triggered by header "Escalate to admin" — opens the modal in the parent. */
   onRequestEscalate: () => void;
+  /** Owned by DisputesApp; passed down so this pane's action handlers
+   *  (Export PDF, Save draft) can fire flashes without duplicating the
+   *  useQueuedFlash hook. */
+  fireQueuedFlash: (message: string, opts?: FireQueuedFlashOpts) => void;
 };
 
-export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
+export function DisputeDetail({
+  dispute,
+  onRequestEscalate,
+  fireQueuedFlash,
+}: Props) {
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  /* Preview modal — shared across timeline attachments AND evidence
+     row "View" buttons. Mock data carries document-class kinds only
+     (pdf/doc/image/spreadsheet), all of which map to
+     PreviewUnavailableModal kind="document" per its docstring. */
+  const [previewSubject, setPreviewSubject] = useState<string | null>(null);
 
   const isResolved = dispute.filterKey === "resolved";
 
@@ -64,18 +91,67 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
     },
   ];
 
-  const handleSaveDraft = () => {
-    // No-op visual feedback this session — no persistence.
-  };
+  /* Header B3: "Audit log" header button → scroll-jump to the Audit
+     log tab. Audit log tab itself stays a placeholder (deferred to
+     backend-services session). */
+  const handleJumpToAuditTab = useCallback(() => {
+    setActiveTab("audit");
+  }, []);
 
-  const handleOpenDecisionForm = () => {
-    // No-op this session — decision form is out of scope.
-    // Future-session: routes to /specialist/disputes/decide?id=...
-  };
+  /* Header B4: "Export PDF" → warn-tone flash. PDF service is backend-
+     blocked; no real export pipeline lands until services do. */
+  const handleExportPdf = useCallback(() => {
+    fireQueuedFlash(
+      `Case PDF queued for export — PDF service not yet wired`,
+    );
+  }, [fireQueuedFlash]);
+
+  /* Decision bar F2: "Save as draft" → warn-tone flash. Decision drafts
+     service is backend-blocked. */
+  const handleSaveDraft = useCallback(() => {
+    fireQueuedFlash(
+      `Draft saved for ${dispute.caseId} — decision drafts service not yet wired`,
+    );
+  }, [fireQueuedFlash, dispute.caseId]);
+
+  /* Decision bar F3: "Open decision form" (unresolved) / "View
+     decision details" (resolved) → scroll-jump to the Decision tab.
+     Single handler, both labels. The Decision tab itself dispatches
+     on dispute.decision / dispute.escalation / neither and renders the
+     appropriate content (decision recorded · escalation summary ·
+     placeholder copy). */
+  const handleJumpToDecisionTab = useCallback(() => {
+    setActiveTab("decision");
+  }, []);
+
+  /* E4b timeline attachment preview. All timeline attachment kinds in
+     mock are document-class (pdf/doc/image/spreadsheet); map to
+     "document". */
+  const handlePreviewAttachment = useCallback(
+    (attachment: DisputeTimelineAttachment) => {
+      setPreviewSubject(attachment.filename);
+    },
+    [],
+  );
+
+  /* E5b evidence row preview. Same mapping rationale. */
+  const handlePreviewEvidence = useCallback(
+    (evidence: DisputeEvidenceItem) => {
+      setPreviewSubject(evidence.filename);
+    },
+    [],
+  );
+
+  const closePreview = useCallback(() => setPreviewSubject(null), []);
 
   return (
     <div className="bg-cream flex min-w-0 flex-1 flex-col">
-      <DisputeHeader dispute={dispute} onEscalate={onRequestEscalate} />
+      <DisputeHeader
+        dispute={dispute}
+        onEscalate={onRequestEscalate}
+        onJumpToAuditTab={handleJumpToAuditTab}
+        onExportPdf={handleExportPdf}
+      />
       <PartiesCard
         claimant={dispute.claimant}
         respondent={dispute.respondent}
@@ -89,7 +165,11 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
 
       <div className="container-page mx-auto flex max-w-none flex-1 flex-col px-9 pb-24 max-md:px-5">
         {activeTab === "overview" ? (
-          <OverviewTab dispute={dispute} />
+          <OverviewTab
+            dispute={dispute}
+            onPreviewAttachment={handlePreviewAttachment}
+            onPreviewEvidence={handlePreviewEvidence}
+          />
         ) : null}
         {activeTab === "timeline" ? (
           <SectionFrame
@@ -101,7 +181,10 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
               </span>
             }
           >
-            <DisputeTimeline items={dispute.timeline} />
+            <DisputeTimeline
+              items={dispute.timeline}
+              onAttachmentPreview={handlePreviewAttachment}
+            />
           </SectionFrame>
         ) : null}
         {activeTab === "evidence" ? (
@@ -119,6 +202,7 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
               items={dispute.evidence}
               totalCount={dispute.evidenceTotalCount}
               reviewedCount={dispute.evidenceReviewedCount}
+              onEvidencePreview={handlePreviewEvidence}
             />
           </SectionFrame>
         ) : null}
@@ -151,8 +235,15 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
         evidenceReviewedCount={dispute.evidenceReviewedCount}
         evidenceTotalCount={dispute.evidenceTotalCount}
         onSaveDraft={handleSaveDraft}
-        onOpenDecisionForm={handleOpenDecisionForm}
+        onOpenDecisionForm={handleJumpToDecisionTab}
         isResolved={isResolved}
+      />
+
+      <PreviewUnavailableModal
+        open={previewSubject !== null}
+        kind="document"
+        subjectName={previewSubject ?? ""}
+        onClose={closePreview}
       />
     </div>
   );
@@ -162,7 +253,15 @@ export function DisputeDetail({ dispute, onRequestEscalate }: Props) {
    Overview tab — 4 sections
    ============================================================ */
 
-function OverviewTab({ dispute }: { dispute: Dispute }) {
+function OverviewTab({
+  dispute,
+  onPreviewAttachment,
+  onPreviewEvidence,
+}: {
+  dispute: Dispute;
+  onPreviewAttachment: (a: DisputeTimelineAttachment) => void;
+  onPreviewEvidence: (e: DisputeEvidenceItem) => void;
+}) {
   return (
     <>
       <div className="pt-7">
@@ -198,7 +297,10 @@ function OverviewTab({ dispute }: { dispute: Dispute }) {
           </span>
         }
       >
-        <DisputeTimeline items={dispute.timeline} />
+        <DisputeTimeline
+          items={dispute.timeline}
+          onAttachmentPreview={onPreviewAttachment}
+        />
       </SectionFrame>
       <SectionFrame
         num="04"
@@ -214,6 +316,7 @@ function OverviewTab({ dispute }: { dispute: Dispute }) {
           items={dispute.evidence}
           totalCount={dispute.evidenceTotalCount}
           reviewedCount={dispute.evidenceReviewedCount}
+          onEvidencePreview={onPreviewEvidence}
         />
       </SectionFrame>
     </>
@@ -312,7 +415,7 @@ function DecisionTab({ dispute }: { dispute: Dispute }) {
         <p className="mt-3">
           Until then, use the &ldquo;Open decision form&rdquo; button in the
           decision bar at the bottom of this view to indicate intent. The
-          button is wired but does not yet route anywhere.
+          button jumps to this tab but does not yet open a form.
         </p>
       </div>
     </SectionFrame>

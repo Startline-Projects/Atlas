@@ -8,17 +8,31 @@
  *
  * State owned here:
  *   - The active dispute (derived from URL id, falls back to default)
- *   - Escalation modal open + the most recently escalated case for the
- *     approved-flash trigger
+ *   - Escalation modal open
+ *   - `useQueuedFlash` — SINGLE source of truth for all dispute flash
+ *     acknowledgements (escalation confirm + every action wired in
+ *     the Step 10 polish: Export PDF, Save draft, etc.). Two
+ *     ApprovedFlash mounts would visually conflict if user fires two
+ *     actions within the auto-dismiss window — migrating escalation
+ *     to the hook keeps the surface to one mount. Cosmetic trade-off:
+ *     the prior escalation flash carried a separate `meta` line
+ *     ("ESCALATION · DSP-...") that the queued-flash shape doesn't
+ *     have. Case id is now interpolated into the heading instead.
  *
- * The detail pane (`DisputeDetail`) owns its own active-tab state so
- * switching disputes doesn't lose tab position when you come back.
+ * The detail pane (`DisputeDetail`) owns its own active-tab state +
+ * preview-modal state. Action handlers (Export PDF / Save draft /
+ * jump-to-tab / preview attachment) live there. `DisputesApp` passes
+ * `fireQueuedFlash` down so DisputeDetail can fire from its handlers
+ * without duplicating the hook.
  *
  * Reuse:
  *   - QueueShell — 3-col shell (sidebar one level up)
  *   - QueueRail — generic rail with filters + search-less list
- *   - SectionFrame, ReviewTabs, ReviewModal, ApprovedFlash, NotesCard —
+ *   - useQueuedFlash + ApprovedFlash — consumed for ALL flash actions
+ *   - SectionFrame, ReviewTabs, ReviewModal, NotesCard —
  *     consumed by the detail pane and the escalation modal
+ *   - PreviewUnavailableModal — Step 10 added consumer (mounted in
+ *     DisputeDetail; lives there because previewState lives there)
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -35,6 +49,7 @@ import {
 import { QueueShell } from "@/components/specialist/queue-shared/queue-shell";
 import { QueueRail } from "@/components/specialist/queue-shared/queue-rail";
 import { ApprovedFlash } from "@/components/specialist/queue-shared/approved-flash";
+import { useQueuedFlash } from "@/components/specialist/people-shared";
 import { DisputeRow } from "./dispute-row";
 import { DisputeDetail } from "./dispute-detail";
 import { EscalationModal } from "./escalation-modal";
@@ -72,8 +87,9 @@ export function DisputesApp() {
 
   /* Escalation flow state */
   const [escalationOpen, setEscalationOpen] = useState(false);
-  const [flashOpen, setFlashOpen] = useState(false);
-  const [flashCaseId, setFlashCaseId] = useState<string | null>(null);
+
+  /* Single queued-flash for ALL dispute action acknowledgements. */
+  const { flash, fireQueuedFlash } = useQueuedFlash();
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -90,20 +106,17 @@ export function DisputesApp() {
   }, [activeDispute]);
 
   const handleConfirmEscalate = useCallback(
-    // The `reason` text would be persisted by the service layer once
-    // wired; we don't need it for the visual approved-flash flow.
+    /* `reason` text would be persisted by the service layer once wired;
+       not needed for the visual flash. */
     () => {
       if (!activeDispute) return;
       setEscalationOpen(false);
-      setFlashCaseId(activeDispute.caseId);
-      setFlashOpen(true);
-      // Auto-dismiss the flash after a moment — matches Session 2's
-      // approved-flash pattern (visible for ~2s, then fades).
-      setTimeout(() => {
-        setFlashOpen(false);
-      }, 2000);
+      fireQueuedFlash(
+        `Escalated. ${activeDispute.caseId} sent to admin.`,
+        { tone: "warn", tail: "Admin will review and pick up from here." },
+      );
     },
-    [activeDispute],
+    [activeDispute, fireQueuedFlash],
   );
 
   return (
@@ -132,6 +145,7 @@ export function DisputesApp() {
           <DisputeDetail
             dispute={activeDispute}
             onRequestEscalate={handleRequestEscalate}
+            fireQueuedFlash={fireQueuedFlash}
           />
         ) : (
           <div className="bg-cream flex min-h-[calc(100vh-36px-57px)] flex-1 items-center justify-center p-10">
@@ -158,18 +172,7 @@ export function DisputesApp() {
         onConfirm={handleConfirmEscalate}
       />
 
-      <ApprovedFlash
-        open={flashOpen}
-        verb="Escalated."
-        tail={flashCaseId ? `${flashCaseId} sent to admin.` : "Sent to admin."}
-        sub="Admin will review and pick up from here."
-        meta={
-          flashCaseId
-            ? `ESCALATION · ${flashCaseId}`
-            : "ESCALATION"
-        }
-        tone="warn"
-      />
+      <ApprovedFlash {...flash} />
     </>
   );
 }

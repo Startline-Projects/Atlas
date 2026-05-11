@@ -3710,3 +3710,222 @@ Callback handlers all defined in `SourcingApp` and passed down:
 - Audit-to-fix ratio: 100% (every Step 9 audit item landed)
 
 ---
+
+## Post-conversion polish — Step 10: disputes tab interactions
+
+**Surface:** `/specialist/disputes`.
+**Scope:** Wire 8 unique handler shapes across header + timeline +
+evidence + decision bar + party tiles. Migrate escalation flash to
+`useQueuedFlash` (single source of truth). Validate
+`PreviewUnavailableModal` 3rd consumer at `kind="document"`. Convert
+the misleading "View all N" evidence button to an informational span.
+
+### Canonical test-case correction — **Sofia × Quill**, not Acme × Sofia
+
+The earlier audit prompts referred to `DSP-2026-04-12` as
+"Acme × Sofia Reyes." **The canonical dispute is Sofia Reyes ×
+Quill & Co.** Sofia also has hire records at Acme (`hire-acme-sofia`
+from Session 7), which is why both clients appear in her
+cross-session refs — but the filed dispute is against Quill only.
+Future references should use "Sofia × Quill" or just the case id
+`DSP-2026-04-12`.
+
+### 8 unique handler shapes wired
+
+| # | Site | Old state | New treatment |
+|---|---|---|---|
+| B1 | Breadcrumb "Disputes" segment | static `<span>` | `<Link href="/specialist/disputes">` — drops `?id=` |
+| B3 | "Audit log" header button | inert `ActionBtn` | `onJumpToAuditTab` → `setActiveTab("audit")` |
+| B4 | "Export PDF" header button | inert | `useQueuedFlash` warn-tone "Case PDF queued for export…" |
+| E4b | Timeline attachment buttons (×2/dispute) | inert `<button>` | `PreviewUnavailableModal kind="document"` |
+| E5b | Evidence row "View" buttons (×4–7/dispute) | inert `<button>` | Same — shared preview state |
+| E5c | "View all N →" evidence footer button | inert `<button>` | Converted to non-interactive `<span>` — see below |
+| F2 | Decision bar "Save as draft" | wired-but-no-op handler | `useQueuedFlash` warn-tone "Draft saved for {caseId}…" |
+| F3 | Decision bar "Open decision form" / "View decision details" | wired-but-no-op handler | `setActiveTab("decision")` — single handler, both labels |
+| F1 | Party tiles (claimant + respondent) | static `<div>` | Wrapped in `<Link>` — claimant→`/specialist/candidates/{id}`, respondent→`/specialist/my-clients` |
+
+**Total interactive gaps closed: ~40+ per-row instances** (largest
+audit-to-fix yield so far — disputes carries the densest evidence /
+timeline grids in the app).
+
+### Escalation flash → `useQueuedFlash` migration
+
+Previously `disputes-app.tsx` owned a bespoke `ApprovedFlash` state
+slot (custom `flashOpen` / `flashCaseId` / `setTimeout`) for the
+escalation-confirm flash, with rich shape:
+
+```tsx
+<ApprovedFlash
+  open verb="Escalated." tail="DSP-... sent to admin."
+  sub="Admin will review…" meta="ESCALATION · DSP-..." tone="warn"
+/>
+```
+
+Two `ApprovedFlash` mounts (custom escalation + new
+`useQueuedFlash`) would visually conflict if a user fires two
+actions within the auto-dismiss window. Migrated escalation to the
+hook for a single mount:
+
+```ts
+fireQueuedFlash(
+  `Escalated. ${activeDispute.caseId} sent to admin.`,
+  { tone: "warn", tail: "Admin will review and pick up from here." },
+);
+```
+
+**Editorial trade-off:** the prior flash carried a separate mono-line
+`meta` field (`ESCALATION · DSP-...`) that the queued-flash state
+shape doesn't include. Case id is now interpolated into the heading
+instead. Minor cosmetic loss; single source of truth gained.
+
+### `PreviewUnavailableModal` — 3rd consumer validated at `document` kind
+
+| Consumer | Kind | Status |
+|---|---|---|
+| review-queue intro-video | `video` | Original (commit 6241650) |
+| review-queue read-transcript | `transcript` | Original |
+| recert-queue View diff | `document` | 2nd (commit d1153e6) |
+| disputes evidence ledger View | `document` | **3rd — Step 10** |
+| disputes timeline attachments | `document` | **4th — Step 10** |
+
+**4-kind API verdict:** `document` is the workhorse. All 4 disputes
+mock evidence kinds (`pdf` / `doc` / `image` / `spreadsheet`) and
+all timeline attachment kinds map cleanly to the modal's
+`"document"` kind — its body copy literally reads *"PDFs, Word
+docs, and spreadsheets render inline…"*. The `video` /
+`transcript` / `audio` kinds remain niche-anticipated (will earn
+first consumers via chat audio/video attachments and sourcing
+voicenotes when those features land).
+
+**Mock data trade-off explicitly accepted:** disputes carries
+document-class evidence only. No audio voicenotes or video screen
+recordings. Realistic — most legal evidence IS documents. Audit
+prompt anticipated audio/video kinds; the mock doesn't reflect that.
+Deliberately not extending the mock — disputes is more realistic
+without forced multimedia.
+
+### E5c — "View all N →" pattern: button → informational span
+
+**Decision rationale (locked):** when a UI affordance promises data
+the mock doesn't carry, and the gap is a *mock-data limitation* (not
+a *backend service limitation*), the honest treatment is to make the
+affordance non-interactive rather than fire a flash. Flash treatment
+would be dishonest about *why* the data is missing.
+
+Concretely: `evidenceTotalCount` exceeds `evidence.length` by design
+(e.g. 7 vs 4 on the test dispute). The 3 missing items represent
+future mock-data backfill, not a backend storage feature. Converting
+the button to a span keeps the count visible without promising a
+fake reveal:
+
+| Before | After |
+|---|---|
+| `<button>View all 7 →</button>` (inert) | `<span>Viewing 4 of 7 evidence items</span>` |
+
+When mock data backfills to match (`evidence.length === totalCount`),
+the span reads "Viewing 7 of 7 evidence items" with no UI change.
+
+**Convention:** *non-interactive informational affordance when the
+data limitation is a mock-data shortfall, not a service shortfall.*
+Same posture as the sourcing column "+" buttons being live (real
+intent) vs. the disputes "View all" being passive (mock backfill).
+
+### F1 — Party-tile navigation: "build extends source"
+
+Source HTML has the party tiles as static `<div>`s — no link, no
+hover. The Sofia × Quill dispute carries `claimant.id =
+cand-sofia-reyes` and `respondent.id = client-quill-co` —
+canonical cross-session refs that resolve cleanly through 4+
+indices (managedCandidates / managedClients / hire records / chat
+threads). Wrapping the tiles as `<Link>`s exposes these
+cross-session relationships as navigable UI:
+
+- Claimant tile → `/specialist/candidates/{candidateId}`
+- Respondent tile → `/specialist/my-clients`
+
+No dedicated client-profile route yet (Session 9 will add
+`/specialist/clients/[id]`); respondent links to the my-clients
+index for now — same forward-looking note as the chat-header "View
+client" Link from Session 4.
+
+### Audit log + Decision form — explicitly deferred
+
+Both surfaces continue to render placeholder copy. Locked as known
+items in the backend-services session:
+
+- **Audit log feed** — needs real event-data structure
+  (`actor` / `action` / `target` / `timestamp` shape with filtering).
+  Building a mock list would not exercise the eventual structure;
+  worse, it would lock in editorial decisions that the real service
+  should drive.
+- **Decision form** — the 8-option PDF decision picker (Side with
+  client / Side with candidate / Partial split / Refund full /
+  Refund partial / Replace candidate / Dismiss / Escalate) plus
+  required rationale textarea. Real product UX work that doesn't
+  fit polish scope.
+
+The decision bar's "Open decision form" button now scroll-jumps to
+the Decision tab where the placeholder copy explains the intended
+shape — honest about the future without faking the form.
+
+### State lift architecture
+
+| State | Owner | Why |
+|---|---|---|
+| `useQueuedFlash` | `disputes-app.tsx` | Single source of truth — escalation + all Step 10 flashes |
+| `escalationOpen` | `disputes-app.tsx` | Modal is mounted at app level (existing) |
+| `activeTab` | `dispute-detail.tsx` | Local — switching disputes resets to "overview" |
+| `previewSubject` | `dispute-detail.tsx` | Shared by timeline attachments + evidence View buttons |
+
+`DisputesApp` passes `fireQueuedFlash` down to `DisputeDetail` as a
+prop — avoids duplicating the hook. `DisputeDetail` defines all the
+button handlers and passes them down to `DisputeHeader`,
+`DisputeTimeline`, `EvidenceLedger`, and `DisputeDecisionBar`.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `disputes/disputes-app.tsx` | useQueuedFlash migration; pass `fireQueuedFlash` to DisputeDetail |
+| `disputes/dispute-detail.tsx` | +60 / −10 (handlers, previewState, PreviewUnavailableModal mount, callbacks threaded to children) |
+| `disputes/dispute-header.tsx` | Breadcrumb `<Link>`; `onJumpToAuditTab` + `onExportPdf` props wired |
+| `disputes/dispute-timeline.tsx` | `onAttachmentPreview` callback wired to attachment buttons |
+| `disputes/evidence-ledger.tsx` | `onEvidencePreview` callback wired to row "View" buttons; "View all N" button → informational span |
+| `disputes/parties-card.tsx` | Party tiles wrapped in `<Link>` (claimant → candidate profile; respondent → my-clients) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### `useQueuedFlash` consumer map after Step 10
+
+| Surface | Sites |
+|---|---|
+| `my-candidates/my-candidates-app.tsx` | 4 bulk + 1 schedule confirm |
+| `my-clients/my-clients-app.tsx` | 6 panel-confirm callbacks |
+| `candidate-profile/profile-app.tsx` | 1 schedule confirm |
+| `sourcing/sourcing-app.tsx` | 5 (3 card actions + 1 sheet note + 1 modal submit) |
+| `disputes/disputes-app.tsx` | 1 escalation confirm |
+| `disputes/dispute-detail.tsx` | 2 (Export PDF + Save draft) — **NEW** |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All Sessions 1-7 routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Escalation flash behavior | ⚠ Editorial — heading style differs (whole heading italicized vs. just "Escalated." italic); `meta` line dropped. Tone + auto-dismiss preserved. |
+| `useQueuedFlash` backward compat | ✓ All existing callers unchanged |
+| `PreviewUnavailableModal` API | ✓ Unchanged — disputes is 3rd consumer at `document` kind |
+| Decision tab placeholder copy | ✓ Updated to reflect new "jumps to this tab" wording |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 8 unique handler shapes wired — ~40+ per-row inert affordances closed
+- `PreviewUnavailableModal` validated as 3rd/4th consumer (document kind)
+- Escalation flash migrated to `useQueuedFlash` (single mount; minor editorial loss accepted)
+- "View all N" → informational span pattern locked for mock-data shortfalls
+- Party tiles surface cross-session navigation ("build extends source")
+- Audit log + Decision form explicitly deferred to backend-services
+- Sofia × Quill canonical clarification logged
+- Audit-to-fix ratio: 100% (every Step 10 audit item landed)
+
+---

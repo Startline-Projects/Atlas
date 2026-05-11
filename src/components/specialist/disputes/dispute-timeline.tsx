@@ -2,12 +2,18 @@
  * Section 03 — recent activity timeline. 3-column grid per item:
  * timestamp / marker dot / body. Vertical line connects markers.
  *
- * Server Component.
+ * Step 10 polish: attachment buttons (e.g. `sofia_quill_sow_signed.pdf
+ * · 287 KB`) are no longer inert. When `onAttachmentPreview` is
+ * provided, clicking the attachment fires it with the
+ * `DisputeTimelineAttachment` — parent (DisputeDetail) opens
+ * `PreviewUnavailableModal kind="document"`. The shared modal state
+ * is also used by the evidence ledger's per-row "View" buttons.
  */
 
 import { FileText } from "lucide-react";
 import type {
   DisputeTimelineActor,
+  DisputeTimelineAttachment,
   DisputeTimelineItem,
   DisputeTimelineMarkerTone,
 } from "@/lib/mock-data/specialist/disputes";
@@ -29,8 +35,12 @@ const ACTOR_TONE: Record<DisputeTimelineActor, string> = {
 
 export function DisputeTimeline({
   items,
+  onAttachmentPreview,
 }: {
   items: ReadonlyArray<DisputeTimelineItem>;
+  /** Per-attachment click handler. When omitted (or attachment is
+   *  absent on a row), the attachment button stays decorative. */
+  onAttachmentPreview?: ((a: DisputeTimelineAttachment) => void) | undefined;
 }) {
   return (
     <div className="relative flex flex-col gap-0">
@@ -76,7 +86,12 @@ export function DisputeTimeline({
               {item.attachment ? (
                 <button
                   type="button"
-                  className="border-line bg-cream hover:bg-cream-deep mt-2 inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[11px] text-ink-soft transition-colors hover:text-ink"
+                  onClick={
+                    onAttachmentPreview && item.attachment
+                      ? () => onAttachmentPreview(item.attachment!)
+                      : undefined
+                  }
+                  className="border-line bg-cream hover:bg-cream-deep mt-2 inline-flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 font-mono text-[11px] text-ink-soft transition-colors hover:text-ink"
                 >
                   <FileText
                     className="h-3 w-3 flex-shrink-0 text-ink-mute"

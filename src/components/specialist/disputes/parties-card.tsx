@@ -14,6 +14,7 @@
  * Server Component.
  */
 
+import Link from "next/link";
 import {
   AVATAR_GRADIENTS,
   type AvatarGradientKey,
@@ -79,10 +80,24 @@ function PartyTile({
   const partyTypeLabel =
     party.partyType === "candidate" ? "TALENT" : "CLIENT";
 
+  /* F1 — "build extends source" navigation. Source HTML doesn't link
+     party tiles; build wires them as clickable drill-ins to the
+     party's canonical surface:
+        candidate → /specialist/candidates/{id}
+        client    → /specialist/my-clients  (no dedicated client-profile
+                    route yet — same forward-looking note as chat-header
+                    "View client" Link from Session 4) */
+  const href =
+    party.partyType === "candidate"
+      ? `/specialist/candidates/${party.id}`
+      : `/specialist/my-clients`;
+
   return (
-    <div
+    <Link
+      href={href}
+      aria-label={`Open ${party.name} profile`}
       className={cn(
-        "bg-cream border-line-soft flex min-w-0 items-center gap-3 rounded-[10px] border border-l-[3px] px-4 py-3",
+        "bg-cream border-line-soft hover:bg-cream-deep flex min-w-0 items-center gap-3 rounded-[10px] border border-l-[3px] px-4 py-3 transition-colors",
         sideBorder,
       )}
     >
@@ -118,7 +133,7 @@ function PartyTile({
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
