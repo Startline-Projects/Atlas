@@ -94,6 +94,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/operations/jobs/');
     }
 
+    // Disputes: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/disputes') {
+      return pathname === '/admin/operations/disputes'
+          || pathname.startsWith('/admin/operations/disputes/');
+    }
+
     return pathname === itemPathname;
   };
 

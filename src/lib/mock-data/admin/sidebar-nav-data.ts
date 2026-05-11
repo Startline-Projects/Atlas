@@ -105,7 +105,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'disputes',
           label: 'Disputes',
-          pathname: '#disputes',
+          pathname: '/admin/operations/disputes',
           icon: AlertTriangleIcon,
           count: '47',
           countType: 'urgent',
