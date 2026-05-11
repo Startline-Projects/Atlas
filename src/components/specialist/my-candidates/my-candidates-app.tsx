@@ -191,12 +191,19 @@ export function MyCandidatesApp() {
     onFlagForRecert: handleFlagForRecert,
   };
 
-  /* SchedulingModal confirm handler — visual-only flash with selections. */
+  /* SchedulingModal confirm handler — visual-only flash with selections.
+     Success-tone (not warn): scheduling is a relationship-management
+     action where the user has done the work (picked date+time and
+     confirmed) — from their POV the action is done. Backend-honesty
+     lives in the message string ("invite pending") and sub-line, not
+     the tone. Locked across both SchedulingModal consumers (this +
+     candidate-profile hero). See CONVERSION_LOG tone-consistency note. */
   const handleScheduleConfirm = (payload: SchedulePayload) => {
     if (!schedulingFor) return;
     const parts = formatSchedulePartsForFlash(payload);
     fireQueuedFlash(
       `Scheduled. ${schedulingFor.firstName} · ${parts}${payload.videoCall ? " · video link queued" : ""}`,
+      { tone: "success", tail: "Invite pending — scheduling service not yet wired" },
     );
     setSchedulingFor(null);
   };

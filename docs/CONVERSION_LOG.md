@@ -3411,3 +3411,139 @@ add a `?id=DSP-...` param to that view.
 - All 5 candidate-side `WorkflowUnavailableModal` consumers untouched (Session 8 scope)
 
 ---
+
+## Post-conversion polish — Step 7: candidate-profile hero wiring
+
+**Surface:** `/specialist/candidates/[id]` (test subject: `cand-anand-patel`).
+**Scope:** Wire the 3 inert hero buttons in `profile-hero.tsx` and lock in
+a tone-consistency decision across both `SchedulingModal` consumers.
+
+### Audit-to-fix ratio — cleanest surface audited so far
+
+Candidate-profile is structurally simpler than the queue surfaces. Only
+3 inert elements found, all in the hero. **Every section in the main +
+side column is read-only display.** No misleading affordances detected,
+no visual-fidelity gaps vs. source HTML (lines 20876–21221), no decision
+row to wire (the surface is a dossier, not a queue).
+
+### 3 hero buttons wired
+
+| # | Button | Old state | New treatment |
+|---|---|---|---|
+| 1 | Schedule check-in | inert `e.preventDefault()` | `SchedulingModal` (2nd consumer) |
+| 2 | Suggest for client | inert | `WorkflowUnavailableModal kind="suggest-for-client"` |
+| 3 | Flag for re-cert | inert | `WorkflowUnavailableModal kind="flag-recert"` |
+
+Modal state lifted into `profile-app.tsx`; `ProfileHero` now takes 3
+click-handler props (`onSchedule`, `onSuggestForClient`,
+`onFlagForRecert`). `ActionButton` gained an optional `onClick` —
+the prior `e.preventDefault()` placeholder is gone.
+
+The two `WorkflowUnavailableModal` kinds (`suggest-for-client`,
+`flag-recert`) were declared in commit `99f5c8d` specifically for this
+route and had been unused since. They now have first consumers.
+
+### SchedulingModal tone-consistency decision (locked across consumers)
+
+**Decision:** `SchedulingModal`'s confirm flash uses **`success` tone**,
+not `warn`. Backend-honesty lives in the message string and sub-line,
+not the tone.
+
+**Reasoning:** Scheduling is a relationship-management action where the
+user has done the work (picked date, picked time, clicked confirm).
+From the user's POV the action is complete. Warn-tone implies "still
+pending — the system is figuring it out"; success-tone implies "done —
+the system has accepted your input." Tone should reflect user state,
+not backend state.
+
+**API change:** `FireQueuedFlashOpts` now accepts `tone?: "success" | "warn"`
+(defaults to `warn` — all existing bulk-flash callers unchanged).
+
+```ts
+fireQueuedFlash(
+  `Scheduled. ${firstName} · ${parts}${videoCall ? " · video link queued" : ""}`,
+  { tone: "success", tail: "Invite pending — scheduling service not yet wired" },
+);
+```
+
+Both `SchedulingModal` consumers (`my-candidates-app.tsx`,
+`candidate-profile/profile-app.tsx`) use the same message format and
+sub-line. Locked as the standard for relationship-management actions
+across the specialist app.
+
+**When to use which tone (lock):**
+
+| Scenario | Tone | Example |
+|---|---|---|
+| Bulk action user requested ("please do X to N targets") | `warn` | `Bulk message queued for 4 candidates` |
+| Single-entity relationship action user just completed | `success` | `Scheduled. Anand · Wed May 13, 2:00 PM · 30 min` |
+| Single-entity workflow action with no real picker UI | — | use `WorkflowUnavailableModal` instead (not a flash) |
+
+### Out-of-scope items confirmed (no change needed)
+
+| Surface | Audit finding | Disposition |
+|---|---|---|
+| Tab strip scroll-spy (sticky tabs don't update on scroll) | Inherited from review-queue + recert-queue | Stays on cross-route polish list — fix all three together |
+| `EngagementsSection` rows show `clientName` but no `clientId` | Data-shape gap — same as recert-queue rows | Stays on cross-session ID backfill polish list |
+| `VouchesSection` hardcodes "Adya Sharma" / "David Park" — no person IDs | Data-shape gap | Stays on cross-session ID backfill polish list |
+| All 7 main+side sections | Display-only — no clickable elements | No misleading affordances; correct shape |
+| Decision/footer bar | N/A in source — dossier surface, not queue | Correct shape |
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `people-shared/fire-queued-flash.ts` | +20 / −2 (tone override) |
+| `candidate-profile/profile-app.tsx` | +60 / −7 (state lift, modal mounts) |
+| `candidate-profile/profile-hero.tsx` | +20 / −5 (3 onClick props, ActionButton onClick) |
+| `my-candidates/my-candidates-app.tsx` | +9 / −2 (success-tone carryover) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### `WorkflowUnavailableModal` consumer map after Step 7
+
+| Surface | Sites | Status |
+|---|---|---|
+| `my-clients/my-clients-app.tsx` | 0 | Replaced by panels in Session 7 |
+| `my-candidates/my-candidates-app.tsx` | 5 | Untouched (`suggest-for-client`, `flag-recert`, `mark-unavailable` × sheet + row kebab) |
+| `candidate-profile/profile-app.tsx` | 2 | **NEW** (`suggest-for-client`, `flag-recert`) |
+
+Modal type still declares 10 kinds. Active consumers cover 3 kinds
+(`suggest-for-client`, `flag-recert`, `mark-unavailable`). 7 client-side
+kinds (`contracts` / `briefs` / `send-brief` / `suggest-talent` /
+`tag-client` / `invite-client` / `pause-client`) remain unused — prune
+still deferred until Session 8 settles candidate-side scope.
+
+### `SchedulingModal` consumer map after Step 7
+
+| Surface | Sites |
+|---|---|
+| `my-candidates/my-candidates-app.tsx` | 1 (sheet) |
+| `candidate-profile/profile-app.tsx` | 1 (hero) — **NEW** |
+
+Both confirm flashes use the locked success-tone + same message format.
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All Sessions 1-7 routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| `useQueuedFlash` backward compat (warn-tone callers unchanged) | ✓ All 5+ existing callers default to warn |
+| `WorkflowKind` union | ✓ Unchanged — 2 previously-unused kinds now consumed |
+| Click test: Send message → `candidate-chat?id={cand-id}` navigation | ✓ Untouched |
+| Click test: Schedule check-in → modal opens, success-tone confirm | ✓ |
+| Click test: Suggest for client → workflow modal with kind | ✓ |
+| Click test: Flag for re-cert → workflow modal with kind | ✓ |
+| Esc / backdrop close for all 3 modals | ✓ Inherited from `ReviewModal` wrapper |
+| `/specialist/my-candidates` Schedule flash | ✓ Success-tone (carryover landed) |
+| Typecheck / lint / build | ✓ All clean; lint baseline preserved |
+
+### Summary
+
+- 3 hero buttons wired — 0 inert affordances remain on candidate-profile
+- 2 previously-unused `WorkflowUnavailableModal` kinds now have consumers
+- `SchedulingModal` consumer count: 2 (both on success-tone)
+- `FireQueuedFlashOpts.tone` added — backward-compatible
+- Audit-to-fix ratio: 100% (every interactive gap found has a treatment landed)
+
+---

@@ -29,7 +29,22 @@ function tierTone(tier: CandidateProfile["tier"]): TagTone {
   return "default";
 }
 
-export function ProfileHero({ p }: { p: CandidateProfile }) {
+type ProfileHeroProps = {
+  p: CandidateProfile;
+  /** Opens SchedulingModal (date/time picker). */
+  onSchedule: () => void;
+  /** Opens WorkflowUnavailableModal kind="suggest-for-client". */
+  onSuggestForClient: () => void;
+  /** Opens WorkflowUnavailableModal kind="flag-recert". */
+  onFlagForRecert: () => void;
+};
+
+export function ProfileHero({
+  p,
+  onSchedule,
+  onSuggestForClient,
+  onFlagForRecert,
+}: ProfileHeroProps) {
   const gradient = p.avatarGradient
     ? AVATAR_GRADIENTS[p.avatarGradient]
     : { from: "#FFD6A5", to: "#FFA07A" };
@@ -113,13 +128,22 @@ export function ProfileHero({ p }: { p: CandidateProfile }) {
           >
             Send message
           </ActionButton>
-          <ActionButton icon={<Calendar className="h-3 w-3" strokeWidth={1.5} />}>
+          <ActionButton
+            icon={<Calendar className="h-3 w-3" strokeWidth={1.5} />}
+            onClick={onSchedule}
+          >
             Schedule check-in
           </ActionButton>
-          <ActionButton icon={<Sparkles className="h-3 w-3" strokeWidth={1.5} />}>
+          <ActionButton
+            icon={<Sparkles className="h-3 w-3" strokeWidth={1.5} />}
+            onClick={onSuggestForClient}
+          >
             Suggest for client
           </ActionButton>
-          <ActionButton icon={<RefreshCw className="h-3 w-3" strokeWidth={1.5} />}>
+          <ActionButton
+            icon={<RefreshCw className="h-3 w-3" strokeWidth={1.5} />}
+            onClick={onFlagForRecert}
+          >
             Flag for re-cert
           </ActionButton>
         </div>
@@ -145,6 +169,7 @@ type ActionButtonProps = {
   variant?: "default" | "primary";
   icon: React.ReactNode;
   href?: string;
+  onClick?: () => void;
   children: React.ReactNode;
 };
 
@@ -152,6 +177,7 @@ function ActionButton({
   variant = "default",
   icon,
   href,
+  onClick,
   children,
 }: ActionButtonProps) {
   const className = cn(
@@ -171,7 +197,7 @@ function ActionButton({
   return (
     <button
       type="button"
-      onClick={(e) => e.preventDefault()}
+      onClick={onClick}
       className={cn("cursor-pointer", className)}
     >
       <span aria-hidden="true">{icon}</span>

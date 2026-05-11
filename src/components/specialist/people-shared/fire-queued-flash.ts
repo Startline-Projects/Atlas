@@ -67,6 +67,21 @@ const FLASH_DISMISS_MS = 2500;
 export type FireQueuedFlashOpts = {
   /** Override the default "· backend pending" sub-line. */
   tail?: string;
+  /**
+   * Override the default `warn` tone.
+   *
+   * Use `success` for relationship-management actions where the user
+   * has done the work and the action is "done" from their POV
+   * (Schedule check-in — date+time picked + confirmed). Backend-honesty
+   * lives in the message string ("invite pending") rather than tone.
+   *
+   * Use `warn` (default) for backend-pending bulk acknowledgements
+   * where the user has effectively requested a backend action and is
+   * waiting on it (Bulk message, Add-to-list, Pause).
+   *
+   * See SchedulingModal tone-consistency decision in CONVERSION_LOG.
+   */
+  tone?: FlashTone;
 };
 
 export function useQueuedFlash() {
@@ -87,7 +102,7 @@ export function useQueuedFlash() {
         tail: "",
         sub: opts?.tail ?? QUEUED_FLASH_DEFAULT_SUB,
         meta: "",
-        tone: "warn",
+        tone: opts?.tone ?? "warn",
       });
     },
     [],
