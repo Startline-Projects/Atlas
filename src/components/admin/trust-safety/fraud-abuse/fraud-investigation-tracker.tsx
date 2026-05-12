@@ -18,9 +18,12 @@ import type { FraudInvestigationStep } from '@/lib/mock-data/admin/fraud-alerts-
 interface FraudInvestigationTrackerProps {
   steps: FraudInvestigationStep[];
   progress: { done: number; total: number };
+  /** Optional header text. Defaults to "Investigation progress" (Phase 15 fraud).
+   *  Phase 16 incidents pass "Response progress". */
+  title?: string;
 }
 
-export function FraudInvestigationTracker({ steps, progress }: FraudInvestigationTrackerProps) {
+export function FraudInvestigationTracker({ steps, progress, title }: FraudInvestigationTrackerProps) {
   const pct = Math.round((progress.done / progress.total) * 100);
 
   return (
@@ -28,7 +31,7 @@ export function FraudInvestigationTracker({ steps, progress }: FraudInvestigatio
       {/* Head — with dashed bottom border */}
       <div className="flex items-baseline justify-between gap-[8px] pb-[12px] border-b border-dashed border-[var(--line-soft)] mb-[14px]">
         <h3 className="font-display text-[14px] font-medium tracking-[-0.01em] text-[var(--ink)] m-0">
-          Investigation progress
+          {title ?? 'Investigation progress'}
         </h3>
         <span className="font-mono text-[11px] font-bold text-[var(--ink)] tracking-[0.02em]">
           {progress.done} / {progress.total} · {pct}%

@@ -142,8 +142,10 @@ export const SIDEBAR_NAV = {
         {
           id: 'incidents',
           label: 'Security Incidents',
-          pathname: '#security-incidents',
+          pathname: '/admin/trust-safety/security-incidents',
           icon: SecurityIncidentsNavIcon,
+          count: '2',
+          countType: 'warn',
         },
         {
           id: 'suspicious',

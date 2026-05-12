@@ -112,6 +112,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/trust-safety/fraud-abuse/');
     }
 
+    // Security Incidents: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/security-incidents') {
+      return pathname === '/admin/trust-safety/security-incidents'
+          || pathname.startsWith('/admin/trust-safety/security-incidents/');
+    }
+
     return pathname === itemPathname;
   };
 
