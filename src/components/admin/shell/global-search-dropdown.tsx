@@ -33,6 +33,8 @@ function chipVariantClass(type: SearchEntityType): string {
       return 'bg-[var(--danger-bg)] text-[var(--danger)]';
     case 'review':
       return 'bg-[rgba(77,138,130,0.15)] text-[#4D8A82]';
+    case 'fraud':
+      return 'bg-[var(--danger)] text-[var(--paper)]';
     case 'admin':
     default:
       return 'bg-[rgba(110,63,224,0.12)] text-[var(--super)]';

@@ -1,17 +1,15 @@
 /**
- * Phase 15a — Generic section placeholder for all 6 fraud detail sections.
+ * Phase 15a — Generic section placeholder for fraud detail sections.
+ * Phase 15d — Adds optional `message` prop for contextual empty-state copy.
  *
  * admin.html CSS: .fr-section + .fr-section-head (L15982-16029)
  *
  * Card: bg paper, border line, r-md, padding 20px 24px, mb 16px.
  * Section head: flex items-end justify-between, mb 16px, pb 12px, border-b dashed.
- * sh-num: mono 9.5px, bg cream-deep, color ink-mute, py-2 px-6, rounded-3, bold.
- * h2: display 18px 500 tracking -0.01em.
- * sh-meta: mono 10.5px ink-mute tracking 0.04em mt-4.
+ * Body: centered mute message in dashed-border-ish minimal state.
  */
 import type { FraudDetailSection } from '@/lib/mock-data/admin/fraud-alerts-data';
 
-/** Map section id to 2-digit number */
 const SECTION_NUMS: Record<string, string> = {
   signals: '01',
   'related-accounts': '02',
@@ -23,9 +21,11 @@ const SECTION_NUMS: Record<string, string> = {
 
 interface FraudSubPlaceholderProps {
   section: FraudDetailSection;
+  /** Contextual empty-state message. Defaults to "No data available for this alert." */
+  message?: string;
 }
 
-export function FraudSubPlaceholder({ section }: FraudSubPlaceholderProps) {
+export function FraudSubPlaceholder({ section, message }: FraudSubPlaceholderProps) {
   return (
     <section
       data-fraud-section={section.id}
@@ -48,17 +48,17 @@ export function FraudSubPlaceholder({ section }: FraudSubPlaceholderProps) {
         </div>
       </div>
 
-      {/* Placeholder body */}
-      <div className="flex flex-col items-center justify-center py-[32px] gap-[10px]">
-        <div className="w-[40px] h-[40px] rounded-full bg-[var(--cream-deep)] flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-mute)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="9" y1="3" x2="9" y2="21" />
-            <line x1="3" y1="9" x2="21" y2="9" />
+      {/* Empty-state body */}
+      <div className="flex flex-col items-center justify-center py-[28px] gap-[8px]">
+        <div className="w-[32px] h-[32px] rounded-full bg-[var(--cream-deep)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-mute)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         </div>
         <span className="font-mono text-[10.5px] tracking-[0.04em] text-[var(--ink-mute)] text-center">
-          Section content will be built in a subsequent phase
+          {message ?? 'No data available for this alert.'}
         </span>
       </div>
     </section>

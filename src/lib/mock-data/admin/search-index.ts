@@ -1,9 +1,9 @@
 /**
  * Phase 9d + 10c + 11b + 12b + 13b-3 — Global Search Index
  *
- * Flat searchable index across all 9 admin entity types:
+ * Flat searchable index across all 10 admin entity types:
  * candidates (8) + clients (6) + specialists (11) + manager (1) + admins (5)
- *   + engagements (8) + jobs (10) + disputes (10) + reviews (10) = 69 records,
+ *   + engagements (8) + jobs (10) + disputes (10) + reviews (10) + fraud (9) = 78 records,
  *   built once at module load.
  */
 
@@ -16,6 +16,7 @@ import { ENGAGEMENT_PROFILES } from './engagement-profiles-data';
 import { JOB_PROFILES } from './job-profiles-data';
 import { DISPUTE_PROFILES } from './dispute-profiles-data';
 import { REVIEW_PROFILES } from './review-profiles-data';
+import { FRAUD_ALERT_PROFILES } from './fraud-alerts-data';
 
 export type SearchEntityType =
   | 'candidate'
@@ -26,7 +27,8 @@ export type SearchEntityType =
   | 'engagement'
   | 'job'
   | 'dispute'
-  | 'review';
+  | 'review'
+  | 'fraud';
 
 export interface SearchResult {
   entityType: SearchEntityType;
@@ -150,6 +152,17 @@ export const SEARCHABLE_INDEX: SearchResult[] = [
     initials: `${p.reviewerHero.initials.charAt(0)}${p.revieweeHero.initials.charAt(0)}`,
     avatarVariant: idHashToVariant(p.id),
   })),
+  // 9 fraud alerts (Phase 15c)
+  ...Object.values(FRAUD_ALERT_PROFILES).map((p): SearchResult => ({
+    entityType: 'fraud',
+    id: p.id,
+    name: p.title,
+    meta: `${p.atlasId} · ${p.severity} · ${p.statusLabel} · ${p.detectedAgo}`,
+    atlasId: p.atlasId,
+    href: `/admin/trust-safety/fraud-abuse/${p.id}`,
+    initials: 'FA',
+    avatarVariant: idHashToVariant(p.id),
+  })),
 ];
 
 // ============================================================
@@ -183,6 +196,7 @@ const GROUP_ORDER: SearchEntityType[] = [
   'job',
   'dispute',
   'review',
+  'fraud',
 ];
 
 /** Group results by entityType in display order, capping each group */
@@ -209,6 +223,7 @@ export const ENTITY_TYPE_LABELS: Record<SearchEntityType, string> = {
   job: 'Jobs',
   dispute: 'Disputes',
   review: 'Reviews',
+  fraud: 'Fraud alerts',
 };
 
 /** Short uppercase chip label */
@@ -222,4 +237,5 @@ export const ENTITY_TYPE_CHIPS: Record<SearchEntityType, string> = {
   job: 'JOB',
   dispute: 'DSP',
   review: 'REV',
+  fraud: 'FRAUD',
 };
