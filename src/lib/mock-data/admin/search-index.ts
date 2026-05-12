@@ -1,10 +1,10 @@
 /**
- * Phase 9d + 10c + 11b + 12b + 13b-3 — Global Search Index
+ * Phase 9d + 10c + 11b + 12b + 13b-3 + 16c — Global Search Index
  *
- * Flat searchable index across all 10 admin entity types:
+ * Flat searchable index across all 11 admin entity types:
  * candidates (8) + clients (6) + specialists (11) + manager (1) + admins (5)
- *   + engagements (8) + jobs (10) + disputes (10) + reviews (10) + fraud (9) = 78 records,
- *   built once at module load.
+ *   + engagements (8) + jobs (10) + disputes (10) + reviews (10) + fraud (9)
+ *   + incidents (9) = 87 records, built once at module load.
  */
 
 import { CANDIDATE_PROFILES } from './candidate-profiles-data';
@@ -17,6 +17,7 @@ import { JOB_PROFILES } from './job-profiles-data';
 import { DISPUTE_PROFILES } from './dispute-profiles-data';
 import { REVIEW_PROFILES } from './review-profiles-data';
 import { FRAUD_ALERT_PROFILES } from './fraud-alerts-data';
+import { INCIDENT_PROFILES } from './incidents-data';
 
 export type SearchEntityType =
   | 'candidate'
@@ -28,7 +29,8 @@ export type SearchEntityType =
   | 'job'
   | 'dispute'
   | 'review'
-  | 'fraud';
+  | 'fraud'
+  | 'incident';
 
 export interface SearchResult {
   entityType: SearchEntityType;
@@ -163,6 +165,17 @@ export const SEARCHABLE_INDEX: SearchResult[] = [
     initials: 'FA',
     avatarVariant: idHashToVariant(p.id),
   })),
+  // 9 security incidents (Phase 16c)
+  ...Object.values(INCIDENT_PROFILES).map((p): SearchResult => ({
+    entityType: 'incident',
+    id: p.id,
+    name: p.title,
+    meta: `${p.atlasId} · ${p.severity} · ${p.statusLabel} · ${p.detectedRel}`,
+    atlasId: p.atlasId,
+    href: `/admin/trust-safety/security-incidents/${p.id}`,
+    initials: 'SI',
+    avatarVariant: idHashToVariant(p.id),
+  })),
 ];
 
 // ============================================================
@@ -197,6 +210,7 @@ const GROUP_ORDER: SearchEntityType[] = [
   'dispute',
   'review',
   'fraud',
+  'incident',
 ];
 
 /** Group results by entityType in display order, capping each group */
@@ -224,6 +238,7 @@ export const ENTITY_TYPE_LABELS: Record<SearchEntityType, string> = {
   dispute: 'Disputes',
   review: 'Reviews',
   fraud: 'Fraud alerts',
+  incident: 'Security incidents',
 };
 
 /** Short uppercase chip label */
@@ -238,4 +253,5 @@ export const ENTITY_TYPE_CHIPS: Record<SearchEntityType, string> = {
   dispute: 'DSP',
   review: 'REV',
   fraud: 'FRAUD',
+  incident: 'INC',
 };

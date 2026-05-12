@@ -213,7 +213,7 @@ export interface FraudDocumentsData {
 /*  Phase 15c — §05 Timeline                                           */
 /* ------------------------------------------------------------------ */
 
-export type FraudEventVariant = 'danger' | 'warn' | 'system' | 'danger-system' | 'default';
+export type FraudEventVariant = 'danger' | 'warn' | 'success' | 'system' | 'danger-system' | 'default';
 
 export interface FraudTimelineEvent {
   time: string;

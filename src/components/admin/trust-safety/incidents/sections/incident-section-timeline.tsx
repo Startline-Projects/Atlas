@@ -1,17 +1,18 @@
 /**
- * Phase 15c — §05 Timeline of events (Server component).
+ * Phase 16b — §04 Timeline of events.
  *
- * admin.html CSS: .fr-timeline + .fr-tl-event (L16358-16417)
- * admin.html markup: L40052-40127
+ * Clone of FraudSectionTimeline (Phase 15c) with incident-specific
+ * section chrome: sh-num "04", custom sh-meta.
  *
- * 10 events newest-first. Vertical line via ::before equivalent (absolute div).
- * Variant dots: danger=red border, warn=amber border, system=ink filled, danger-system=red border + ink fill.
- * Events 1-7 have actor span (700 ink, or italic ink-mute for system). Events 8-10 no actor.
+ * admin.html CSS: L16372-16416 (.fr-timeline + .fr-tl-event)
+ * admin.html markup: L41042-41116 (incident timeline)
+ *
+ * Supports all FraudEventVariant values including 'success' (added Phase 16b).
  */
 import type { FraudTimelineData, FraudEventVariant } from '@/lib/mock-data/admin/fraud-alerts-data';
+import type { IncidentDetailSection } from '@/lib/mock-data/admin/incidents-data';
 
 function dotStyle(variant: FraudEventVariant): React.CSSProperties {
-  /* Defaults: 12×12 r-full border 2px ink bg paper */
   const base: React.CSSProperties = {
     position: 'absolute',
     left: '-23px',
@@ -40,28 +41,29 @@ function dotStyle(variant: FraudEventVariant): React.CSSProperties {
   }
 }
 
-interface FraudSectionTimelineProps {
+interface IncidentSectionTimelineProps {
+  section: IncidentDetailSection;
   data: FraudTimelineData;
 }
 
-export function FraudSectionTimeline({ data }: FraudSectionTimelineProps) {
+export function IncidentSectionTimeline({ section, data }: IncidentSectionTimelineProps) {
   return (
     <section
-      data-fraud-section="timeline"
+      data-si-section={section.id}
       className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] py-[20px] px-[24px] mb-[16px]"
     >
       {/* Section head */}
       <div className="flex items-end justify-between gap-[12px] flex-wrap mb-[16px] pb-[12px] border-b border-dashed border-[var(--line-soft)]">
         <div className="flex items-baseline gap-[10px]">
           <span className="font-mono text-[9.5px] bg-[var(--cream-deep)] text-[var(--ink-mute)] py-[2px] px-[6px] rounded-[3px] font-bold tracking-[0.06em]">
-            05
+            04
           </span>
           <div>
             <h2 className="font-display text-[18px] font-medium tracking-[-0.01em] m-0 leading-[1.2] text-[var(--ink)]">
-              Timeline of events
+              {section.title}
             </h2>
             <div className="font-mono text-[10.5px] text-[var(--ink-mute)] tracking-[0.04em] mt-[4px]">
-              all relevant events from Jan 18 (account creation) → today · {data.totalEvents} audit entries
+              {section.meta}
             </div>
           </div>
         </div>
@@ -69,7 +71,7 @@ export function FraudSectionTimeline({ data }: FraudSectionTimelineProps) {
 
       {/* Timeline body */}
       <div className="relative pl-[24px]">
-        {/* Vertical line — replaces .fr-timeline::before */}
+        {/* Vertical line */}
         <div className="absolute left-[7px] top-[6px] bottom-[6px] w-[2px] bg-[var(--line)]" aria-hidden="true" />
 
         {data.events.map((event, i) => (

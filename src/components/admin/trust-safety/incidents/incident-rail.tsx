@@ -25,7 +25,7 @@ export function IncidentRail({ incident }: IncidentRailProps) {
         title="Response progress"
       />
       <IncidentQuickStats stats={incident.quickStats} />
-      <IncidentSecurityTeamCard />
+      <IncidentSecurityTeamCard {...(incident.securityTeamData !== undefined ? { data: incident.securityTeamData } : {})} />
     </aside>
   );
 }
