@@ -106,6 +106,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/operations/reviews/');
     }
 
+    // Fraud & Abuse: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/fraud-abuse') {
+      return pathname === '/admin/trust-safety/fraud-abuse'
+          || pathname.startsWith('/admin/trust-safety/fraud-abuse/');
+    }
+
     return pathname === itemPathname;
   };
 

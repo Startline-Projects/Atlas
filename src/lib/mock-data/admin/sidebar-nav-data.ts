@@ -134,7 +134,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'fraud',
           label: 'Fraud & Abuse',
-          pathname: '#fraud',
+          pathname: '/admin/trust-safety/fraud-abuse',
           icon: FraudAbuseNavIcon,
           count: '5',
           countType: 'urgent',
