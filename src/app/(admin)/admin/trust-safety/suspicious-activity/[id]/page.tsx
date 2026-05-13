@@ -29,9 +29,12 @@ export async function generateMetadata({ params }: SuspiciousActivityDetailPageP
 
 export default async function SuspiciousActivityDetailPage({ params }: SuspiciousActivityDetailPageProps) {
   const { id } = await params;
+
+  // All 9 canonical IDs now have full profiles — render canonical detail.
   const profile = SUSPICIOUS_ACTIVITY_PROFILES[id];
   if (profile) return <SuspiciousActivityDetailShell profile={profile} />;
 
+  // Fallback stub kept for any ID that may not have a full profile yet.
   const stub = SUSPICIOUS_ACTIVITY_STUBS[id];
   if (stub) return <SuspiciousActivityStub stub={stub} />;
 

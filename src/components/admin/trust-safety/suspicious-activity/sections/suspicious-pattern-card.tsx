@@ -6,17 +6,26 @@ interface SuspiciousPatternCardProps {
 }
 
 export function SuspiciousPatternCard({ pattern }: SuspiciousPatternCardProps) {
+  const isDanger = pattern.variant === 'danger';
+
+  const cardBg = isDanger ? 'bg-[var(--danger-bg)]' : 'bg-[var(--lime-bg)]';
+  const cardBorder = isDanger ? 'border-[rgba(194,65,43,0.3)]' : 'border-[rgba(74,109,65,0.25)]';
+  const stripBg = isDanger ? 'bg-[var(--danger)]' : 'bg-[var(--lime-deep)]';
+  const headBorder = isDanger ? 'border-b-[rgba(194,65,43,0.2)]' : 'border-b-[rgba(74,109,65,0.3)]';
+  const iconColor = isDanger ? 'text-[var(--danger)]' : 'text-[var(--lime-deep)]';
+  const eyebrowColor = isDanger ? 'text-[var(--danger)]' : 'text-[var(--lime-deep)]';
+
   return (
     <section className="mb-[18px]">
-      <div className="bg-[var(--lime-bg)] border border-[rgba(74,109,65,0.25)] rounded-[var(--r-md)] p-[18px_20px] relative">
+      <div className={`${cardBg} border ${cardBorder} rounded-[var(--r-md)] p-[18px_20px] relative`}>
         {/* Left accent strip (was ::before in admin.html) */}
         <span
           aria-hidden="true"
-          className="absolute top-0 left-0 w-[4px] h-full bg-[var(--lime-deep)] rounded-tl-[var(--r-md)] rounded-bl-[var(--r-md)]"
+          className={`absolute top-0 left-0 w-[4px] h-full ${stripBg} rounded-tl-[var(--r-md)] rounded-bl-[var(--r-md)]`}
         />
 
-        <div className="flex items-start gap-[12px] mb-[14px] pb-[12px] border-b border-dashed border-b-[rgba(74,109,65,0.3)]">
-          <div className="w-[36px] h-[36px] rounded-[8px] bg-[var(--paper)] grid place-items-center text-[var(--lime-deep)] flex-shrink-0">
+        <div className={`flex items-start gap-[12px] mb-[14px] pb-[12px] border-b border-dashed ${headBorder}`}>
+          <div className={`w-[36px] h-[36px] rounded-[8px] bg-[var(--paper)] grid place-items-center ${iconColor} flex-shrink-0`}>
             <svg
               width="20"
               height="20"
@@ -33,7 +42,7 @@ export function SuspiciousPatternCard({ pattern }: SuspiciousPatternCardProps) {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--lime-deep)] font-bold mb-[3px]">
+            <div className={`font-mono text-[9px] tracking-[0.16em] uppercase ${eyebrowColor} font-bold mb-[3px]`}>
               PATTERN DETECTED · {pattern.clusterId}
             </div>
             <div className="font-display text-[17px] font-medium tracking-[-0.01em] text-[var(--ink)] leading-[1.25]">
@@ -62,22 +71,18 @@ export function SuspiciousPatternCard({ pattern }: SuspiciousPatternCardProps) {
         </div>
 
         <div className="text-[12.5px] text-[var(--ink-soft)] tracking-[-0.005em] leading-[1.55]">
-          Six accounts — all candidates — have shown rapid geo-traversal patterns within the last hour.
-          Three (50%) share a common IP block in Frankfurt that overlaps with the{' '}
-          {pattern.linkedFraudId ? (
-            <Link
-              href={`/admin/trust-safety/fraud-abuse/${pattern.linkedFraudId}`}
-              className="text-[var(--ink)] underline cursor-pointer font-semibold hover:text-[var(--super)]"
-            >
-              Vorona Capital ring ({pattern.linkedFraudId.toUpperCase()})
-            </Link>
-          ) : (
-            <span className="text-[var(--ink)] font-semibold">Vorona Capital ring</span>
+          {pattern.narrative}
+          {pattern.linkedFraudId && (
+            <>
+              {' '}
+              <Link
+                href={`/admin/trust-safety/fraud-abuse/${pattern.linkedFraudId}`}
+                className="text-[var(--ink)] underline cursor-pointer font-semibold hover:text-[var(--super)]"
+              >
+                {pattern.linkedFraudLabel ?? pattern.linkedFraudId.toUpperCase()} →
+              </Link>
+            </>
           )}
-          . This may be coincidence (datacenter VPN, common ISP) or coordination. Recommended:{' '}
-          <strong className="text-[var(--ink)] font-bold">watchlist all 6 for 48h</strong> and re-cluster
-          after the next round of events. Auto-watchlist already applied to siblings; this event is the most
-          recent.
         </div>
       </div>
     </section>
