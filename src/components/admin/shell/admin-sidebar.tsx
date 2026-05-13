@@ -136,6 +136,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/finance/transactions/');
     }
 
+    // Fees & Pricing: single flat route
+    if (itemPathname === '/admin/finance/fees-pricing') {
+      return pathname === '/admin/finance/fees-pricing';
+    }
+
     return pathname === itemPathname;
   };
 

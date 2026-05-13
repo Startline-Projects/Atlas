@@ -177,7 +177,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'fees',
           label: 'Fees & Pricing',
-          pathname: '#fees',
+          pathname: '/admin/finance/fees-pricing',
           icon: FeesNavIcon,
         },
         {
