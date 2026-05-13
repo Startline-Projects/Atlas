@@ -159,7 +159,13 @@ export function DisputeDetail({
   const closePreview = useCallback(() => setPreviewSubject(null), []);
 
   return (
-    <div className="bg-cream flex min-w-0 flex-1 flex-col">
+    /* 93px = StaffRibbon 36 + Topbar 57. Asserts viewport-minus-topbar
+       min-height so flex-1 on tab content can expand and push the
+       sticky decision bar to viewport bottom on short content. Without
+       this, the parent (QueueShell child column) has no defined
+       height, flex-1 collapses, and the bar floats above viewport
+       bottom on short tabs (e.g. Timeline with 4 events). */
+    <div className="bg-cream flex min-h-[calc(100vh-36px-57px)] min-w-0 flex-1 flex-col">
       <DisputeHeader
         dispute={dispute}
         isDraft={isDraft}
