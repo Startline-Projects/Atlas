@@ -60,7 +60,13 @@ export function ActivityFeedSection({ items, counts }: FeedSectionProps) {
         visibleCount={visible.length}
         onChange={setFilter}
       />
-      <div className="mx-auto flex w-full max-w-[920px] flex-col gap-0 px-10 pt-7 pb-20 max-md:px-5 max-md:pb-14">
+      {/* Full-width feed — source CSS specified `margin: 0 auto;
+          max-width: 920px` but the build drops that cap because the
+          stat strip / heatmap / filter chips above this feed all span
+          the main column width; a centered 920px feed below them
+          reads as "narrower island in empty space" on wide viewports.
+          Deliberate build-extends-source departure. See CONVERSION_LOG. */}
+      <div className="flex flex-col gap-0 px-10 pt-7 pb-20 max-md:px-5 max-md:pb-14">
         {groupedByDate.length === 0 ? (
           <FeedEmpty />
         ) : (
