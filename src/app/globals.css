@@ -17,6 +17,7 @@
   --lime: var(--color-lime);
   --lime-deep: var(--color-lime-deep);
   --lime-text: var(--color-lime-text);
+  --lime-bg: var(--color-lime-bg);
   --amber: var(--color-amber);
   --amber-bg: var(--color-amber-bg);
   --navy: var(--color-navy);
@@ -50,6 +51,7 @@
   --color-line-strong: #c4bca9;
   --color-lime: #d6f24d;
   --color-lime-deep: #b9d92f;
+  --color-lime-bg: rgba(185, 217, 47, 0.12);
   --color-amber: #e8763a;
   --color-amber-bg: #fcefe3;
   --color-navy: #16213e;
@@ -533,9 +535,6 @@
   bottom: 0;
   width: 2px;
   background: var(--color-lime-deep);
-}
-.animate-pulse-amber {
-  animation: pulse-amber 2s ease-in-out infinite;
 }
 .animate-pulse-amber {
   animation: pulse-amber 2s ease-in-out infinite;

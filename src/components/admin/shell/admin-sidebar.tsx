@@ -118,6 +118,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/trust-safety/security-incidents/');
     }
 
+    // Suspicious Activity: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/suspicious-activity') {
+      return pathname === '/admin/trust-safety/suspicious-activity'
+          || pathname.startsWith('/admin/trust-safety/suspicious-activity/');
+    }
+
     return pathname === itemPathname;
   };
 

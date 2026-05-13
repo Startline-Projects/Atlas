@@ -150,7 +150,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'suspicious',
           label: 'Suspicious Activity',
-          pathname: '#suspicious-activity',
+          pathname: '/admin/trust-safety/suspicious-activity',
           icon: SuspiciousActivityNavIcon,
           count: '3',
           countType: 'warn',
