@@ -158,7 +158,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'suspensions',
           label: 'Suspensions & Bans',
-          pathname: '#suspensions',
+          pathname: '/admin/trust-safety/suspensions-bans',
           icon: SuspensionsNavIcon,
         },
       ],

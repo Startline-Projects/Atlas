@@ -124,6 +124,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/trust-safety/suspicious-activity/');
     }
 
+    // Suspensions & Bans: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/suspensions-bans') {
+      return pathname === '/admin/trust-safety/suspensions-bans'
+          || pathname.startsWith('/admin/trust-safety/suspensions-bans/');
+    }
+
     return pathname === itemPathname;
   };
 
