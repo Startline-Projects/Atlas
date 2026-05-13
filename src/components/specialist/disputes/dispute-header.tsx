@@ -58,13 +58,24 @@ const STATE_PILL: Record<
   },
 };
 
+/* Session-only DRAFT pill class — mirrors `dispute-row.tsx`. Replaces
+   the state pill when the orchestrator's `draftIds` includes this
+   dispute's id. */
+const DRAFT_PILL_CLASS = "bg-amber/15 text-amber";
+
 export function DisputeHeader({
   dispute,
+  isDraft = false,
   onEscalate,
   onJumpToAuditTab,
   onExportPdf,
 }: {
   dispute: Dispute;
+  /** Session-only overlay flag — when true, renders the DRAFT pill
+   *  instead of `STATE_PILL[dispute.state]`. Threaded from the
+   *  orchestrator's `draftIds` set via DisputeDetail. Mirrors the
+   *  same override in `dispute-row.tsx`. */
+  isDraft?: boolean;
   onEscalate: () => void;
   /** B3 — jumps the tab strip to the Audit log tab. Owned by parent
    *  (DisputeDetail) because that's where activeTab lives. */
@@ -73,7 +84,9 @@ export function DisputeHeader({
    *  export…" copy. */
   onExportPdf?: (() => void) | undefined;
 }) {
-  const pill = STATE_PILL[dispute.state];
+  const pill = isDraft
+    ? { label: "DRAFT", className: DRAFT_PILL_CLASS }
+    : STATE_PILL[dispute.state];
   return (
     <header className="bg-paper border-line border-b px-9 pt-[22px] pb-[18px] max-md:px-5">
       <nav

@@ -4575,3 +4575,206 @@ before deferring.
 - Convention locked: source HTML `data-route` is authoritative for nav items
 
 ---
+
+## Disputes — Draft filter chip + Save-as-draft local state wiring
+
+**Branch:** `talent-specialist` (first commit on this branch).
+**Surface:** `/specialist/disputes`.
+**Scope:** Add a "Draft" filter chip to the rail and wire the
+decision bar's "Save as draft" button to actually flip the dispute
+into a draft state — local component state only; no mock data
+record changes.
+
+### What changed (UX)
+
+Before: "Save as draft" fired a warn-tone flash and nothing else —
+the dispute stayed in Open. Filter chips were `All / Open /
+Resolved` (3 chips).
+
+After: Filter chips are `All / Open / Draft / Resolved` (4 chips).
+Clicking "Save as draft" on an open dispute:
+1. Fires the warn-tone flash (unchanged copy)
+2. Adds the dispute id to a session-only `draftIds: Set<string>`
+3. Dispute leaves the Open bucket, enters the Draft bucket
+   (mutually exclusive — drafted disputes still appear under All
+   but no longer under Open)
+4. Row pill changes from state-driven (`OPEN` red) to amber `DRAFT`
+5. Detail header pill also flips to amber `DRAFT`
+6. Decision bar button changes from "Save as draft" to "Drafted ✓"
+   with amber-outline disabled styling
+
+Reload resets — same session-only persistence convention as
+`candidate-chat.localAppends`, `integrations-section.items`,
+`security-section.sessions`, `sourcing.addState`.
+
+### Convention locked — Session overlays vs. backend states
+
+**Transient session-only UI workflow states** (drafts, local
+appends, applied tags, connected toggles, etc.) live as **component
+state overlays** — not in the mock data type unions. **Backend-
+modeled states** (which the future service layer will know about)
+stay in the canonical type union.
+
+Concrete decision for disputes:
+- `DisputeState` (8 backend-modeled values: `open` /
+  `in-progress` / `under-review` / `escalated` / 4 resolved variants)
+  stays **untouched**. The service layer will eventually own these.
+- `"draft"` is added to `DisputeFilterKey` only (UI-tier chip
+  vocabulary). The overlay set `draftIds` in the orchestrator carries
+  per-dispute draft state. Reload resets.
+- `DisputeRowLite` gains an optional `isDraft?: boolean` field —
+  populated at render time by the orchestrator from `draftIds`.
+  Static mock-data records never carry `isDraft`.
+
+Rationale: extending `DisputeState` to include `"draft"` would have
+required cascading changes to `STATE_PILL` mappings, the static
+`filterKey` field on every dispute, plus a backend-layer story for
+something that's fundamentally a specialist's local prep work.
+Overlay-set approach keeps the type union honest about what the
+service layer will eventually own.
+
+### Architecture — orchestrator state + lifted row mapping
+
+**`DisputesApp`** owns the overlay:
+
+```ts
+const [draftIds, setDraftIds] = useState<ReadonlySet<string>>(
+  () => new Set(),
+);
+```
+
+The previously module-level `RAIL_ROWS` const is gone — replaced by
+a `useMemo` that recomputes on `draftIds` change:
+
+```ts
+const railRows = useMemo<ReadonlyArray<RailRow>>(() => {
+  return disputes.map((d) => {
+    const isDraft = draftIds.has(d.id);
+    return {
+      ...d,
+      isDraft,
+      filterTags: isDraft ? ["all", "draft"] : ["all", d.filterKey],
+    };
+  });
+}, [draftIds]);
+```
+
+Mutually-exclusive bucketing: drafted disputes get `["all", "draft"]`,
+not `["all", "open", "draft"]`. The user's Q1 decision: drafts leave
+Open to signal "where attention is needed" — drafts represent prep
+work, not active queue.
+
+**Save-as-draft handler lifted** from `DisputeDetail` to `DisputesApp`:
+
+```ts
+const handleSaveDraft = useCallback((dispute: Dispute) => {
+  setDraftIds((prev) => {
+    if (prev.has(dispute.id)) return prev;
+    const next = new Set(prev);
+    next.add(dispute.id);
+    return next;
+  });
+  fireQueuedFlash(
+    `Draft saved for ${dispute.caseId} — decision drafts service not yet wired`,
+    { tone: "warn" },
+  );
+}, [fireQueuedFlash]);
+```
+
+`DisputeDetail` accepts `isDraft: boolean` + `onSaveDraft: (dispute) => void`
+props. The detail pane no longer constructs the flash internally — it
+forwards the click via `handleSaveDraftClick` which calls `onSaveDraft(dispute)`.
+
+### Pill rendering — DRAFT override in two sites
+
+`DisputeRow` (rail) and `DisputeHeader` (detail pane) both render
+status pills. Both gain the same override:
+
+```ts
+const pill = row.isDraft   // or `isDraft` prop on header
+  ? { label: "DRAFT", className: "bg-amber/15 text-amber" }
+  : STATUS_PILL[row.state];
+```
+
+Amber tone matches `in-progress` / `under-review` (warm "in motion,
+awaiting commit"). Distinct from open's red (`bg-danger-bg`) and
+resolved's green (`bg-success-bg`). Lock decision per Q3.
+
+### Decision bar — "Drafted ✓" disabled state
+
+When `isDraft === true`:
+- Button label: `Drafted ✓` (Check icon, not Save)
+- `disabled` true (same UX as `disabled={isResolved}`)
+- Visual: amber-outline + amber-tinted bg + amber text — matches
+  the pill color so the row, header, and button all read together
+- Mutually exclusive with `isResolved` (resolved disputes can't be
+  drafted; the button is already disabled by the prior rule)
+
+`Save-as-draft` re-clicking is impossible — Q2 decision (one-way
+Open → Draft for this commit; future polish could add a "Discard
+draft" affordance).
+
+### Filter chip count behavior
+
+`QueueRail`'s existing logic (`candidates.filter(c => c.filterTags.includes(f.key)).length`)
+handles this automatically. With drafted rows carrying `["all", "draft"]`:
+- Initial load: `All 7 / Open 4 / Draft 0 / Resolved 3`
+- After 1 save-as-draft: `All 7 / Open 3 / Draft 1 / Resolved 3`
+- After 2 save-as-drafts: `All 7 / Open 2 / Draft 2 / Resolved 3`
+
+No changes to `QueueRail` — it operates purely on the `filterTags`
+data the orchestrator produces.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `lib/mock-data/specialist/disputes.ts` | `DisputeFilterKey` adds `"draft"`; `DISPUTE_FILTERS` adds Draft chip between Open and Resolved; `DisputeRowLite` gains `isDraft?: boolean` |
+| `disputes/disputes-app.tsx` | `draftIds` state; `railRows` lifted to useMemo; `handleSaveDraft` handler; threads `isDraft` + `onSaveDraft` to DisputeDetail |
+| `disputes/dispute-detail.tsx` | Drops self-contained `handleSaveDraft`; accepts `isDraft` + `onSaveDraft` props; forwards to DisputeHeader + DisputeDecisionBar |
+| `disputes/dispute-decision-bar.tsx` | Accepts `isDraft?: boolean`; renders "Drafted ✓" + amber-outline disabled state; mutually exclusive with `isResolved` |
+| `disputes/dispute-row.tsx` | DRAFT pill override (amber-tinted) when `row.isDraft` |
+| `disputes/dispute-header.tsx` | DRAFT pill override; accepts `isDraft?: boolean` prop |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Mock data records (7 disputes) | ✓ Unchanged — no record mutations |
+| `DisputeState` 8-value union | ✓ Untouched — backend states intact |
+| `DISPUTES_HEADER_SUBTITLE` | ✓ Static — "4 open · 3 resolved" derived at module-init from static `filterKey` field (Q7 decision: subtitle is "case mix from static data", chips show live state) |
+| SLA chips on drafted disputes | ✓ Unchanged — SLA reflects backend state, draft is local prep (Q8) |
+| Escalate-to-admin modal | ✓ Unchanged — flow preserved |
+| Step 10 wirings (Export PDF, party-tile nav, evidence preview, "View all" span, breadcrumb Link) | ✓ All preserved |
+| Step 11 (reviews-approvals sticky stack) | ✓ Untouched |
+| Step 12 (performance/settings/help) | ✓ Untouched |
+| Step 13 (topbar user menu) | ✓ Untouched |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Manual verification walkthrough
+
+On `/specialist/disputes`:
+1. Initial chips: `All [7] / Open [4] / Draft [0] / Resolved [3]` ✓
+2. Click Sofia × Quill (open) → detail loads; button reads "Save as draft" (enabled) ✓
+3. Click "Save as draft" → warn flash; Sofia leaves Open, enters Draft; chips become `All [7] / Open [3] / Draft [1] / Resolved [3]`; row pill is amber `DRAFT`; header pill is amber `DRAFT`; button reads "Drafted ✓" (disabled, amber outline) ✓
+4. Click Marcus × Vertex → repeat → chips: `All [7] / Open [2] / Draft [2] / Resolved [3]` ✓
+5. Click Draft filter → rail shows only Sofia + Marcus ✓
+6. Click Open filter → rail shows the remaining 2 open disputes ✓
+7. Click Resolved → 3 resolved (unchanged) ✓
+8. Click All → all 7 ✓
+9. Reload → all resets to original state ✓
+
+### Summary
+
+- New Draft filter chip — 4-chip set in workflow order
+- Save-as-draft now actually mutates session state (was flash-only)
+- Drafted disputes leave Open, enter Draft, stay in All (mutually exclusive)
+- DRAFT pill rendered on row + detail header with amber tone
+- Decision bar button changes to "Drafted ✓" + disabled when drafted
+- **Convention locked: session-only overlays don't extend backend state unions**
+- First commit on `talent-specialist` branch
+
+---

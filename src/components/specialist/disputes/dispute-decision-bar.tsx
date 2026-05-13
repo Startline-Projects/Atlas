@@ -24,7 +24,8 @@
 
 "use client";
 
-import { Save, ArrowRight } from "lucide-react";
+import { Check, Save, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
 export function DisputeDecisionBar({
   slaLabel,
@@ -33,6 +34,7 @@ export function DisputeDecisionBar({
   onSaveDraft,
   onOpenDecisionForm,
   isResolved,
+  isDraft = false,
 }: {
   slaLabel: string;
   evidenceReviewedCount: number;
@@ -42,6 +44,15 @@ export function DisputeDecisionBar({
   /** When the dispute is already resolved, the bar shows a different
    *  message and the primary button label changes. */
   isResolved: boolean;
+  /**
+   * Session-only draft flag from the orchestrator. When true, the
+   * Save-as-draft button changes to "Drafted ✓" with an amber-outline
+   * disabled style — matches the `bg-amber/15 text-amber` pill tone
+   * used on the row + header. Mutually exclusive with `isResolved`
+   * (drafts apply to open disputes only; resolved disputes can't be
+   * drafted because the Save-as-draft button is already disabled).
+   */
+  isDraft?: boolean;
 }) {
   return (
     <div className="bg-paper/95 border-line sticky bottom-0 z-[10] border-t backdrop-blur-md">
@@ -82,11 +93,36 @@ export function DisputeDecisionBar({
           <button
             type="button"
             onClick={onSaveDraft}
-            disabled={isResolved}
-            className="border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink disabled:opacity-50 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed"
+            disabled={isResolved || isDraft}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed",
+              isDraft
+                ? /* Drafted — amber outline matches the row + header
+                     pill tone. Disabled but visually distinct from the
+                     isResolved opacity-50 treatment. */
+                  "border-amber/40 bg-amber/10 text-amber disabled:opacity-100"
+                : "border-line bg-paper text-ink-soft hover:bg-cream-deep hover:text-ink disabled:opacity-50",
+            )}
           >
-            <Save className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden="true" />
-            Save as draft
+            {isDraft ? (
+              <>
+                <Check
+                  className="h-3.5 w-3.5"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                Drafted
+              </>
+            ) : (
+              <>
+                <Save
+                  className="h-3.5 w-3.5"
+                  strokeWidth={1.6}
+                  aria-hidden="true"
+                />
+                Save as draft
+              </>
+            )}
           </button>
           <button
             type="button"
