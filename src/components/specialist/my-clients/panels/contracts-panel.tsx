@@ -1,17 +1,26 @@
 "use client";
 
 /**
- * ContractsPanel — inline replacement for the prior
- * `WorkflowUnavailableModal kind="contracts"` treatment.
+ * ContractsPanel — sheet-side Layer B wrapper.
  *
- * Shows 3-5 contracts for the active client, stacked. Empty state when
- * the client has no contracts yet (Helios Robotics is the canonical
- * onboarding-stalled empty case).
+ * Session 9 Checkpoint 1 refactor:
+ *   - The list-rendering body moved to
+ *     `clients-shared/contracts-list-body.tsx` (Layer A — shared
+ *     with the C2 dedicated `/specialist/clients/[id]/contracts`
+ *     page).
+ *   - This file (Layer B) keeps sheet chrome (`SheetPanelShell` +
+ *     "Back to client" affordance) AND mounts the document-preview
+ *     modal state. Function-as-prop passes downward to the shared
+ *     body which forwards to `ContractCard`'s `onViewDocument`.
  *
- * "View document" buttons consume the existing `PreviewUnavailableModal`
- * primitive with `kind="document"` and a per-contract subject name —
- * keeps the document-not-yet-stored gap honest. Same pattern as the
+ * "View document" buttons consume `PreviewUnavailableModal` with
+ * `kind="document"` and a per-contract subject name — keeps the
+ * document-not-yet-stored gap honest. Same pattern as the
  * review-queue intro-video transcript modal (commit 6241650).
+ *
+ * Pre-refactor behavior preserved exactly — same DOM, same subtitle
+ * formula, same empty-state copy (now sourced from
+ * `ContractsListBody`'s `ContractsEmptyState`).
  *
  * Client Component (owns the document-preview modal state).
  */
@@ -21,13 +30,13 @@ import {
   PreviewUnavailableModal,
   type PreviewUnavailableKind,
 } from "@/components/specialist/shell/preview-unavailable-modal";
+import { ContractsListBody } from "@/components/specialist/clients-shared";
 import {
   getClientContracts,
   type ClientContract,
 } from "@/lib/mock-data/specialist/client-contracts";
 import type { ManagedClient } from "@/lib/mock-data/specialist/my-clients";
 import { SheetPanelShell } from "./sheet-panel-shell";
-import { ContractCard } from "./contract-card";
 
 type DocPreview = {
   kind: PreviewUnavailableKind;
@@ -59,24 +68,11 @@ export function ContractsPanel({
 
   return (
     <>
-      <SheetPanelShell
-        title="Contracts"
-        subtitle={subtitle}
-        onBack={onBack}
-      >
-        {contracts.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {contracts.map((c) => (
-              <ContractCard
-                key={c.id}
-                contract={c}
-                onViewDocument={handleViewDocument}
-              />
-            ))}
-          </div>
-        )}
+      <SheetPanelShell title="Contracts" subtitle={subtitle} onBack={onBack}>
+        <ContractsListBody
+          contracts={contracts}
+          onViewDocument={handleViewDocument}
+        />
       </SheetPanelShell>
 
       <PreviewUnavailableModal
@@ -99,15 +95,4 @@ function buildSubtitle(
     ? `$${(totalBilled / 1000).toFixed(1)}k billed`
     : `$${totalBilled.toLocaleString("en-US")} billed`;
   return `${activeCount} active · ${billedLabel} all-time`;
-}
-
-function EmptyState() {
-  return (
-    <div className="border-line bg-cream/40 text-ink-mute rounded-md border border-dashed px-4 py-8 text-center text-[13px]">
-      <p className="m-0">No contracts on file yet.</p>
-      <p className="mt-1 m-0 text-[12px]">
-        Contracts appear here once the first brief is filled and signed.
-      </p>
-    </div>
-  );
 }

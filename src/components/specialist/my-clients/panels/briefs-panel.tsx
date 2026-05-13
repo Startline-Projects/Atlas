@@ -20,6 +20,7 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { BriefsListBody } from "@/components/specialist/clients-shared";
 import {
   getClientBriefs,
   splitBriefs,
@@ -27,7 +28,6 @@ import {
 import type { ManagedClient } from "@/lib/mock-data/specialist/my-clients";
 import { cn } from "@/lib/utils/cn";
 import { SheetPanelShell } from "./sheet-panel-shell";
-import { BriefCard } from "./brief-card";
 
 type Mode = "list" | "compose";
 type Tab = "open" | "closed";
@@ -117,16 +117,10 @@ function ListView({
         <Tab label="Closed" count={closed.length} active={tab === "closed"} onClick={() => setTab("closed")} />
       </nav>
 
-      {/* List */}
-      {visible.length === 0 ? (
-        <EmptyState tab={tab} />
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {visible.map((b) => (
-            <BriefCard key={b.id} brief={b} />
-          ))}
-        </div>
-      )}
+      {/* List — Layer A body. Tab-aware empty state stays in this
+          (sheet-side) wrapper since copy depends on the active tab
+          which is a sheet-only concept. */}
+      <BriefsListBody briefs={visible} emptyState={<EmptyState tab={tab} />} />
     </SheetPanelShell>
   );
 }

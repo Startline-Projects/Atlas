@@ -5776,3 +5776,255 @@ change).
 - Rationale for combining C1+C2: shipping plumbing alone produced an unshippable interim ("no results for X" on every query); folded both into one ship
 
 ---
+
+## Session 9 — Dedicated client pages (Checkpoint 1 of 3)
+
+**Scope:** Net-new `/specialist/clients/[id]/...` route surface. C1
+ships the layout shell + overview page + sub-nav tabs primitive +
+Layer A/B refactor of the contracts/briefs sheet panel bodies. C2
+will add Contracts + Briefs list + detail pages. C3 will add Hires,
+Talent, Tags, Settings, the sheet→page navigation upgrade, and the
+disputes party-tile → dedicated-page link.
+
+**Build extends source.** Source HTML has no dedicated client pages
+— `/specialist/my-clients` is a single roster + slide-over sheet
+view. C1+ extends source by introducing a deep-route surface so
+client surfaces (contracts / briefs / hires / talent / tags) become
+real pages with shareable URLs, not just panels inside a sheet. The
+sheet stays as quick context; the page becomes deep work. **Both
+coexist.**
+
+### Architecture locked
+
+1. **Routes** — 9 total across the 3 checkpoints:
+   - `/specialist/clients/[id]` (overview) ← **C1**
+   - `/specialist/clients/[id]/contracts` (list) ← C2
+   - `/specialist/clients/[id]/contracts/[contractId]` (detail) ← C2
+   - `/specialist/clients/[id]/briefs` (list) ← C2
+   - `/specialist/clients/[id]/briefs/[briefId]` (detail) ← C2
+   - `/specialist/clients/[id]/hires` (list) ← C3
+   - `/specialist/clients/[id]/talent` (list) ← C3
+   - `/specialist/clients/[id]/tags` (list) ← C3
+   - `/specialist/clients/[id]/settings` (page) ← C3
+
+2. **SSG.** `generateStaticParams` pulls from
+   `ALL_MANAGED_CLIENT_IDS` (new helper). 12 client overview pages
+   pre-render at build time.
+
+3. **`notFound()` for invalid IDs.** Layout-level lookup; matches
+   the candidate-profile precedent at
+   `app/(specialist)/specialist/candidates/[id]/page.tsx`.
+
+4. **Params resolution across layout + page.** Next.js App Router
+   gives each segment its own `params` (no auto prop-drilling from
+   layout to page). Both the layout AND the page resolve `params.id`
+   independently and call `getManagedClient(id)` — the lookup is
+   O(1) against a 12-element in-memory array, so the duplication is
+   negligible. No `cache()` wrapper.
+
+5. **Sheet behavior unchanged.** Row click on `/specialist/my-clients`
+   still opens the sheet — sheet = quick context. Sheet "View" buttons
+   navigate to the dedicated pages in C3 (the sheet hero will also
+   get an "Open full profile" link).
+
+### Layer A / Layer B extraction pattern (new convention)
+
+The C1 refactor extracts the body of `ContractsPanel` and the list-
+view of `BriefsPanel` to **shared bodies** that the C2 dedicated
+pages will reuse:
+
+| Layer | Location | Owns | Doesn't own |
+|---|---|---|---|
+| **A — shared body** | `components/specialist/clients-shared/` | Pure list rendering + empty state | Modal state, chrome, page-vs-sheet decisions |
+| **B — sheet wrapper** | `components/specialist/my-clients/panels/` | `SheetPanelShell` + modal mounts + sheet-only flows (tabs, compose) | List rendering (delegated to A) |
+| **B — page wrapper** (C2) | dedicated route `page.tsx` + a Client wrapper | Page chrome (via layout) + modal mounts | List rendering (delegated to A) |
+
+**Convention locked:** when sheet and dedicated page share body
+rendering, extract to `clients-shared/` (Layer A) and keep chrome +
+state with each consumer (Layer B). Function-as-prop callbacks flow
+from the Client Component B-layer down through A to leaf components.
+A-layer files don't carry `"use client"` — they inherit from their
+consumer's bundle.
+
+**C1 Layer A files (new):**
+- `clients-shared/contracts-list-body.tsx` — body for the contracts
+  list; owns the empty state per Q5 lock (empty state travels with
+  body so sheet + page surface stay consistent).
+- `clients-shared/briefs-list-body.tsx` — body for a briefs list; empty
+  state supplied by the consumer (sheet has tab-aware copy, C2 page
+  will have filter-aware copy).
+
+**C1 Layer B refactors:**
+- `my-clients/panels/contracts-panel.tsx` — keeps modal + subtitle
+  computation; inline `.map(c => <ContractCard …>)` replaced with
+  `<ContractsListBody contracts={…} onViewDocument={…} />`. Inline
+  `<EmptyState>` removed (now in Layer A).
+- `my-clients/panels/briefs-panel.tsx` — `ListView`'s inline
+  `.map(b => <BriefCard …>)` replaced with `<BriefsListBody briefs={visible}
+  emptyState={<EmptyState tab={tab} />} />`. Tab state + compose
+  flow + per-tab empty copy stay in the sheet wrapper.
+
+Other 6 panels (talent-match / pause / tags / invite / etc.) — and
+the leaf cards (`ContractCard`, `BriefCard`) — untouched in C1.
+Their Layer A extractions happen in C3 when the matching dedicated
+pages land.
+
+### Sub-nav tabs primitive
+
+`components/specialist/clients-shared/client-sub-nav-tabs.tsx` —
+Client Component (uses `usePathname()`). 7 tab definitions, **6
+rendered** in C1 (Settings hidden until C3).
+
+| Order | Tab | Lucide icon | Badge source | C1 state |
+|---|---|---|---|---|
+| 1 | Overview | `LayoutDashboard` | — | enabled (Link) |
+| 2 | Contracts | `FileText` | `getClientContracts(id).length` | **disabled span** |
+| 3 | Briefs | `ClipboardList` | `splitBriefs(getClientBriefs(id)).open.length` (open only — Q2) | **disabled span** |
+| 4 | Hires | `Users` | active-status only (Q3) | **disabled span** |
+| 5 | Talent | `Sparkles` | `rankPoolForClient(id).length` (Q4) | **disabled span** |
+| 6 | Tags | `Tag` | `getClientTagKeys(id).length` | **disabled span** |
+| 7 | Settings | `Settings` | — | hidden in C1 (added in C3) |
+
+**Disabled tabs.** Q1 locked: 5 of the 6 visible tabs render as
+`<span aria-disabled>` (no Link, no nav) because their routes 404
+until C2/C3. Visual: `text-ink-mute opacity-60 cursor-not-allowed`.
+No tooltip in C1 (keep minimal). The tab DOM is stable across all
+3 checkpoints — only the `disabled?: boolean` flag flips as routes
+land.
+
+**Convention.** When net-new route surfaces ship in checkpoints,
+render the sub-nav with disabled placeholder spans for the routes
+that 404. Better than:
+- Live Links → 404 (broken affordance UX)
+- Trivial placeholder pages (file churn deleted in next checkpoint)
+
+The active flag becomes the only delta per checkpoint.
+
+**Sticky chrome.** Matches `queue-shared/ReviewTabs` line 32
+literally: `bg-cream/95 border-line-soft sticky top-[calc(36px+57px)]
+z-[5] border-b backdrop-blur-md backdrop-saturate-150`. Sub-nav
+clears search dropdown (`z-[20]`) and sits below topbar (`z-[6]`).
+
+### Page header band
+
+`clients-shared/client-page-header.tsx` — Server Component. NOT
+sticky (scrolls under topbar + sub-nav, matching `RosterHeader` /
+`DisputeHeader` / `ReviewHeader` precedent).
+
+Renders:
+- Breadcrumb (`Dashboard / My clients / {companyName}` — C1
+  overview). Sub-pages add a 4th segment via the `section` prop
+  in C2/C3.
+- Identity row: logo (gradient bucket) + companyName + trust tier
+  pill + VIP star (if `isVip`) + verified badge (if `verified`).
+- Meta strip: pre-composed `ManagedClient.metaLine` field.
+
+No action buttons on right side (C1 lock — revisit when product
+validates need).
+
+### Overview page sections
+
+`clients-shared/client-overview-app.tsx` — Server Component.
+
+1. **Quick stats** — 4 cards (Active hires / Lifetime spend / Their
+   rating / Briefs all-time). Direct field reads from `ManagedClient`.
+2. **Recent activity** — reuses `client.activityPreview`; same bullet
+   color mapping as the sheet timeline so visual continuity holds.
+   Section hidden when the array is empty.
+3. **Quick-action cards** — 4 cards to Contracts / Briefs / Hires
+   / Talent list routes. Show honest 0-counts when empty (per
+   locked decision — empty state is honest UX). **C1 consistency
+   fix:** the cards render as `<div aria-disabled>` (NOT `<Link>`)
+   to match Q1B's disabled-tab convention. Live-Link → 404 was the
+   original spec literal reading; on review it created an internal
+   inconsistency vs. the sub-nav (5 disabled tab spans + 4 live
+   404-trap cards on the same page). The cards each carry a
+   `disabled?: boolean` flag; C2 flips Contracts + Briefs to
+   `false` when those routes land; C3 flips Hires + Talent. DOM
+   stays stable across all 3 checkpoints — only the flag changes.
+   Visual: `cursor-not-allowed opacity-60`, no hover state change,
+   no "Coming soon" pill (minimal treatment matches sub-nav
+   precedent).
+
+Notes section deferred to C3. No action group.
+
+### Mock-data helpers (2 added; no records changed)
+
+Appended to `lib/mock-data/specialist/my-clients.ts`:
+
+```ts
+export function getManagedClient(id: string): ManagedClient | undefined {
+  return managedClients.find((c) => c.id === id);
+}
+
+export const ALL_MANAGED_CLIENT_IDS: ReadonlyArray<string> =
+  managedClients.map((c) => c.id);
+```
+
+Mirrors `candidate-profile.ts:546-557` literally. Cross-session ID
+continuity preserved — every `client-*` id resolved across all
+existing surfaces (Acme `client-acme-co`, Helios `client-helios-
+robotics`, etc.).
+
+### Files added (8) + 4 modified
+
+| File | Type |
+|---|---|
+| `app/(specialist)/specialist/clients/[id]/layout.tsx` | NEW (Server) |
+| `app/(specialist)/specialist/clients/[id]/page.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/index.ts` | NEW (barrel) |
+| `components/specialist/clients-shared/client-page-header.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/client-sub-nav-tabs.tsx` | NEW (Client) |
+| `components/specialist/clients-shared/client-overview-app.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/contracts-list-body.tsx` | NEW (Layer A) |
+| `components/specialist/clients-shared/briefs-list-body.tsx` | NEW (Layer A) |
+| `components/specialist/my-clients/panels/contracts-panel.tsx` | MODIFIED (Layer B; delegates to A) |
+| `components/specialist/my-clients/panels/briefs-panel.tsx` | MODIFIED (Layer B; ListView delegates to A) |
+| `lib/mock-data/specialist/my-clients.ts` | MODIFIED (+2 helpers, no record changes) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### Cross-session navigation — deferred to C2/C3
+
+| Surface | Current state | Update lands |
+|---|---|---|
+| Search index `brief` href | `/specialist/my-clients?focus={clientId}` | C2 (when brief detail page lands) |
+| Search index `client` href | `/specialist/my-clients` | C3 (sheet→page navigation upgrade) |
+| Sheet "View contracts" button | Opens ContractsPanel inside sheet | C3 (will navigate to `/specialist/clients/[id]/contracts`) |
+| Sheet "Open briefs" button | Opens BriefsPanel inside sheet | C3 |
+| Sheet "Suggest new talent" button | Opens TalentMatchPanel inside sheet | C3 |
+| Sheet hero | No "Open full profile" link | C3 |
+| Dispute respondent tile | Routes to `/specialist/my-clients` | C3 (will route to `/specialist/clients/[id]`) |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| `/specialist/my-clients` sheet — overview view | ✓ Untouched (orchestrator + `client-sheet-content.tsx` unchanged) |
+| `/specialist/my-clients` sheet — Contracts panel | ✓ Same render output (`<ContractsListBody>` produces identical DOM to the prior inline map) |
+| `/specialist/my-clients` sheet — Briefs list view | ✓ Same render output (Layer A wraps the same `<BriefCard>` map) |
+| `/specialist/my-clients` sheet — Briefs compose flow | ✓ Untouched |
+| Other 6 sheet panels (talent / pause / tags / invite / etc.) | ✓ Untouched |
+| Row click → opens sheet | ✓ Untouched |
+| All Sessions 1-7 + polish + talent-specialist routes | ✓ Untouched |
+| Marketing landing | ✓ Untouched |
+| Cross-session ID continuity | ✓ No record changes; 2 helpers appended only |
+| Search index | ✓ Unchanged (brief/client href updates deferred to C2/C3) |
+| Disputes / daily-activity / help / etc. | ✓ Untouched |
+| ApprovedFlash + queued-flash patterns | ✓ Untouched |
+
+### Summary
+
+- 8 new files + 4 modified + log entry
+- 12 new SSG routes pre-rendered at `/specialist/clients/[id]`
+- 1 new component family (`clients-shared/`) introduced
+- Layer A/B extraction pattern established as a new convention
+- Sub-nav primitive landed with `disabled?: boolean` per tab — DOM
+  stable across C1/C2/C3, only the flag changes
+- Settings tab hidden in C1 (no route exists); added in C3
+- 2 mock-data helpers added; no record changes
+- Sheet behavior preserved byte-identically (Contracts + Briefs
+  panels render the same DOM via the new shared bodies)
+- Build extends source: dedicated client pages don't exist in
+  source HTML — net-new architectural surface
+
+---
