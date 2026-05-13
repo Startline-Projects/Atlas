@@ -171,7 +171,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'transactions',
           label: 'Transactions',
-          pathname: '#transactions',
+          pathname: '/admin/finance/transactions',
           icon: TransactionsNavIcon,
         },
         {

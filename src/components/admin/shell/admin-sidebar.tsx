@@ -130,6 +130,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/trust-safety/suspensions-bans/');
     }
 
+    // Transactions: list view + detail descendant routes
+    if (itemPathname === '/admin/finance/transactions') {
+      return pathname === '/admin/finance/transactions'
+          || pathname.startsWith('/admin/finance/transactions/');
+    }
+
     return pathname === itemPathname;
   };
 
