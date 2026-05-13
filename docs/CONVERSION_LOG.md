@@ -5522,3 +5522,257 @@ this pattern in a future polish if user-reported.
 - Convention locked: roster-surface filter strips share visual chrome via copy-paste of utility classes; not via shared primitive until 2-consumer threshold
 
 ---
+
+## Global search Checkpoint 1+2 — index + filter engine + grouped result rendering + direct navigation
+
+**Branch:** `talent-specialist`.
+**Surface:** Topbar global search (visible on every specialist
+route via `(specialist)/layout.tsx`).
+**Scope:** Combined Checkpoint 1 (architecture + index + dropdown
+shell) and Checkpoint 2 (filter engine + result rendering +
+navigation) — shipped as one commit. **Checkpoint 3 (keyboard nav,
+Cmd+K, recent searches localStorage, matched-text highlighting)
+stays as a separate followup.**
+
+**Why combined:** Checkpoint 1 alone shipped clean plumbing but
+explicitly returned empty results (`results = []`), so the
+user-visible behavior was "search dropdown opens, typing anything
+shows 'No results for X'." That's an unshippable interim state —
+looks broken even though it works as designed. Folding C2 into the
+same commit delivers actually-functioning search in one ship.
+
+### Architecture decisions locked (10)
+
+| # | Decision | Locked verdict |
+|---|---|---|
+| 1 | Dependency rule | UI imports from `lib/mock-data` (index transformation) only; no service/repository |
+| 2 | Search index location | `src/lib/mock-data/specialist/search-index.ts` (co-located with inputs; real service migrates to `lib/services/search/` later) |
+| 3 | Dropdown architecture | Portaled to `document.body` via `createPortal`; positioned via `getBoundingClientRect()` of input wrapper; z-[20] (above topbar's z-[6]) |
+| 4 | Topbar input refactor | Inline in `topbar.tsx` (no separate `TopbarSearchInput` extraction — input has no reusable shape) |
+| 5 | `useSearch` hook location | `src/components/specialist/shell/use-search.ts` (co-located with consumers, matches `fire-queued-flash.ts` precedent) |
+| 6 | Module-init index | `searchIndex` built once at module init; never rebuilds (static mock data) |
+| 7 | Global scope | Search works on every specialist route — topbar is mounted in `(specialist)/layout.tsx` |
+| 8 | Click result behavior | Navigation via Next.js `<Link>` / `router.push` + dropdown closes (C2) |
+| 9 | Popover coordination | Bidirectional — opening any one of 4 affordances (search / notifications / messages / user menu) closes the other 3 |
+| 10 | Mobile UX | Out of scope all 3 checkpoints — input is `hidden md:flex`, dropdown inherits |
+
+### `SearchResult` type — Checkpoint 1 contract
+
+```ts
+export type SearchEntityType =
+  | "candidate" | "client" | "dispute" | "brief" | "prospect";
+
+export type SearchResult = {
+  id: string;
+  type: SearchEntityType;
+  title: string;       // primary display field
+  subtitle: string;    // secondary display
+  href: string;        // navigation target
+  haystack: string;    // lowercase concat for substring filter
+};
+```
+
+**Key design:** `haystack` is precomputed lowercase concatenation of
+all searchable fields. Filter (Checkpoint 2) does
+`haystack.includes(query.toLowerCase())` — O(N) on ~125 entries =
+sub-millisecond. No debouncing needed.
+
+### Field-name mismatches surfaced and resolved
+
+Audit revealed several proposed search fields don't exist on the
+canonical entity shapes. Substitutions documented:
+
+| Entity | Proposed | Actual | Substitution |
+|---|---|---|---|
+| Brief | `title` | ❌ Does not exist on `ClientBrief` | Use `role` as title; type-group header disambiguates from candidate role match |
+| Brief | `description` | ❌ Does not exist | Use `scope` (truncated 80 chars in haystack) |
+| Candidate | `role` | ❌ Not on universal `ManagedCandidate` | Substitute `category` ("Virtual Assistants") |
+| Candidate | `skills` | ❌ Only on 13/47 `CandidateProfile`s — asymmetric | **Dropped entirely.** Re-add when mock-data backfills universal skills OR when real service lands. |
+| Prospect | `fullName` | ❌ Field is `name` | Use `name` directly |
+
+**Convention locked (new):** when extending a static placeholder UI
+to functional, verify mock-data field names BEFORE writing filter
+logic. Asymmetric data coverage (e.g. 13/47 candidates with skills)
+is worse than no coverage — drop the field from the searchable set
+rather than create inconsistent search behavior.
+
+### Coverage after substitutions
+
+| Entity | Count | Title | Subtitle composition | Haystack fields |
+|---|---|---|---|---|
+| candidates | 47 | `fullName` | `{category} · {city}, {countryName}` | fullName + category + city + countryName + statusLabel |
+| clients | 12 | `companyName` | `{industry} · {city}, {countryName}` | companyName + industry + city + countryName + healthLabel |
+| disputes | 7 | `caseId` | `{claimantName} vs. {respondentName} · {reasonLabel}` | caseId + claimantName + respondentName + reasonLabel + truncated claim body (80 chars) |
+| briefs | 32 | `role` | `{clientName} · {scope (trunc 80)}` | role + clientName + scope (trunc 80) + status |
+| prospects | 27 | `name` | `{currentRole ?? "—"} · {location} · {sourceLabel}` | name + currentRole + location + sourceLabel |
+| **Total** | **125** | | | |
+
+### Deferred href updates
+
+| Entity | Checkpoint 1 href | Deferred to |
+|---|---|---|
+| candidate | `/specialist/candidates/{id}` | n/a — route exists today |
+| client | `/specialist/my-clients` | Session 9 introduces `/specialist/clients/{id}` — update then |
+| dispute | `/specialist/disputes?id={id}` | n/a — route exists |
+| brief | `/specialist/my-clients?focus={clientId}` | Session 9 introduces `/specialist/clients/{id}/briefs/{briefId}` — update then |
+| prospect | `/specialist/sourcing?id={id}` | n/a — route exists |
+
+### Popover coordination — bidirectional
+
+Topbar already owned 3-way coordination across notifications /
+messages / user-menu via `openPanel: OpenPanel | null` state. Search
+is a 4th coordinated affordance — but its state lives in
+`useSearch` (decoupled from `openPanel`). Coordination wired by
+the topbar:
+
+- Opening any non-search panel (`toggle()`) calls
+  `search.closeDropdown()` first.
+- Opening search (`handleOpenSearch()`) calls `setOpenPanel(null)`
+  first.
+
+useSearch stays independent and reusable; coordination is the
+parent's responsibility. This matches the precedent that the 3
+non-search popovers each own their close-on-Esc / click-outside
+listeners independently; the topbar just wires "what to close when
+something else opens."
+
+### Filter engine — substring match + score-based ranking + 5-per-group cap
+
+`useSearch.results` is now a `useMemo` derived from `query`:
+
+```ts
+const qLower = query.trim().toLowerCase();
+if (qLower.length < QUERY_MIN_LENGTH) return { results: [], matchCounts: ZERO_COUNTS };
+
+// Bucket by entity type, scoring each match
+for (const result of searchIndex) {
+  if (!result.haystack.includes(qLower)) continue;
+  buckets[result.type].push({ result, score: scoreOf(result, qLower) });
+}
+
+// Sort each bucket: score desc, title alpha asc; cap at 5
+```
+
+**Match rules:**
+- **2-character minimum** (`QUERY_MIN_LENGTH = 2`) — queries of 0 or 1
+  chars return `[]` so the dropdown shows the "Start typing to
+  search" placeholder. 1-character searches would match too many
+  entries to be useful.
+- **Substring on pre-lowercased `haystack`** — case-insensitive.
+- **Score-based ranking within entity type:**
+  - 2 = title contains query (priority match)
+  - 1 = subtitle contains query (secondary)
+  - 0 = haystack-only match (rest of fields)
+  - Tie-break alphabetically by title (case-insensitive).
+- **5-per-group cap** — at most 5 results per entity type in the
+  returned flat array.
+- **`matchCounts`** — per-type pre-cap totals; drives the
+  "X of Y" group-header count badges.
+
+Sub-millisecond on a 125-entry index. No debouncing.
+
+### Result rendering — grouped by entity type with type-iconed rows
+
+Dropdown body has 3 render paths (already wired in C1 shell, now
+populated with results in C2):
+
+| State | Trigger | Render |
+|---|---|---|
+| Placeholder | `query.trim().length < 2` | "Start typing to search" empty state |
+| No-match | query ≥ 2 chars, no matches | "No results for {query}" |
+| Results | query ≥ 2 chars, ≥ 1 match | Grouped result list (5 entity types) |
+
+**Group structure** (`SEARCH_GROUP_ORDER`): candidates → clients →
+disputes → briefs → prospects. Each non-empty group renders:
+
+- **GroupHeader** — mono-uppercase label + count badge
+  ("CANDIDATES" + "3 of 7" when capped, "CLIENTS" + "2" when total
+  ≤ cap), `bg-cream/40` strip with bottom border.
+- **ResultRow** per result — Next.js `<Link>` with:
+  - **Type icon** (24×24, `bg-cream-deep`):
+    - candidate → `User`
+    - client → `Building2`
+    - dispute → `Scale`
+    - brief → `ClipboardList`
+    - prospect → `Sparkles`
+  - **Content column** — title 14px medium + subtitle 12px ink-mute
+    (both truncated to one line).
+  - **Type pill** (right-aligned, mono uppercase 9.5px) —
+    "CANDIDATE" / "CLIENT" / "DISPUTE" / "BRIEF" / "PROSPECT".
+  - Hover: `bg-cream-deep`. Cursor: pointer. `role="option"`.
+- **Group separator** — `border-line-soft border-t` between groups;
+  none above the first rendered group.
+
+**Scroll constraint** — `max-h-[70vh] overflow-y-auto` on the
+results list. With 5 groups × 5 caps = 25 rows × ~50px ≈ 1250px the
+list would otherwise exceed viewport on narrow screens; scroll
+contains it.
+
+### Navigation — Link + closeDropdown on click
+
+Each result row is a Next.js `<Link href={result.href}>`. The
+`onClick` fires `onResultClick()` (= `closeDropdown()` from
+useSearch) BEFORE the Link navigates — synchronous state update
+happens first, then Next.js routes. Back button leaves dropdown
+closed (good UX — the dropdown's state isn't preserved across
+navigations because the topbar's state machine resets on route
+change).
+
+### Files added / modified
+
+| File | Change | Lines |
+|---|---|---|
+| `lib/mock-data/specialist/search-index.ts` | **NEW** — types + `buildSearchIndex()` + module-level `searchIndex` const + `SEARCH_INDEX_COUNTS` | ~200 |
+| `components/specialist/shell/use-search.ts` | **NEW** — hook with query + isOpen state + filter/rank/cap logic + `matchCounts` | ~165 |
+| `components/specialist/shell/topbar-search-dropdown.tsx` | **NEW** — portaled dropdown + 3-state body (placeholder / no-match / grouped results) + result rows + Link navigation | ~315 |
+| `components/specialist/shell/topbar.tsx` | **MODIFY** — controlled input, 4-way popover coordination, dropdown mount with `matchCounts` | +61 / −5 |
+| `docs/CONVERSION_LOG.md` | this entry | — |
+
+### Out of scope for this commit (deferred to Checkpoint 3)
+
+| Item | Notes |
+|---|---|
+| Cmd+K / Ctrl+K shortcut | Global keyboard listener at the topbar level; focuses input + opens dropdown |
+| Up / Down / Enter keyboard navigation | Active-index state in `useSearch`; arrow keys cycle through visible results; Enter activates selected row's href |
+| Recent searches (localStorage persistence) | Last 3-5 clicked results; first introduction of localStorage in the codebase (SSR-safe hydration via useEffect) |
+| Suggested search terms in empty state | Replace "Start typing to search" with recent + suggested queries when query is empty |
+| Matched-text highlighting in results | Wrap matched substring in `<mark>` within title/subtitle |
+| Mobile-specific search UX | Out of scope for all 3 checkpoints — input is `hidden md:flex` |
+
+### Deferred follow-ups
+
+- Brief href updates when Session 9 dedicated
+  `/specialist/clients/[id]/briefs/[briefId]` route lands
+- Client href updates when Session 9 dedicated
+  `/specialist/clients/[id]` route lands
+- Skills search when mock-data backfills universal `skills` field on
+  `ManagedCandidate` (currently only on 13/47 via `CandidateProfile`)
+- Mobile-specific search UX (flagged for future polish if reported)
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Sessions 1-7 + polish + talent-specialist routes | ✓ Unchanged — only `topbar.tsx` modifies (affects all routes but visually unchanged) |
+| Marketing landing | ✓ Byte-identical |
+| Mock data records | ✓ Unchanged (`search-index.ts` reads from them; doesn't modify) |
+| Topbar visual layout | ✓ Unchanged on all routes — input renders identically; behavior changes from inert to focus-opens-dropdown |
+| Notifications popover | ✓ Existing behavior + closes on search-open |
+| Messages popover | ✓ Existing behavior + closes on search-open |
+| User menu popover | ✓ Existing behavior + closes on search-open |
+| `⌘ K` kbd hint copy | ✓ Stays visible (truthful — wiring lands in C3) |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 3 new files + 1 modified topbar + log entry
+- ~125 SearchResult entries indexed across 5 entity types
+- Filter engine: substring + score-based ranking + 2-char minimum + 5-per-group cap
+- 3-state dropdown body: placeholder / no-match / grouped results
+- Result rows are Next.js `<Link>`s with `closeDropdown()` side effect
+- Bidirectional popover coordination wired across 4 affordances
+- Field-name mismatches caught + substituted (brief.role, candidate.category, prospect.name)
+- API contracts stable; Checkpoint 3 adds keyboard nav / Cmd+K / recent searches as a pure additive layer
+- Rationale for combining C1+C2: shipping plumbing alone produced an unshippable interim ("no results for X" on every query); folded both into one ship
+
+---

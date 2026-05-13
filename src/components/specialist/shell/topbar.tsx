@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Bell, MessageSquare, Search, ChevronDown } from "lucide-react";
 import { currentUser } from "@/lib/mock-data/specialist/current-user";
 import {
@@ -11,23 +11,32 @@ import {
 import { TopbarNotificationsPanel } from "./topbar-notifications-panel";
 import { TopbarMessagesPanel } from "./topbar-messages-panel";
 import { TopbarUserMenu } from "./topbar-user-menu";
+import { TopbarSearchDropdown } from "./topbar-search-dropdown";
+import { useSearch } from "./use-search";
 
 /**
  * Specialist console topbar.
  *
- * Ships three popovers as siblings of their triggers (notifications,
- * messages, user menu). Only one panel is open at a time — opening one
- * closes the others. Each popover handles its own Esc + click-outside
- * via a document-level listener (see chat-shared/templates-popover for
- * the precedent).
+ * Ships four popover-class affordances:
+ *   - Notifications / Messages / User menu — sibling popovers
+ *     (`openPanel` state); only one open at a time.
+ *   - Global search — controlled input + portaled dropdown anchored
+ *     to the input. Coordinated bidirectionally with the other three
+ *     so only one of the four is ever open.
+ *
+ * Each popover handles its own Esc + click-outside via document-level
+ * listeners (see chat-shared/templates-popover for the original
+ * precedent; `RowOverflowMenu` for the portal pattern that the
+ * search dropdown follows).
  *
  * Badge counts read live from `topbar-feed.ts` so they stay in sync
  * with the data the panels display (no more hardcoded "5" / "3").
  *
- * Source HTML: lines 13847–13894 (visual). The popovers themselves are
- * post-conversion polish — source HTML never built them.
+ * Source HTML: lines 13847–13894 (visual). The popovers + search
+ * functionality are post-conversion polish — source HTML rendered the
+ * search input as inert.
  *
- * Client Component (popover state).
+ * Client Component (popover state + search state).
  */
 
 type OpenPanel = "notifications" | "messages" | "user" | null;
@@ -35,9 +44,54 @@ type OpenPanel = "notifications" | "messages" | "user" | null;
 export function Topbar() {
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
 
-  const toggle = (panel: Exclude<OpenPanel, null>) =>
-    setOpenPanel((prev) => (prev === panel ? null : panel));
-  const close = () => setOpenPanel(null);
+  /* Global search — query + dropdown state. The hook stays decoupled
+     from `openPanel` (the other 3 popovers' state machine); this
+     component wires bidirectional coordination so opening any one of
+     the four closes the other three. */
+  const search = useSearch();
+  const searchAnchorRef = useRef<HTMLLabelElement | null>(null);
+
+  /* Toggle a non-search popover. ALSO closes the search dropdown so
+     only one of the four affordances is open at any time. */
+  const toggle = useCallback(
+    (panel: Exclude<OpenPanel, null>) => {
+      search.closeDropdown();
+      setOpenPanel((prev) => (prev === panel ? null : panel));
+    },
+    [search],
+  );
+
+  const close = useCallback(() => setOpenPanel(null), []);
+
+  /* Open the search dropdown — ALSO closes any open non-search
+     popover. Called from the input's focus / change handlers. */
+  const handleOpenSearch = useCallback(() => {
+    setOpenPanel(null);
+    search.openDropdown();
+  }, [search]);
+
+  /* Esc inside the input — closes the dropdown and blurs the input
+     to clear focus state. */
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        search.closeDropdown();
+        e.currentTarget.blur();
+      }
+    },
+    [search],
+  );
+
+  /* Input change — update query AND ensure dropdown is open so the
+     "Esc-then-type-again" flow reopens cleanly. */
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      search.setQuery(e.target.value);
+      if (!search.isOpen) handleOpenSearch();
+    },
+    [search, handleOpenSearch],
+  );
 
   return (
     <header className="bg-cream/90 border-line-soft sticky top-9 z-[6] flex items-center justify-between gap-4 border-b px-4 py-2.5 backdrop-blur-md backdrop-saturate-[140%] sm:px-6">
@@ -58,12 +112,25 @@ export function Topbar() {
         </Link>
       </div>
 
-      <label className="bg-cream border-line-soft hover:border-line focus-within:border-ink relative hidden min-w-0 flex-1 items-center gap-2 rounded-md border px-3 py-2 transition-colors md:flex md:max-w-xl">
+      <label
+        ref={searchAnchorRef}
+        data-topbar-trigger="search"
+        className="bg-cream border-line-soft hover:border-line focus-within:border-ink relative hidden min-w-0 flex-1 items-center gap-2 rounded-md border px-3 py-2 transition-colors md:flex md:max-w-xl"
+      >
         <Search className="text-ink-mute h-4 w-4 flex-shrink-0" aria-hidden="true" />
         <span className="sr-only">Search</span>
         <input
           type="search"
+          role="combobox"
           placeholder="Search candidates, clients, jobs, disputes…"
+          value={search.query}
+          onChange={handleInputChange}
+          onFocus={handleOpenSearch}
+          onKeyDown={handleInputKeyDown}
+          aria-expanded={search.isOpen}
+          aria-controls="topbar-search-results"
+          aria-autocomplete="list"
+          autoComplete="off"
           className="text-ink placeholder:text-ink-mute min-w-0 flex-1 bg-transparent text-[13.5px] outline-none"
         />
         <kbd
@@ -73,6 +140,15 @@ export function Topbar() {
           ⌘ K
         </kbd>
       </label>
+
+      <TopbarSearchDropdown
+        isOpen={search.isOpen}
+        onClose={search.closeDropdown}
+        anchorRef={searchAnchorRef}
+        query={search.query}
+        results={search.results}
+        matchCounts={search.matchCounts}
+      />
 
       <div className="flex flex-shrink-0 items-center gap-1.5">
         {/* Notifications */}
