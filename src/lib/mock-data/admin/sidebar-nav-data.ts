@@ -183,9 +183,9 @@ export const SIDEBAR_NAV = {
         {
           id: 'refunds',
           label: 'Refunds',
-          pathname: '#refunds',
+          pathname: '/admin/finance/refunds',
           icon: RefundsNavIcon,
-          count: '8',
+          count: '4',
           countType: 'warn',
         },
         {

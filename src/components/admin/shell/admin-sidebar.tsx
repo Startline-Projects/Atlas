@@ -141,6 +141,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/finance/fees-pricing';
     }
 
+    // Refunds: single flat route
+    if (itemPathname === '/admin/finance/refunds') {
+      return pathname === '/admin/finance/refunds';
+    }
+
     return pathname === itemPathname;
   };
 
