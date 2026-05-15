@@ -17,6 +17,7 @@
   --lime: var(--color-lime);
   --lime-deep: var(--color-lime-deep);
   --lime-text: var(--color-lime-text);
+  --lime-bg: var(--color-lime-bg);
   --amber: var(--color-amber);
   --amber-bg: var(--color-amber-bg);
   --navy: var(--color-navy);
@@ -33,12 +34,6 @@
   --r-md: var(--radius-md);
   --r-lg: var(--radius-lg);
   --r-xl: var(--radius-xl);
-
-  /* Shadow aliases */
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-card: var(--shadow-card);
 }
 @theme {
   --color-cream: #f3eee3;
@@ -56,6 +51,7 @@
   --color-line-strong: #c4bca9;
   --color-lime: #d6f24d;
   --color-lime-deep: #b9d92f;
+  --color-lime-bg: rgba(185, 217, 47, 0.12);
   --color-amber: #e8763a;
   --color-amber-bg: #fcefe3;
   --color-navy: #16213e;
@@ -75,6 +71,9 @@
      yellow-priority urgent-card type label and lime-tinted badges. */
   --color-lime-text: #5a6b14;
 
+  --restricted: #8b1a1a;
+  --restricted-bg: #f5e2dd;
+
   --logged: #6b6860;
   --logged-bg: rgba(14, 14, 12, 0.06);
 
@@ -88,10 +87,11 @@
     0 2px 4px rgba(14, 14, 12, 0.06), 0 8px 24px rgba(14, 14, 12, 0.08);
   --shadow-lg:
     0 4px 8px rgba(14, 14, 12, 0.06), 0 24px 48px rgba(14, 14, 12, 0.12);
-  /* Three-layer card lift used by specialist console cards. */
+  /* Three-layer card lift used by specialist console cards.
+     Opacities bumped 3/4/9% → 5/6/12% for visibility on cream bg (Phase 7a drift fix 3). */
   --shadow-card:
-    0 1px 0 rgba(14, 14, 12, 0.03), 0 2px 6px rgba(14, 14, 12, 0.04),
-    0 24px 60px rgba(14, 14, 12, 0.09);
+    0 1px 0 rgba(14, 14, 12, 0.05), 0 2px 8px rgba(14, 14, 12, 0.06),
+    0 24px 60px rgba(14, 14, 12, 0.12);
 }
 @theme inline {
   --font-display: var(--font-display-family), "Times New Roman", serif;
@@ -535,6 +535,9 @@
   bottom: 0;
   width: 2px;
   background: var(--color-lime-deep);
+}
+.animate-pulse-amber {
+  animation: pulse-amber 2s ease-in-out infinite;
 }
 .animate-pulse-amber {
   animation: pulse-amber 2s ease-in-out infinite;

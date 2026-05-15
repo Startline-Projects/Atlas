@@ -10,9 +10,11 @@ interface UsersToolbarProps {
     action: string;
     variant?: 'primary';
   };
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-export function UsersToolbar({ filters, searchPlaceholder = 'Search candidates by name, email, or ID…', exportLabel = 'Export CSV', primaryCta }: UsersToolbarProps) {
+export function UsersToolbar({ filters, searchPlaceholder = 'Search candidates by name, email, or ID…', exportLabel = 'Export CSV', primaryCta, searchQuery = '', onSearchChange }: UsersToolbarProps) {
   return (
     <div className="flex items-center gap-[10px] mb-[12px] flex-wrap">
       {/* Search Input */}
@@ -37,7 +39,8 @@ export function UsersToolbar({ filters, searchPlaceholder = 'Search candidates b
           placeholder={searchPlaceholder}
           aria-label="Search"
           className="w-full px-[14px] py-[8px] pl-[34px] text-[13px] bg-[var(--color-paper)] border border-[var(--color-line)] rounded-[999px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-mute)] placeholder:opacity-70 transition-all duration-150 ease focus:outline-none focus:border-[var(--color-ink)] focus:bg-white"
-          readOnly
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
         />
       </div>
 

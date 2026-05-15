@@ -58,6 +58,89 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || (pathname === '/admin/users' && hash === '#candidates');
     }
 
+    // Special case for Clients: also match /admin/users/clients/[id] detail routes
+    if (itemPathname === '/admin/users/clients') {
+      return pathname === '/admin/users/clients'
+          || pathname.startsWith('/admin/users/clients/');
+    }
+
+    // Special case for Specialists: also match /admin/users/specialists/[id] detail routes
+    if (itemPathname === '/admin/users/specialists') {
+      return pathname === '/admin/users/specialists'
+          || pathname.startsWith('/admin/users/specialists/');
+    }
+
+    // Special case for Managers: also match /admin/users/managers/[id] detail routes
+    if (itemPathname === '/admin/users/managers') {
+      return pathname === '/admin/users/managers'
+          || pathname.startsWith('/admin/users/managers/');
+    }
+
+    // Special case for Admins: master-detail at /admin/users/admins (no descendant routes — selectedAdminId is local state)
+    if (itemPathname === '/admin/users/admins') {
+      return pathname === '/admin/users/admins'
+          || pathname.startsWith('/admin/users/admins/');
+    }
+
+    // Active Engagements: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/engagements') {
+      return pathname === '/admin/operations/engagements'
+          || pathname.startsWith('/admin/operations/engagements/');
+    }
+
+    // Job Postings: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/jobs') {
+      return pathname === '/admin/operations/jobs'
+          || pathname.startsWith('/admin/operations/jobs/');
+    }
+
+    // Disputes: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/disputes') {
+      return pathname === '/admin/operations/disputes'
+          || pathname.startsWith('/admin/operations/disputes/');
+    }
+
+    // Reviews: list view + detail descendant routes
+    if (itemPathname === '/admin/operations/reviews') {
+      return pathname === '/admin/operations/reviews'
+          || pathname.startsWith('/admin/operations/reviews/');
+    }
+
+    // Fraud & Abuse: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/fraud-abuse') {
+      return pathname === '/admin/trust-safety/fraud-abuse'
+          || pathname.startsWith('/admin/trust-safety/fraud-abuse/');
+    }
+
+    // Security Incidents: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/security-incidents') {
+      return pathname === '/admin/trust-safety/security-incidents'
+          || pathname.startsWith('/admin/trust-safety/security-incidents/');
+    }
+
+    // Suspicious Activity: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/suspicious-activity') {
+      return pathname === '/admin/trust-safety/suspicious-activity'
+          || pathname.startsWith('/admin/trust-safety/suspicious-activity/');
+    }
+
+    // Suspensions & Bans: list view + detail descendant routes
+    if (itemPathname === '/admin/trust-safety/suspensions-bans') {
+      return pathname === '/admin/trust-safety/suspensions-bans'
+          || pathname.startsWith('/admin/trust-safety/suspensions-bans/');
+    }
+
+    // Transactions: list view + detail descendant routes
+    if (itemPathname === '/admin/finance/transactions') {
+      return pathname === '/admin/finance/transactions'
+          || pathname.startsWith('/admin/finance/transactions/');
+    }
+
+    // Fees & Pricing: single flat route
+    if (itemPathname === '/admin/finance/fees-pricing') {
+      return pathname === '/admin/finance/fees-pricing';
+    }
+
     return pathname === itemPathname;
   };
 
