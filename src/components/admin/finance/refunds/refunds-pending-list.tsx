@@ -1,7 +1,24 @@
+'use client';
+
+import { useState } from 'react';
 import { pendingRefunds } from '@/lib/mock-data/admin/refunds-data';
 import { RefundPendingCard } from './refund-pending-card';
 
+const filterChips = [
+  { id: 'all', label: 'All', count: '4' },
+  { id: 'dispute', label: 'Dispute', count: '1' },
+  { id: 'quality', label: 'Quality', count: '1' },
+  { id: 'cancellation', label: 'Cancel', count: '1' },
+  { id: 'fraud', label: 'Fraud', count: '1' },
+];
+
 export function RefundsPendingList() {
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const filtered = activeFilter === 'all'
+    ? pendingRefunds
+    : pendingRefunds.filter((r) => r.reasonChip === activeFilter);
+
   return (
     <section className="mb-[28px]">
       {/* Section header */}
@@ -14,20 +31,39 @@ export function RefundsPendingList() {
             awaiting admin approval · 48h SLA from request · ordered by time pending
           </div>
         </div>
-        <div className="flex gap-[8px] flex-wrap">
-          {/* Filter chips — placeholder for now */}
-          <button
-            type="button"
-            className="inline-flex items-center gap-[6px] py-[6px] px-[12px] font-mono text-[10px] font-semibold tracking-[0.04em] bg-[var(--ink)] text-[var(--paper)] border border-[var(--ink)] rounded-full cursor-pointer whitespace-nowrap transition-all"
-          >
-            All <span className="opacity-80">4</span>
-          </button>
+        <div className="inline-flex gap-[6px] flex-wrap">
+          {filterChips.map((chip) => {
+            const isActive = activeFilter === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setActiveFilter(chip.id)}
+                className={`inline-flex items-center gap-[6px] py-[6px] px-[12px] font-body text-[12px] font-medium border rounded-full cursor-pointer tracking-[-0.005em] transition-all ${
+                  isActive
+                    ? 'bg-[var(--ink)] text-[var(--paper)] border-[var(--ink)] font-semibold'
+                    : 'bg-[var(--paper-deep)] text-[var(--ink-mute)] border-[var(--line)] hover:text-[var(--ink)] hover:border-[var(--line-strong)]'
+                }`}
+              >
+                {chip.label}
+                <span
+                  className={`font-mono text-[9.5px] py-[1px] px-[5px] rounded-[3px] font-semibold tracking-[0.04em] ${
+                    isActive
+                      ? 'bg-[rgba(251,248,242,0.18)] text-[var(--paper)]'
+                      : 'bg-[var(--cream-deep)] text-[var(--ink-mute)]'
+                  }`}
+                >
+                  {chip.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Pending cards list */}
       <div className="flex flex-col gap-[14px]">
-        {pendingRefunds.map((refund) => (
+        {filtered.map((refund) => (
           <RefundPendingCard key={refund.id} refund={refund} />
         ))}
       </div>
