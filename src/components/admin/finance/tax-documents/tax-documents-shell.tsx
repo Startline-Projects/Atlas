@@ -6,11 +6,12 @@ import { TaxDocumentsSectionNav } from './tax-documents-section-nav';
 import { TaxDocumentsStatsStrip } from './tax-documents-stats-strip';
 import { TdFilingPipeline } from './sections/td-filing-pipeline';
 import { TdJurisdictionGrid } from './sections/td-jurisdiction-grid';
-import { TdSectionStub } from './sections/td-section-stub';
+import { TdCandidateDocuments } from './sections/td-candidate-documents';
+import { TdBulkOperations } from './sections/td-bulk-operations';
+import { TdFilingCalendar } from './sections/td-filing-calendar';
 import {
   yearTabs,
   taxDocsSectionNav,
-  sectionStubs,
 } from '@/lib/mock-data/admin/tax-documents-data';
 
 export function TaxDocumentsShell() {
@@ -28,23 +29,11 @@ export function TaxDocumentsShell() {
 
       <TdJurisdictionGrid />
 
-      <TdSectionStub
-        id="td-section-documents"
-        title={sectionStubs.documents.title}
-        meta={sectionStubs.documents.meta}
-      />
+      <TdCandidateDocuments />
 
-      <TdSectionStub
-        id="td-section-bulk"
-        title={sectionStubs.bulk.title}
-        meta={sectionStubs.bulk.meta}
-      />
+      <TdBulkOperations />
 
-      <TdSectionStub
-        id="td-section-calendar"
-        title={sectionStubs.calendar.title}
-        meta={sectionStubs.calendar.meta}
-      />
+      <TdFilingCalendar />
 
       {/* Scoped pulse-fr keyframe for meta-pulse dots */}
       <style>{`
