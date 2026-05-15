@@ -146,6 +146,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/finance/refunds';
     }
 
+    // Tax Documents: single flat route
+    if (itemPathname === '/admin/finance/tax-documents') {
+      return pathname === '/admin/finance/tax-documents';
+    }
+
     return pathname === itemPathname;
   };
 

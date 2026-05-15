@@ -197,7 +197,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'tax',
           label: 'Tax Documents',
-          pathname: '#tax',
+          pathname: '/admin/finance/tax-documents',
           icon: TaxNavIcon,
         },
       ],
