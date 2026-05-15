@@ -45,10 +45,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       data-scroll-behavior="smooth"
       className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable}`}
     >
-      <body className="bg-cream text-ink min-h-screen font-body antialiased">
+      <body 
+        suppressHydrationWarning
+        className="bg-cream text-ink min-h-screen font-body antialiased"
+      >
         {children}
       </body>
     </html>
