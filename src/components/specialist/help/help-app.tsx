@@ -45,7 +45,13 @@ export function HelpApp() {
         subtitle="Search the Atlas knowledge base, browse training modules, or talk to a human."
       />
 
-      <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-7 px-9 pt-7 pb-16 max-md:px-5 max-md:pb-10">
+      {/* Full-width content sections — source HTML's `.help-main` /
+          `.help-section` carry NO centering or max-width cap; the
+          1080px cap was build-introduced during the conversion and
+          produces the same "narrower island in empty space" effect
+          as daily-activity's feed pre-fix. Reverts to source intent.
+          See CONVERSION_LOG. */}
+      <div className="flex flex-col gap-7 px-9 pt-7 pb-16 max-md:px-5 max-md:pb-10">
         {/* Hero search */}
         <div className="flex flex-col gap-3">
           <HelpSearch />

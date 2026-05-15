@@ -758,3 +758,23 @@ export const CLIENT_HEADER_SUBTITLE = (() => {
   const totalSpend = managedClients.reduce((sum, c) => sum + c.totalSpendDollars, 0);
   return `${managedClients.length} client companies in your VA category · $${Math.round(totalSpend / 1000)}K lifetime spend`;
 })();
+
+/* ============================================================
+   Lookup helpers — used by `/specialist/clients/[id]/...`
+   (Session 9 Checkpoint 1). Mirrors the candidate-profile pattern
+   at `candidate-profile.ts:546-557` literally.
+   ============================================================ */
+
+/** Resolve a canonical `client-*` id to its `ManagedClient`. Returns
+ *  `undefined` when the id doesn't match — the dynamic route then
+ *  calls Next.js `notFound()`. */
+export function getManagedClient(id: string): ManagedClient | undefined {
+  return managedClients.find((c) => c.id === id);
+}
+
+/** Static list of all valid client ids — used by
+ *  `generateStaticParams()` on `/specialist/clients/[id]` and its
+ *  Session 9 child routes (Contracts / Briefs / Hires / Talent /
+ *  Tags / Settings, as those routes land in C2 / C3). */
+export const ALL_MANAGED_CLIENT_IDS: ReadonlyArray<string> =
+  managedClients.map((c) => c.id);

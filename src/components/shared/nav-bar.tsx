@@ -13,16 +13,11 @@ type NavBarProps = {
 };
 
 const NAV_LINKS = [
-  // TODO: link to /browse route
-  { label: "Find Talent", href: "/" },
-  // TODO: link to /for-businesses route
-  { label: "For Businesses", href: "/" },
-  // TODO: link to /for-candidates route
-  { label: "For Candidates", href: "/" },
-  // TODO: link to /how-it-works route
-  { label: "How It Works", href: "/" },
-  // TODO: link to /pricing route
-  { label: "Pricing", href: "/" },
+  { label: "Find Talent", href: "/find-talent" },
+  { label: "For Businesses", href: "/for-businesses" },
+  { label: "For Candidates", href: "/for-candidates" },
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "Pricing", href: "/pricing" },
 ];
 
 export function NavBar({ onSignupClick, onSigninClick }: NavBarProps) {
@@ -51,7 +46,7 @@ export function NavBar({ onSignupClick, onSigninClick }: NavBarProps) {
             <Link
               key={link.label}
               href={link.href}
-              className="text-ink-soft hover:bg-cream-deep rounded-sm px-[14px] py-2 text-sm font-medium transition-colors"
+              className="text-ink-soft italic hover:text-ink hover:scale-110 rounded-sm px-[14px] py-2 text-sm font-semibold transition-all duration-150"
             >
               {link.label}
             </Link>
@@ -59,16 +54,19 @@ export function NavBar({ onSignupClick, onSigninClick }: NavBarProps) {
         </div>
 
         <div className="flex items-center gap-[10px]">
-          <Button
-            variant="ghost"
+          <Button 
+            variant="ghost" 
             onClick={onSigninClick}
-            className="hidden md:inline-flex"
+            className="hidden md:inline-flex text-ink font-medium"
           >
             Sign In
           </Button>
-          <Button variant="primary" onClick={onSignupClick}>
+          <button 
+            onClick={onSignupClick}
+            className="bg-ink text-amber font-display italic text-[17px] font-bold hover:scale-[1.04] transition-transform px-6 py-3 rounded-full shadow-sm"
+          >
             Sign Up
-          </Button>
+          </button>
           <button
             type="button"
             className="hover:bg-cream-deep flex h-10 w-10 items-center justify-center rounded-sm md:hidden"

@@ -8,52 +8,47 @@ const COLUMNS: ReadonlyArray<{
   {
     title: "Clients",
     links: [
-      { label: "Browse Talent", href: "/" },
-      { label: "Post a Job", href: "/" },
-      { label: "For Businesses", href: "/" },
-      { label: "Pricing", href: "/" },
-      { label: "Success Stories", href: "/" },
+      { label: "Browse Talent", href: "/find-talent" },
+      { label: "For Businesses", href: "/for-businesses" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Success Stories", href: "#" },
     ],
   },
   {
     title: "Candidates",
     links: [
-      { label: "Apply to Join", href: "/" },
-      { label: "For Candidates", href: "/" },
-      { label: "How Vetting Works", href: "/" },
-      { label: "Candidate Stories", href: "/" },
-      { label: "Requirements", href: "/" },
+      { label: "Apply to Join", href: "/apply" },
+      { label: "For Candidates", href: "/for-candidates" },
+      { label: "How It Works", href: "/how-it-works" },
+      { label: "Talent Network", href: "/talent-network" },
     ],
   },
   {
     title: "Resources",
     links: [
-      { label: "A-Player Report", href: "/" },
-      { label: "Hiring Guides", href: "/" },
-      { label: "Blog", href: "/" },
-      { label: "Help Center", href: "/" },
-      { label: "Trust & Safety", href: "/" },
+      { label: "A-Player Report", href: "/reports" },
+      { label: "Hiring Guides", href: "/blog" },
+      { label: "Blog", href: "/blog" },
+      { label: "Help Center", href: "/help" },
+      { label: "Trust & Safety", href: "/trust" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", href: "/" },
-      { label: "Careers", href: "/" },
-      { label: "Press", href: "/" },
-      { label: "Contact", href: "/" },
-      { label: "Partners", href: "/" },
+      { label: "About", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Contact", href: "/contact" },
+      { label: "Partners", href: "#" },
     ],
   },
 ];
 
 const LEGAL_LINKS = [
-  { label: "Terms", href: "/" },
-  { label: "Privacy", href: "/" },
-  { label: "Cookies", href: "/" },
-  { label: "Do Not Sell or Share", href: "/" },
-  { label: "Accessibility", href: "/" },
-  { label: "All legal", href: "/" },
+  { label: "Terms", href: "/legal/terms" },
+  { label: "Privacy", href: "/legal/privacy" },
+  { label: "Cookies", href: "/legal/cookies" },
+  { label: "All legal", href: "/legal" },
 ];
 
 function XIcon() {
@@ -107,7 +102,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-12 pb-14 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="col-span-2 md:col-span-1">
             <Logo className="text-paper" />
-            <p className="text-paper/60 mt-4 max-w-[280px] text-[14px] leading-[1.55]">
+            <p className="text-[#b5b1a7] mt-4 max-w-[280px] text-[14px] leading-[1.55]">
               The global talent marketplace for companies who actually want
               A-players.
             </p>
@@ -115,21 +110,21 @@ export function Footer() {
               <a
                 href="#"
                 aria-label="X (Twitter)"
-                className="text-paper/60 hover:text-paper border-paper/20 hover:border-paper/40 flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+                className="text-[#ddd] hover:bg-lime hover:text-ink border-[#333] hover:border-lime flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-150"
               >
                 <XIcon />
               </a>
               <a
                 href="#"
                 aria-label="LinkedIn"
-                className="text-paper/60 hover:text-paper border-paper/20 hover:border-paper/40 flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+                className="text-[#ddd] hover:bg-lime hover:text-ink border-[#333] hover:border-lime flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-150"
               >
                 <LinkedInIcon />
               </a>
               <a
                 href="#"
                 aria-label="Instagram"
-                className="text-paper/60 hover:text-paper border-paper/20 hover:border-paper/40 flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
+                className="text-[#ddd] hover:bg-lime hover:text-ink border-[#333] hover:border-lime flex h-9 w-9 items-center justify-center rounded-full border transition-all duration-150"
               >
                 <InstagramIcon />
               </a>
@@ -138,15 +133,15 @@ export function Footer() {
 
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h4 className="text-paper mb-4 text-[13px] font-semibold tracking-wide uppercase">
+              <h4 className="font-mono text-[11px] tracking-[0.14em] text-[#888] mb-6 uppercase">
                 {col.title}
               </h4>
-              <ul className="space-y-2.5 text-[14px]">
+              <ul className="space-y-3 text-[14px]">
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-paper/60 hover:text-paper transition-colors"
+                      className="text-[#ddd] hover:text-lime transition-colors"
                     >
                       {link.label}
                     </Link>

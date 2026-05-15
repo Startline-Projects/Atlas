@@ -58,19 +58,16 @@ import { EscalationModal } from "./escalation-modal";
  * Project the lite row + state into the QueueRail-required `filterTags`
  * shape ("all" + filterKey). Keeps the rail generic and the dispute
  * mock data small.
+ *
+ * Note: this used to be a module-level const (`RAIL_ROWS`), but the
+ * Draft overlay (`draftIds` state in `DisputesApp`) requires the row
+ * mapping to be recomputed per render. Lifted into a `useMemo` inside
+ * the component. The static `disputes` array stays untouched —
+ * drafted state is purely a session overlay.
  */
 type RailRow = DisputeRowLite & {
   filterTags: ReadonlyArray<string>;
 };
-
-function toRailRow(d: Dispute): RailRow {
-  return {
-    ...d,
-    filterTags: ["all", d.filterKey],
-  };
-}
-
-const RAIL_ROWS: ReadonlyArray<RailRow> = disputes.map(toRailRow);
 
 const FILTERS = DISPUTE_FILTERS.map((f) => ({ key: f.key, label: f.label }));
 
@@ -88,8 +85,35 @@ export function DisputesApp() {
   /* Escalation flow state */
   const [escalationOpen, setEscalationOpen] = useState(false);
 
+  /* Session-only draft overlay — set of dispute IDs the specialist
+     has clicked "Save as draft" on. Resets on page reload (same
+     convention as candidate-chat localAppends, integrations-section
+     connected toggle, security-section sessions, sourcing addState).
+     Drafted disputes leave the "Open" bucket and enter the "Draft"
+     bucket — mutually exclusive — per the audit's Q1 decision. */
+  const [draftIds, setDraftIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
   /* Single queued-flash for ALL dispute action acknowledgements. */
   const { flash, fireQueuedFlash } = useQueuedFlash();
+
+  /* Rail row computation lifted into the component so the draftIds
+     overlay propagates to the rail's filter tags + the per-row
+     `isDraft` flag on each render. */
+  const railRows = useMemo<ReadonlyArray<RailRow>>(() => {
+    return disputes.map((d) => {
+      const isDraft = draftIds.has(d.id);
+      return {
+        ...d,
+        isDraft,
+        /* Mutually-exclusive bucket: drafted → "draft"; otherwise the
+           dispute's static filterKey. All disputes always appear in
+           "all". */
+        filterTags: isDraft ? ["all", "draft"] : ["all", d.filterKey],
+      };
+    });
+  }, [draftIds]);
 
   const handleSelect = useCallback(
     (id: string) => {
@@ -119,6 +143,33 @@ export function DisputesApp() {
     [activeDispute, fireQueuedFlash],
   );
 
+  /* Save-as-draft handler — lifted here from DisputeDetail (was just
+     a flash; now also mutates `draftIds`). Idempotent in state — set
+     re-add is a no-op. Button is disabled when already drafted so this
+     normally only fires once per dispute, but defensive re-saves are
+     safe. */
+  const handleSaveDraft = useCallback(
+    (dispute: Dispute) => {
+      setDraftIds((prev) => {
+        if (prev.has(dispute.id)) return prev;
+        const next = new Set(prev);
+        next.add(dispute.id);
+        return next;
+      });
+      fireQueuedFlash(
+        `Draft saved for ${dispute.caseId} — decision drafts service not yet wired`,
+        { tone: "warn" },
+      );
+    },
+    [fireQueuedFlash],
+  );
+
+  /* Active dispute's draft state, threaded to DisputeDetail so the
+     header + decision bar can render the override pill / button label. */
+  const activeIsDraft = activeDispute
+    ? draftIds.has(activeDispute.id)
+    : false;
+
   return (
     <>
       <QueueShell
@@ -130,7 +181,7 @@ export function DisputesApp() {
             subtitle={DISPUTES_HEADER_SUBTITLE}
             filters={FILTERS}
             defaultFilterKey="all"
-            candidates={RAIL_ROWS}
+            candidates={railRows}
             selectedId={activeDispute?.id ?? ""}
             onSelect={handleSelect}
             renderRow={(row) => <DisputeRow row={row} />}
@@ -144,7 +195,9 @@ export function DisputesApp() {
         {activeDispute ? (
           <DisputeDetail
             dispute={activeDispute}
+            isDraft={activeIsDraft}
             onRequestEscalate={handleRequestEscalate}
+            onSaveDraft={handleSaveDraft}
             fireQueuedFlash={fireQueuedFlash}
           />
         ) : (

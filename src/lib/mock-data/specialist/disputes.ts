@@ -106,8 +106,18 @@ export const DISPUTE_DECISION_LABEL: Record<DisputeDecisionOption, string> = {
   "escalate-to-admin": "Escalate to admin",
 };
 
-/** HTML filter-chip key set (narrower than `DisputeState`). */
-export type DisputeFilterKey = "all" | "open" | "resolved";
+/**
+ * HTML filter-chip key set (narrower than `DisputeState`).
+ *
+ * `"draft"` is added as an overlay flag — it is NOT a backend-modeled
+ * state in `DisputeState`. Drafted disputes are tracked in a
+ * component-state `Set<string>` of dispute IDs in the orchestrator;
+ * the chip represents session-only specialist prep work. This honors
+ * the standing convention: transient session-only UI workflow states
+ * live as component state overlays; backend-modeled states stay in
+ * the canonical `DisputeState` union.
+ */
+export type DisputeFilterKey = "all" | "open" | "draft" | "resolved";
 
 /**
  * Maps a full state to the visible filter chip it belongs to. "Escalated"
@@ -284,6 +294,14 @@ export type DisputeRowLite = {
   amountLabel?: string;
   /** Drives the bold name + dot in the row when not yet read. */
   unread?: boolean;
+  /**
+   * Session-only overlay flag — true when the specialist has clicked
+   * "Save as draft" on this dispute. Set at render time by the
+   * orchestrator from its `draftIds` state; NOT a property of the
+   * static mock data. Drives the DRAFT pill override on the row and
+   * detail header. See `disputes-app.tsx`.
+   */
+  isDraft?: boolean;
 };
 
 export type Dispute = DisputeRowLite & {
@@ -329,6 +347,11 @@ export type DisputeFilterDef = {
 export const DISPUTE_FILTERS: ReadonlyArray<DisputeFilterDef> = [
   { key: "all", label: "All" },
   { key: "open", label: "Open" },
+  /* "Draft" sits between Open and Resolved — natural workflow order
+     (incoming → drafted decision → committed). Count is 0 on first
+     load (drafts are session-only); flips up when the specialist hits
+     Save-as-draft on any open dispute. */
+  { key: "draft", label: "Draft" },
   { key: "resolved", label: "Resolved" },
 ];
 

@@ -4575,3 +4575,1456 @@ before deferring.
 - Convention locked: source HTML `data-route` is authoritative for nav items
 
 ---
+
+## Disputes — Draft filter chip + Save-as-draft local state wiring
+
+**Branch:** `talent-specialist` (first commit on this branch).
+**Surface:** `/specialist/disputes`.
+**Scope:** Add a "Draft" filter chip to the rail and wire the
+decision bar's "Save as draft" button to actually flip the dispute
+into a draft state — local component state only; no mock data
+record changes.
+
+### What changed (UX)
+
+Before: "Save as draft" fired a warn-tone flash and nothing else —
+the dispute stayed in Open. Filter chips were `All / Open /
+Resolved` (3 chips).
+
+After: Filter chips are `All / Open / Draft / Resolved` (4 chips).
+Clicking "Save as draft" on an open dispute:
+1. Fires the warn-tone flash (unchanged copy)
+2. Adds the dispute id to a session-only `draftIds: Set<string>`
+3. Dispute leaves the Open bucket, enters the Draft bucket
+   (mutually exclusive — drafted disputes still appear under All
+   but no longer under Open)
+4. Row pill changes from state-driven (`OPEN` red) to amber `DRAFT`
+5. Detail header pill also flips to amber `DRAFT`
+6. Decision bar button changes from "Save as draft" to "Drafted ✓"
+   with amber-outline disabled styling
+
+Reload resets — same session-only persistence convention as
+`candidate-chat.localAppends`, `integrations-section.items`,
+`security-section.sessions`, `sourcing.addState`.
+
+### Convention locked — Session overlays vs. backend states
+
+**Transient session-only UI workflow states** (drafts, local
+appends, applied tags, connected toggles, etc.) live as **component
+state overlays** — not in the mock data type unions. **Backend-
+modeled states** (which the future service layer will know about)
+stay in the canonical type union.
+
+Concrete decision for disputes:
+- `DisputeState` (8 backend-modeled values: `open` /
+  `in-progress` / `under-review` / `escalated` / 4 resolved variants)
+  stays **untouched**. The service layer will eventually own these.
+- `"draft"` is added to `DisputeFilterKey` only (UI-tier chip
+  vocabulary). The overlay set `draftIds` in the orchestrator carries
+  per-dispute draft state. Reload resets.
+- `DisputeRowLite` gains an optional `isDraft?: boolean` field —
+  populated at render time by the orchestrator from `draftIds`.
+  Static mock-data records never carry `isDraft`.
+
+Rationale: extending `DisputeState` to include `"draft"` would have
+required cascading changes to `STATE_PILL` mappings, the static
+`filterKey` field on every dispute, plus a backend-layer story for
+something that's fundamentally a specialist's local prep work.
+Overlay-set approach keeps the type union honest about what the
+service layer will eventually own.
+
+### Architecture — orchestrator state + lifted row mapping
+
+**`DisputesApp`** owns the overlay:
+
+```ts
+const [draftIds, setDraftIds] = useState<ReadonlySet<string>>(
+  () => new Set(),
+);
+```
+
+The previously module-level `RAIL_ROWS` const is gone — replaced by
+a `useMemo` that recomputes on `draftIds` change:
+
+```ts
+const railRows = useMemo<ReadonlyArray<RailRow>>(() => {
+  return disputes.map((d) => {
+    const isDraft = draftIds.has(d.id);
+    return {
+      ...d,
+      isDraft,
+      filterTags: isDraft ? ["all", "draft"] : ["all", d.filterKey],
+    };
+  });
+}, [draftIds]);
+```
+
+Mutually-exclusive bucketing: drafted disputes get `["all", "draft"]`,
+not `["all", "open", "draft"]`. The user's Q1 decision: drafts leave
+Open to signal "where attention is needed" — drafts represent prep
+work, not active queue.
+
+**Save-as-draft handler lifted** from `DisputeDetail` to `DisputesApp`:
+
+```ts
+const handleSaveDraft = useCallback((dispute: Dispute) => {
+  setDraftIds((prev) => {
+    if (prev.has(dispute.id)) return prev;
+    const next = new Set(prev);
+    next.add(dispute.id);
+    return next;
+  });
+  fireQueuedFlash(
+    `Draft saved for ${dispute.caseId} — decision drafts service not yet wired`,
+    { tone: "warn" },
+  );
+}, [fireQueuedFlash]);
+```
+
+`DisputeDetail` accepts `isDraft: boolean` + `onSaveDraft: (dispute) => void`
+props. The detail pane no longer constructs the flash internally — it
+forwards the click via `handleSaveDraftClick` which calls `onSaveDraft(dispute)`.
+
+### Pill rendering — DRAFT override in two sites
+
+`DisputeRow` (rail) and `DisputeHeader` (detail pane) both render
+status pills. Both gain the same override:
+
+```ts
+const pill = row.isDraft   // or `isDraft` prop on header
+  ? { label: "DRAFT", className: "bg-amber/15 text-amber" }
+  : STATUS_PILL[row.state];
+```
+
+Amber tone matches `in-progress` / `under-review` (warm "in motion,
+awaiting commit"). Distinct from open's red (`bg-danger-bg`) and
+resolved's green (`bg-success-bg`). Lock decision per Q3.
+
+### Decision bar — "Drafted ✓" disabled state
+
+When `isDraft === true`:
+- Button label: `Drafted ✓` (Check icon, not Save)
+- `disabled` true (same UX as `disabled={isResolved}`)
+- Visual: amber-outline + amber-tinted bg + amber text — matches
+  the pill color so the row, header, and button all read together
+- Mutually exclusive with `isResolved` (resolved disputes can't be
+  drafted; the button is already disabled by the prior rule)
+
+`Save-as-draft` re-clicking is impossible — Q2 decision (one-way
+Open → Draft for this commit; future polish could add a "Discard
+draft" affordance).
+
+### Filter chip count behavior
+
+`QueueRail`'s existing logic (`candidates.filter(c => c.filterTags.includes(f.key)).length`)
+handles this automatically. With drafted rows carrying `["all", "draft"]`:
+- Initial load: `All 7 / Open 4 / Draft 0 / Resolved 3`
+- After 1 save-as-draft: `All 7 / Open 3 / Draft 1 / Resolved 3`
+- After 2 save-as-drafts: `All 7 / Open 2 / Draft 2 / Resolved 3`
+
+No changes to `QueueRail` — it operates purely on the `filterTags`
+data the orchestrator produces.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `lib/mock-data/specialist/disputes.ts` | `DisputeFilterKey` adds `"draft"`; `DISPUTE_FILTERS` adds Draft chip between Open and Resolved; `DisputeRowLite` gains `isDraft?: boolean` |
+| `disputes/disputes-app.tsx` | `draftIds` state; `railRows` lifted to useMemo; `handleSaveDraft` handler; threads `isDraft` + `onSaveDraft` to DisputeDetail |
+| `disputes/dispute-detail.tsx` | Drops self-contained `handleSaveDraft`; accepts `isDraft` + `onSaveDraft` props; forwards to DisputeHeader + DisputeDecisionBar |
+| `disputes/dispute-decision-bar.tsx` | Accepts `isDraft?: boolean`; renders "Drafted ✓" + amber-outline disabled state; mutually exclusive with `isResolved` |
+| `disputes/dispute-row.tsx` | DRAFT pill override (amber-tinted) when `row.isDraft` |
+| `disputes/dispute-header.tsx` | DRAFT pill override; accepts `isDraft?: boolean` prop |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Mock data records (7 disputes) | ✓ Unchanged — no record mutations |
+| `DisputeState` 8-value union | ✓ Untouched — backend states intact |
+| `DISPUTES_HEADER_SUBTITLE` | ✓ Static — "4 open · 3 resolved" derived at module-init from static `filterKey` field (Q7 decision: subtitle is "case mix from static data", chips show live state) |
+| SLA chips on drafted disputes | ✓ Unchanged — SLA reflects backend state, draft is local prep (Q8) |
+| Escalate-to-admin modal | ✓ Unchanged — flow preserved |
+| Step 10 wirings (Export PDF, party-tile nav, evidence preview, "View all" span, breadcrumb Link) | ✓ All preserved |
+| Step 11 (reviews-approvals sticky stack) | ✓ Untouched |
+| Step 12 (performance/settings/help) | ✓ Untouched |
+| Step 13 (topbar user menu) | ✓ Untouched |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Manual verification walkthrough
+
+On `/specialist/disputes`:
+1. Initial chips: `All [7] / Open [4] / Draft [0] / Resolved [3]` ✓
+2. Click Sofia × Quill (open) → detail loads; button reads "Save as draft" (enabled) ✓
+3. Click "Save as draft" → warn flash; Sofia leaves Open, enters Draft; chips become `All [7] / Open [3] / Draft [1] / Resolved [3]`; row pill is amber `DRAFT`; header pill is amber `DRAFT`; button reads "Drafted ✓" (disabled, amber outline) ✓
+4. Click Marcus × Vertex → repeat → chips: `All [7] / Open [2] / Draft [2] / Resolved [3]` ✓
+5. Click Draft filter → rail shows only Sofia + Marcus ✓
+6. Click Open filter → rail shows the remaining 2 open disputes ✓
+7. Click Resolved → 3 resolved (unchanged) ✓
+8. Click All → all 7 ✓
+9. Reload → all resets to original state ✓
+
+### Summary
+
+- New Draft filter chip — 4-chip set in workflow order
+- Save-as-draft now actually mutates session state (was flash-only)
+- Drafted disputes leave Open, enter Draft, stay in All (mutually exclusive)
+- DRAFT pill rendered on row + detail header with amber tone
+- Decision bar button changes to "Drafted ✓" + disabled when drafted
+- **Convention locked: session-only overlays don't extend backend state unions**
+- First commit on `talent-specialist` branch
+
+---
+
+## Disputes decision bar — viewport-bottom anchoring on short content
+
+**Branch:** `talent-specialist`.
+**Surface:** `/specialist/disputes`.
+**Scope:** 1-line className change on `DisputeDetail` wrapper +
+inline comment. Disputes only — sibling queue surfaces deferred.
+
+### Bug
+
+User reported: on the disputes detail pane with short tab content
+(e.g. Timeline tab with 4 events), the sticky decision bar floated
+in the middle of empty space instead of anchoring to the viewport
+bottom. Long content was fine — `sticky bottom-0` engaged correctly
+during scroll. Short content was wrong — bar sat at its natural
+position (end of content stack), well above the viewport bottom.
+
+### Bug class — sticky-bottom requires height assertion
+
+`position: sticky` with `bottom: 0` ≠ "always anchor to viewport
+bottom." It means: stick to the bottom of the scroll viewport WHEN
+the element WOULD have scrolled off-screen below. If the element's
+natural position is already on-screen (short content, no scroll
+required), sticky doesn't engage and the element sits at its
+natural position — which for a flex-col-with-flex-1 layout means
+"directly after content, wherever that ends up."
+
+### Root cause — height chain collapse
+
+The chain from viewport to decision bar:
+
+```
+(specialist)/layout.tsx        min-h-[calc(100vh-36px-57px)] on grid container
+  └── <main className="min-w-0">    ← NO height passthrough
+      └── DisputesApp <fragment>
+          └── <QueueShell>
+              └── <div className="min-w-0">   ← QueueShell child column, NO height
+                  └── DisputeDetail
+                      └── <div className="flex min-w-0 flex-1 flex-col">  ← `flex-1` was dead code
+                          ├── header / parties / tabs
+                          ├── <div className="flex flex-1 flex-col pb-24">  ← tab content, `flex-1` also dead
+                          └── DisputeDecisionBar (sticky bottom-0)
+```
+
+The (specialist) layout's grid stretches to viewport-minus-topbar,
+but `<main>` doesn't push that height down to its children. Without
+a defined height somewhere in the chain, `flex-1` collapses to
+content height, and the decision bar sits at the end of a
+content-sized stack.
+
+### Fix — 1-line min-h assertion
+
+```diff
+- <div className="bg-cream flex min-w-0 flex-1 flex-col">
++ <div className="bg-cream flex min-h-[calc(100vh-36px-57px)] min-w-0 flex-1 flex-col">
+```
+
+**Math:** `100vh - 36px - 57px` where 36px = StaffRibbon height,
+57px = Topbar height (sticky stack above the page content). The
+math matches the existing `top-[calc(36px+57px)]` precedent used by
+sticky tab strips across the codebase — both formulas describe the
+same 93px boundary between sticky-topbar and page-content.
+
+**Why it works:**
+1. DisputeDetail asserts min-height = viewport-minus-topbar
+2. The existing `flex-1` on the tab content area now has somewhere
+   to expand TO — fills space between (tabs bottom) and (decision
+   bar top)
+3. Short content → flex-1 expands → decision bar pushed to bottom
+   of DisputeDetail → DisputeDetail bottom == viewport bottom →
+   bar appears at viewport bottom
+4. Long content → flex-1's content overflows → page scrolls →
+   `sticky bottom-0` engages → bar stays pinned during scroll
+
+Inline comment added above the className explaining the 93px math
++ the failure mode without the min-h. Improves future-maintainer
+comprehension; the formula isn't self-documenting.
+
+### Convention locked (new)
+
+**Decision bars on queue surfaces must anchor to viewport bottom
+even when content is short.** Pattern: parent container asserts
+`min-h-[calc(100vh-36px-57px)]` so `flex-1` content area has
+measurable height to expand. Sticky `bottom-0` on the decision bar
+handles both:
+- **Short-content case:** flex-pushed to bottom of min-h container
+- **Long-content case:** sticky on scroll
+
+Without the parent min-h, sticky bottom-0 silently degrades to "sits
+wherever content ends" on short-content cases. The pattern works
+because `flex-1` resolves against a defined parent height; without
+that, it resolves to nothing.
+
+### Sibling queue surfaces — same root cause, deferred
+
+Same root cause (height-chain collapse) confirmed on:
+- `review-queue` — `<DecisionBar>` is a sibling to `<DetailPane>`
+  inside `<QueueShell>` children. Same parent has no defined
+  height; `sticky bottom-0` floats on short content.
+- `recert-queue` — same shape as review-queue.
+- `reviews-approvals` — `<ReviewsDecisionBar>` rendered at the page
+  main level, sibling to detail content. Same root cause.
+
+**Out of scope for this commit. To fix:** apply
+`min-h-[calc(100vh-36px-57px)]` to each surface's detail wrapper.
+Single-line change per surface, identical pattern. Each surface's
+wrapper is the flex-col container holding the decision bar — for
+review-queue and recert-queue, that's `<QueueShell>` children area;
+for reviews-approvals, the page-level `<main>` wrapper.
+
+Deferred to a future commit so the disputes fix is reviewable in
+isolation and the sibling fixes can be batched as a single
+"queue-surface decision-bar viewport anchoring" sweep.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `disputes/dispute-detail.tsx` | +7 / −1 — 1-line className change + 6 lines of inline JSX comment |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Long-content scroll behavior | ✓ Unchanged — `sticky bottom-0` still engages on overflow |
+| Cross-tab consistency | ✓ Bar anchors correctly on all 5 tabs (Overview / Timeline / Evidence / Decision / Audit log) |
+| Draft chip + Save-as-draft (prior commit `8072248`) | ✓ Untouched |
+| Step 10 wirings (Export PDF, evidence preview, party-tile nav, breadcrumb Link) | ✓ Untouched |
+| Step 11 reviews-approvals sticky stack | ✓ Untouched — separate root cause (also deferred to follow-up) |
+| Step 12 settings, Step 13 topbar user menu | ✓ Untouched |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 1-line className change + 6-line inline comment + log entry
+- Disputes decision bar now anchors to viewport bottom on short content
+- Long-content scroll-pinning behavior unchanged
+- Convention locked: parent min-h is the precondition for sticky bottom-0 working on short content
+- Sibling surfaces (review-queue / recert-queue / reviews-approvals) flagged for follow-up
+
+---
+
+## ApprovedFlash visual rewrite — toast card, top-center, solid background
+
+**Branch:** `talent-specialist`.
+**Surface:** All 17+ flash consumers across the specialist console
+(disputes / sourcing / settings / performance / candidate-profile /
+candidate-chat / client-chat / my-candidates / my-clients /
+review-queue / recert-queue / reviews-approvals).
+**Scope:** Single-file visual rewrite of
+`queue-shared/approved-flash.tsx`. **API unchanged** — all 17
+consumer files require zero modification.
+
+### Bug class — translucent background fails on dense content
+
+User-reported: clicking "Export PDF" on `/specialist/disputes` (or
+any other warn-tone flash trigger across the polish series) produced
+an unreadable notification. The text blended with the page
+background; the orange checkmark dominated; the message was
+illegible against the underlying detail content.
+
+### Root cause
+
+The previous `ApprovedFlash` was designed for `review-queue`'s
+`Approved.` celebration moment — a full-viewport overlay with a
+40px display-italic heading and a tone-keyed background:
+
+| Tone | Background | Issue |
+|---|---|---|
+| `success` | `bg-cream/95` (95% opaque) | Mostly readable on cream-bg surfaces, marginal on dense content |
+| `warn` | `bg-amber/12` (**12% opaque** — 88% see-through) | **Page content bleeds through entirely**. Dark `text-ink` heading collides with whatever's behind |
+
+When the post-conversion polish series introduced `useQueuedFlash`
+(Step 5+) and repurposed `ApprovedFlash` for 17+ surfaces with
+dense content (disputes detail / settings forms / sourcing kanban),
+the celebration aesthetic broke:
+1. Translucent amber background made warn-tone flashes unreadable
+2. 40px display-italic heading rendered full-sentence ack messages
+   ("Case PDF queued for export — PDF service not yet wired") as a
+   theatrical screen-filler
+3. Mid-viewport positioning blocked the surface the user just
+   interacted with for 2.5s
+
+### Fix — top-center toast card, solid background, industry-standard chrome
+
+| Aspect | Before | After |
+|---|---|---|
+| Position | `fixed inset-0` (full viewport) | `fixed top-[calc(36px+57px+16px)] left-1/2 -translate-x-1/2` (top-center, below topbar) |
+| Width | full viewport | `w-[420px] max-w-[calc(100vw-32px)]` (fixed with mobile bounds) |
+| Background | `bg-cream/95` / `bg-amber/12` | **`bg-paper`** (solid, no translucency) |
+| Border | none | `border border-line` + tone-keyed `border-l-[3px]` left accent |
+| Shadow | none | `shadow-[0_8px_32px_rgba(14,14,12,0.12)]` (matches `RowOverflowMenu` precedent) |
+| Corners | n/a | `rounded-lg` |
+| Layout | vertical stack | horizontal flex — icon column + content column |
+| Icon | 80×80 circle with 40×40 Check | 32×32 circle with 18×18 Check |
+| Verb (celebration) | 40px display-italic, centered | 18px display-italic, inline |
+| Verb (ack) | 40px display-italic | **14px font-medium body text** |
+| Tail | 40px font-medium | 18px font-medium |
+| Sub | 15px ink-soft | 12.5px ink-mute, leading-snug |
+| Meta | 11px mono | 10px mono |
+| Animation | opacity fade only | opacity fade + `translate-y` slide-in (-16px → 0) |
+| Auto-dismiss | 2500ms (unchanged) | 2500ms (unchanged) |
+| Manual close | none (none) | none (deferred per Q4) |
+
+### Auto-detect celebration vs ack via `tail` emptiness
+
+Existing consumers split cleanly along the `tail` axis:
+- **Celebration** (review-queue / recert-queue / reviews-approvals):
+  always pass non-empty `tail` (`" Marie's live."`, `" Closed."`).
+- **Ack** (useQueuedFlash callers): always pass empty `tail` —
+  `verb` is the full sentence; `tail` defaults to `""` in the hook.
+
+The component leans on this implicit fork via
+`const isCelebration = Boolean(tail);` — no API change, no consumer
+modification:
+
+```tsx
+{isCelebration ? (
+  <span className="font-display mr-1 italic">{verb}</span>
+) : (
+  <span>{verb}</span>
+)}
+{isCelebration ? tail : null}
+```
+
+Celebration mode preserves the display-italic "moment" feel at a
+card-appropriate 18px scale. Ack mode renders the full sentence as
+14px medium body text — readable for prose messages.
+
+### Convention locked
+
+**Toast notifications must use solid backgrounds.** Translucent
+backgrounds fail on dense-content pages by definition — the
+underlying content bleeds through and breaks readability. Card
+chrome (border + shadow + solid bg) is non-negotiable for transient
+notifications.
+
+This convention extends the prior Step 11 lock ("sticky-stack must
+inherit chrome, not silently drop"). Both are about UI primitives
+that look fine in isolation but fail when composed against dense
+content elsewhere in the app.
+
+### Architectural payoff — single component, 17 consumers
+
+Pure component-internal refactor. All 17 consumer files unchanged:
+- `disputes/disputes-app.tsx`, `disputes/dispute-detail.tsx`
+- `sourcing/sourcing-app.tsx`
+- `settings/settings-app.tsx`
+- `performance/performance-app.tsx`
+- `reviews-approvals/reviews-app.tsx`
+- `candidate-profile/profile-app.tsx`
+- `candidate-chat/candidate-chat-app.tsx`, `client-chat/client-chat-app.tsx`
+- `my-candidates/my-candidates-app.tsx`, `my-clients/my-clients-app.tsx`
+- `review-queue/review-queue-app.tsx`, `recert-queue/recert-queue-app.tsx`
+- `my-clients/panels/invite-client-form-modal.tsx`, `my-clients/panels/pause-panel.tsx`, `my-clients/panels/briefs-panel.tsx`
+- `shell/workflow-unavailable-modal.tsx`
+
+The two flash-state machines (bespoke `flashOpen`/`flashCaseId`/...
+in review-queue / recert-queue / reviews-approvals / settings;
+`useQueuedFlash` hook everywhere else) continue to feed the
+unchanged props API. The single visual rewrite cascades to all
+flash surfaces simultaneously.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `queue-shared/approved-flash.tsx` | Full visual rewrite — ~80 lines (was 55). API identical. |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### Accessibility
+
+Added `role="status"` + `aria-live="polite"` on the toast container.
+Screen readers announce flash content as it appears without
+interrupting current navigation context. `aria-hidden={!open}`
+correctly hides closed state from assistive tech.
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All 17 flash consumers | ✓ Untouched (no API change) |
+| Disputes decision bar viewport-bottom fix (just landed) | ✓ Untouched |
+| Draft filter chip + Save-as-draft (commit `8072248`) | ✓ Untouched |
+| Step 10/11/12/13 polish surfaces | ✓ Untouched |
+| All Sessions 1-7 + prior polish routes | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Manual verification flavors
+
+**Celebration mode** (4-field, non-empty tail):
+- `/specialist/review-queue` → approve → toast at top-center, 18px
+  italic "Approved." + regular " Marie's live." + sub + meta, solid
+  bg-paper, success-green left accent stripe, slides in from above ✓
+- `/specialist/recert-queue` → re-certify → same shape, success tone
+- `/specialist/reviews-approvals` → approve-cosign → same shape
+
+**Ack mode** (2-field via useQueuedFlash, empty tail):
+- `/specialist/disputes` → Export PDF → toast at top-center, 14px
+  body "Case PDF queued for export — PDF service not yet wired",
+  sub "· backend pending", amber left accent stripe, **READABLE on
+  the dense dispute detail** ✓
+- `/specialist/sourcing` → Reject / Advance / Message → same shape
+- `/specialist/settings` → Avatar upload / Data export / Sign out → same shape
+- `/specialist/performance` → Export → same shape
+- `/specialist/candidate-profile` → Schedule → same shape (success tone)
+- `/specialist/candidate-chat` / `/specialist/client-chat` → kebab actions → same shape
+- `/specialist/my-candidates` / `/specialist/my-clients` → bulk + sheet actions → same shape
+
+**Cross-content stress test:**
+- Dense disputes detail with active dispute + decision bar → flash readable above the content ✓
+- Sourcing kanban with multiple prospect columns → flash readable ✓
+- Settings security panel with active sessions list → flash readable ✓
+
+**Position checks:**
+- Sits 16px below topbar stack ✓
+- Horizontally centered ✓
+- 420px wide on desktop, respects `100vw - 32px` on mobile ✓
+- Doesn't conflict with sticky decision bars or savebars at viewport bottom ✓
+- Doesn't overlap topbar (16px breathing room) ✓
+
+### Summary
+
+- Single-file visual rewrite — ~80 lines changed
+- API unchanged — 17 consumer files require zero modification
+- Solid `bg-paper` toast card with tone-keyed left edge
+- Top-center position, just below topbar
+- Auto-detect celebration vs ack via `tail` emptiness
+- Slide-in animation (opacity + translate-y)
+- Industry-standard pattern (Sonner / Vercel / Linear toast UX)
+- **Convention locked: toast backgrounds must be solid; translucency fails on dense content**
+
+---
+
+## fix(specialist): drop content-area centering on daily-activity feed + help page
+
+**Branch:** `talent-specialist`.
+**Surfaces:** `/specialist/daily-activity` (feed section) and
+`/specialist/help` (all content sections).
+**Scope:** Two 1-line className changes + inline comments + this
+log entry. Both fixes ship the same bug class with divergent
+source-intent stories.
+
+### Bug class — centered content vs full-width neighbors
+
+Both surfaces had their main content wrapped in `mx-auto w-full
+max-w-[Xpx] ...` which centers the content at a fixed width cap. On
+wide viewports (≥1280px main column), the capped content rendered
+as a narrower island in empty space, while the surrounding sections
+on the same page (RosterHeader, stat strip, heatmap, filter chips,
+etc.) spanned the full main column width. The visual result: the
+content area looked smaller than its neighbors, with empty margins
+that no other specialist route exhibits.
+
+User-reported on both surfaces with screenshots.
+
+### Comprehensive audit confirmed scope = exactly 2 surfaces
+
+Before this fix, audited every route under `src/app/(specialist)/specialist/`
+for the same pattern. Result:
+
+| Bug pattern | Routes |
+|---|---|
+| `mx-auto + max-w-[Xpx]` content-area centering | **2 routes only:** daily-activity feed, help page |
+| Full-width content (correct default) | All other specialist routes — dashboard, performance, settings, reviews, review-queue, recert-queue, disputes, sourcing, my-candidates, my-clients, candidate-chat, client-chat, candidates/[id], pool-health |
+| Centered card (deliberate UX pattern) | Auth surfaces (signin / forgot) — by design |
+
+Other `mx-auto` usages in the codebase resolved to:
+- Small-element centering (empty-state icons, avatars) — not content-area caps
+- `mx-auto + max-w-none` patterns (queue decision bars, review-tabs, container-page wrappers) — `max-w-none` explicitly removes the cap; `mx-auto` is a no-op without a max-width. Visually full-width.
+
+No shared layout primitive emerged from the audit. The bug is 2
+inline className constraints on 2 unrelated wrapper divs — not a
+pattern problem.
+
+### Two divergent source-intent stories — same fix shape
+
+**daily-activity feed** — source-faithful, build-extends-source departure:
+
+```css
+/* source CSS (.act-feed in specialist (12).html:9656) */
+.act-feed {
+  flex: 1;
+  padding: 28px 40px 80px;
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;        /* ← source DID intend centering */
+  display: flex;
+  flex-direction: column;
+}
+```
+
+Build was source-faithful. The fix is a **deliberate departure**
+from source CSS: the source's centering was designed for a different
+visual surrounding context where presumably the act-main wrapper had
+its own constraint. In the React build, where the 3 surfaces above
+the feed (stat strip / heatmap / filter chips) all use `px-10` /
+`mx-10` full-width treatments, the 920px cap creates the "narrower
+island" effect. The build's layout context makes the source's
+centering produce a worse UX than source intended.
+
+**help page** — build-introduced, revert to source intent:
+
+```css
+/* source CSS — NO centering on .help-main or .help-section */
+.help-main {
+  flex: 1;
+  background: var(--cream);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* no max-width, no margin: auto */
+}
+.help-section {
+  padding: 30px 40px 20px;
+  /* no max-width, no margin: auto */
+}
+```
+
+The `mx-auto max-w-[1080px]` cap was **introduced during the
+React conversion** (likely a reasonable-feeling reading-width default
+at conversion time, but unjustified once the surrounding context
+became clear). Reverting matches source intent.
+
+### Source changes (2 files, 1 className each)
+
+**daily-activity/activity-feed-section.tsx:63:**
+
+```diff
+- <div className="mx-auto flex w-full max-w-[920px] flex-col gap-0 px-10 pt-7 pb-20 max-md:px-5 max-md:pb-14">
++ {/* Full-width feed — source CSS specified `margin: 0 auto;
++     max-width: 920px` but the build drops that cap because the
++     stat strip / heatmap / filter chips above this feed all span
++     the main column width; a centered 920px feed below them
++     reads as "narrower island in empty space" on wide viewports.
++     Deliberate build-extends-source departure. See CONVERSION_LOG. */}
++ <div className="flex flex-col gap-0 px-10 pt-7 pb-20 max-md:px-5 max-md:pb-14">
+```
+
+Drops: `mx-auto`, `w-full`, `max-w-[920px]`.
+Keeps: `flex`, `flex-col`, `gap-0`, `px-10`, `pt-7`, `pb-20`,
+`max-md:px-5`, `max-md:pb-14`.
+
+**help/help-app.tsx:48:**
+
+```diff
+- <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-7 px-9 pt-7 pb-16 max-md:px-5 max-md:pb-10">
++ {/* Full-width content sections — source HTML's `.help-main` /
++     `.help-section` carry NO centering or max-width cap; the
++     1080px cap was build-introduced during the conversion and
++     produces the same "narrower island in empty space" effect
++     as daily-activity's feed pre-fix. Reverts to source intent.
++     See CONVERSION_LOG. */}
++ <div className="flex flex-col gap-7 px-9 pt-7 pb-16 max-md:px-5 max-md:pb-10">
+```
+
+Drops: `mx-auto`, `w-full`, `max-w-[1080px]`.
+Keeps: `flex`, `flex-col`, `gap-7`, `px-9`, `pt-7`, `pb-16`,
+`max-md:px-5`, `max-md:pb-10`.
+
+### Convention locked (new)
+
+**Specialist console default is full-width content within the main
+column.** Centering content to a max-w cap is an exception that must
+be justified. Justified exception: auth flows (centered card UX
+pattern). When adding new surfaces, default to full-width with
+section-level padding (`px-9` or `px-10`). Don't introduce
+`mx-auto max-w-[Xpx]` content cap without explicit design intent
+recorded in the component docstring.
+
+This convention extends the audit's findings — every other specialist
+route already follows the full-width default; daily-activity and help
+were the only outliers. Locking the pattern prevents future
+introduction of unjustified caps.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `daily-activity/activity-feed-section.tsx` | -1 / +7 — drop 3 classes, add inline comment (6 lines) |
+| `help/help-app.tsx` | -1 / +7 — drop 3 classes, add inline comment (6 lines) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| All other specialist routes | ✓ Audit confirmed only 2 surfaces in violation |
+| Disputes decision-bar viewport-bottom fix (prior turn) | ✓ Untouched |
+| Draft filter chip + Save-as-draft (`8072248`) | ✓ Untouched |
+| ApprovedFlash visual rewrite (prior turn) | ✓ Untouched |
+| All Sessions 1-7 + polish + talent-specialist commits | ✓ Unchanged |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Manual verification
+
+**`/specialist/daily-activity` on wide viewport (≥1280px):**
+- Stat strip / heatmap / filter chips render at full width (unchanged)
+- Activity feed below now spans the full main column with `px-10` padding
+- No "floating in empty space" effect — feed matches the horizontal extent of the strip / heatmap / chips above ✓
+
+**`/specialist/help` on wide viewport:**
+- All content sections (HelpSearch + HelpSearchSuggestions + HelpBanner + TopicGrid + ArticlesList + TrainingGrid + ContactGrid + ChangelogList) now span the full main column with `px-9` padding
+- Search input is wider, easier to scan
+- Topic grid uses more horizontal real estate per card
+- Continue-training banner spans wider — label and Resume button feel proportional
+- No empty margins on left/right sides ✓
+
+**Both surfaces — narrow viewport (≤768px):** responsive utilities preserved
+(`max-md:px-5`, `max-md:pb-14` / `max-md:pb-10`). Content stacks vertically as
+before.
+
+### Summary
+
+- 2 surfaces fixed, 2 className changes (3 classes dropped per file)
+- daily-activity = deliberate build-extends-source departure
+- help = revert to source intent (build-introduced cap)
+- Convention locked: full-width is the specialist console default
+- Comprehensive audit confirmed no other routes affected
+- No shared primitive extraction warranted
+
+---
+
+## fix(specialist): daily-activity filter strip — sticky + visual parity with RosterCohorts
+
+**Branch:** `talent-specialist`.
+**Surface:** `/specialist/daily-activity` filter strip.
+**Scope:** Single-file refactor of `activity-filter-chips.tsx`.
+Visual chrome brought to parity with `RosterCohorts` (the canonical
+roster-surface filter strip used by my-candidates / my-clients).
+Sticky positioning added. Component remains forked from
+RosterCohorts due to 3 shape divergences.
+
+### Bug class — sticky-stack failure + chip-styling drift
+
+Two issues reported on the same surface:
+1. **Filter strip not sticky** — when the user scrolled the activity
+   feed, the filter chips scrolled away with content, leaving the
+   user without filter controls mid-scroll. Every other roster-style
+   filter strip in the specialist console (my-candidates / my-clients
+   via RosterCohorts; reviews-approvals via Step 11 fix) is sticky at
+   `top-[calc(36px+57px)]`.
+2. **Chip styling diverged** — daily-activity used `rounded-md
+   border-transparent` text-only chips; my-candidates / my-clients
+   use `rounded-full border border-line bg-paper` pill chips via
+   RosterCohorts. The strip looked unlike its siblings.
+
+### Root cause
+
+`ActivityFilterChips` was built in Session 5.1 with its own chip
+pattern that pre-dated the establishment of the RosterCohorts
+roster-surface pattern (Sessions 5.5+). The component was never
+brought to visual parity during the post-conversion polish series,
+and the sticky-stack convention was inherited by every other strip
+EXCEPT this one (same class as the Step 11 reviews-approvals
+sticky-stack inheritance bug — silently dropped during forking).
+
+**Build-context bug:** source CSS for `.act-filters` doesn't have
+sticky positioning either, because the source HTML doesn't have a
+long-scroll context (the source page is static, no real feed
+scroll). The build's `<main className="flex min-w-0 flex-1 flex-col">`
+layout with the feed below creates the scroll context that exposes
+the sticky-stack requirement. Same pattern as the daily-activity
+feed centering fix in the prior commit — source CSS made sense in
+source context; the build's broader layout exposes the gap.
+
+### Fix — Option C (refactor in place, keep the fork)
+
+The fork stays because 3 shape divergences justify it per the
+"shape genuinely diverges → parallel component" rule:
+
+1. **Leading colored dot per filter category** — 6 semantic tones
+   (`bg-success` / `bg-lime-deep` / `bg-[#5C4A6E]` / `bg-danger` /
+   `bg-navy` / `bg-ink-mute`). RosterCohorts has no dot system.
+   Extending RosterCohorts' `CohortDef` with an optional `dot?`
+   field would serve 1 consumer.
+2. **Right-aligned "N visible" meta affordance** — daily-activity
+   shows the post-filter feed count on the right. RosterCohorts has
+   no equivalent. Extending with `metaLabel?` would serve 1 consumer.
+3. **Typed union narrowing** — daily-activity uses
+   `ActivityFilterKey` (typed union); RosterCohorts uses generic
+   `string`. Adopting RosterCohorts would lose type narrowing on
+   the chip render.
+
+Per the 2-consumer-promote rule, none of these warrant extending
+RosterCohorts API yet. The fork is preserved; only the visual chrome
+is brought to parity.
+
+### Concrete changes
+
+**Container chrome** (line 42):
+
+```diff
+- className="border-line-soft flex flex-wrap items-center gap-3 border-y bg-paper px-10 py-3 max-md:px-5"
++ className="border-line-soft bg-cream sticky top-[calc(36px+57px)] z-[7] flex flex-wrap items-center gap-3 border-b px-6 py-3.5 sm:px-10"
+```
+
+- **Add:** `sticky top-[calc(36px+57px)] z-[7]` — pinned just below
+  the topbar stack (93px from viewport top); same offset as
+  RosterCohorts + reviews-approvals direction tabs.
+- **Swap:** `bg-paper` → `bg-cream` (matches RosterCohorts bg)
+- **Swap:** `border-y` → `border-b` (top edge sits against the
+  heatmap's bottom edge; no double border needed)
+- **Swap:** `px-10 max-md:px-5` → `px-6 sm:px-10` (RosterCohorts'
+  responsive shape — `sm:` not `max-md:`)
+- **Swap:** `py-3` → `py-3.5` (matches RosterCohorts vertical padding)
+- **Keep:** `flex-wrap` (per Q1 decision — preserves the right-aligned
+  meta in the first row even when chips wrap on narrow viewports)
+
+**Chip button** (~lines 48-57):
+
+```diff
+- "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 font-body text-[12px] transition-colors"
+- isActive ? "bg-ink text-paper" : "text-ink-mute hover:bg-cream-deep hover:text-ink"
++ "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-3.5 py-1.5 text-[12.5px] font-medium whitespace-nowrap transition-colors"
++ isActive ? "bg-ink text-paper border-ink" : "text-ink-soft hover:bg-cream-deep hover:border-ink-mute"
+```
+
+- `rounded-md` → `rounded-full` (pill shape)
+- `border-transparent` → `border-line` + `bg-paper` (visible paper-pill
+  inactive — distinct from cream tray bg)
+- `px-2.5` → `px-3.5` (matches RosterCohorts)
+- `text-[12px]` → `text-[12.5px]` (matches RosterCohorts)
+- **Add:** `font-medium`, `whitespace-nowrap`, `cursor-pointer`
+- Active: gains `border-ink` (visible at edges when active)
+- Inactive text: `text-ink-mute` → `text-ink-soft` (one tone up)
+- Inactive hover: changes from bg + text shift to **bg + border
+  accent** — matches RosterCohorts' hover signal
+- **Keep:** `gap-1.5` (preserves the tight dot+label spacing;
+  RosterCohorts uses gap-2 but doesn't have dots)
+
+**Count badge** (~line 72-76):
+
+```diff
+- "rounded-full px-1.5 py-px font-mono text-[10px] font-medium"
+- isActive ? "bg-paper/15 text-paper" : "bg-cream-deep text-ink-mute"
++ "rounded-full px-[7px] py-px font-mono text-[10px] font-medium tracking-[0.04em]"
++ isActive ? "bg-paper/14 text-paper" : "bg-cream-deep text-ink-mute"
+```
+
+- `px-1.5` (6px) → `px-[7px]` — sub-pixel parity with RosterCohorts
+- **Add:** `tracking-[0.04em]` — matches RosterCohorts letter-spacing
+- `bg-paper/15` → `bg-paper/14` — sub-percent opacity diff
+
+**Leading dots — unchanged.** 6 colored category dots preserved.
+
+**Visible-count meta — unchanged.** `ml-auto`, mono-uppercase, right-
+aligned. Stays in first row when chips wrap.
+
+**Docstring updated** to call out the visual-parity decision + the
+3 shape divergences that justify keeping the fork. Future audits
+won't relitigate "why isn't this RosterCohorts?"
+
+### Convention locked
+
+**Filter strips on roster surfaces must be sticky at
+`top-[calc(36px+57px)] z-[7]` with `bg-cream` chrome and bordered
+paper-pill chips.** The pattern is established by `RosterCohorts`
+and now consumed visually by `ActivityFilterChips` (forked but
+chrome-parity). Source HTML's lack of sticky positioning is not
+authoritative for surfaces with long-scroll context in the build —
+the build's layout determines the requirement.
+
+Component-level forks remain acceptable when shape divergences are
+real (categorical dots, meta affordances, typed union narrowing).
+Forks share visual chrome via copy-paste of utility class strings,
+not via shared primitive extraction, until the 2-consumer-promote
+threshold is crossed.
+
+### Cross-route parity after this fix
+
+| Surface | Filter strip component | Sticky? | Chip shape | Bg chrome |
+|---|---|---|---|---|
+| `/specialist/my-candidates` | `RosterCohorts` | ✓ at 93px | rounded-full bordered paper-pill | bg-cream |
+| `/specialist/my-clients` | `RosterCohorts` | ✓ at 93px | rounded-full bordered paper-pill | bg-cream |
+| `/specialist/daily-activity` | `ActivityFilterChips` (forked) | **✓ at 93px (NEW)** | rounded-full bordered paper-pill **(NEW)** | bg-cream **(NEW)** |
+| `/specialist/reviews-approvals` (direction tabs) | `ReviewsDirectionTabs` (forked) | ✓ at 93px (Step 11) | text + underline (different shape — outer-tab vs filter-chip) | bg-cream/95 backdrop-blur |
+| `/specialist/reviews-approvals` (filter chips) | `ReviewsFilterChips` (forked) | ✓ at 137px (offset under direction tabs, Step 11) | borderless text chips | bg-cream |
+| `/specialist/sourcing` | `SourceFilterChips` (forked) | n/a (no scroll context that requires sticky) | borderless text chips | bg-cream (post-Step 9 polish) |
+
+After this fix: 3 surfaces (my-candidates / my-clients / daily-activity)
+share the same paper-pill chip styling. The 2 reviews-approvals
+strips have intentionally different shapes (outer-tab + sub-filter).
+Sourcing's borderless chips are an outlier; possibly aligned with
+this pattern in a future polish if user-reported.
+
+### Files changed
+
+| File | Diff shape |
+|---|---|
+| `daily-activity/activity-filter-chips.tsx` | Full refactor — docstring expanded + container/chip/badge classNames swapped; ~15 lines net change |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Daily-activity feed content centering fix (prior commit) | ✓ Unchanged |
+| Daily-activity feed scrolling behavior | ✓ Feed scrolls under sticky filter strip (new behavior) |
+| All other Sessions 1-7 + polish + talent-specialist work | ✓ Untouched |
+| ApprovedFlash toast | ✓ Untouched |
+| Disputes decision bar viewport-bottom anchor | ✓ Untouched |
+| Draft filter chip + Save-as-draft | ✓ Untouched |
+| Marketing landing | ✓ Byte-identical |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Manual verification
+
+**`/specialist/daily-activity` on wide viewport:**
+- Page loads: stat strip + heatmap + filter strip all visible at top
+- Filter strip: sticky at top-93px, bg-cream solid background, paper-pill chips with rounded-full borders
+- Scroll down activity feed:
+  - Stat strip + heatmap scroll away
+  - **Filter strip stays pinned at top** ✓
+  - Activity feed scrolls underneath the filter strip
+  - No see-through (solid bg-cream)
+- Active chip ("All [42]"): rounded-full pill, bg-ink + text-paper, border-ink visible
+- Inactive chips: rounded-full pill, bg-paper + border-line, hover bg-cream-deep + border-ink-mute
+- Colored category dots preserved on inactive chips
+- "{N} VISIBLE" meta still right-aligned
+
+**Cross-route eyeball parity:**
+- my-candidates / my-clients / daily-activity all render rounded-full paper-pill chips with identical chrome (modulo daily-activity's dots + meta)
+
+**Narrow viewport (≤768px):**
+- Chips wrap to multiple rows
+- Visible-count meta stays right-aligned in first row
+- Sticky-stack height adjusts naturally to wrapped row count
+- Page padding scales to `px-6` (vs `sm:px-10` at desktop)
+
+### Summary
+
+- Filter strip now sticky at 93px from top
+- Chip chrome brought to parity with my-candidates / my-clients
+- Fork preserved (3 shape divergences: dots, meta, typed union)
+- Docstring locks the fork rationale for future audits
+- Convention locked: roster-surface filter strips share visual chrome via copy-paste of utility classes; not via shared primitive until 2-consumer threshold
+
+---
+
+## Global search Checkpoint 1+2 — index + filter engine + grouped result rendering + direct navigation
+
+**Branch:** `talent-specialist`.
+**Surface:** Topbar global search (visible on every specialist
+route via `(specialist)/layout.tsx`).
+**Scope:** Combined Checkpoint 1 (architecture + index + dropdown
+shell) and Checkpoint 2 (filter engine + result rendering +
+navigation) — shipped as one commit. **Checkpoint 3 (keyboard nav,
+Cmd+K, recent searches localStorage, matched-text highlighting)
+stays as a separate followup.**
+
+**Why combined:** Checkpoint 1 alone shipped clean plumbing but
+explicitly returned empty results (`results = []`), so the
+user-visible behavior was "search dropdown opens, typing anything
+shows 'No results for X'." That's an unshippable interim state —
+looks broken even though it works as designed. Folding C2 into the
+same commit delivers actually-functioning search in one ship.
+
+### Architecture decisions locked (10)
+
+| # | Decision | Locked verdict |
+|---|---|---|
+| 1 | Dependency rule | UI imports from `lib/mock-data` (index transformation) only; no service/repository |
+| 2 | Search index location | `src/lib/mock-data/specialist/search-index.ts` (co-located with inputs; real service migrates to `lib/services/search/` later) |
+| 3 | Dropdown architecture | Portaled to `document.body` via `createPortal`; positioned via `getBoundingClientRect()` of input wrapper; z-[20] (above topbar's z-[6]) |
+| 4 | Topbar input refactor | Inline in `topbar.tsx` (no separate `TopbarSearchInput` extraction — input has no reusable shape) |
+| 5 | `useSearch` hook location | `src/components/specialist/shell/use-search.ts` (co-located with consumers, matches `fire-queued-flash.ts` precedent) |
+| 6 | Module-init index | `searchIndex` built once at module init; never rebuilds (static mock data) |
+| 7 | Global scope | Search works on every specialist route — topbar is mounted in `(specialist)/layout.tsx` |
+| 8 | Click result behavior | Navigation via Next.js `<Link>` / `router.push` + dropdown closes (C2) |
+| 9 | Popover coordination | Bidirectional — opening any one of 4 affordances (search / notifications / messages / user menu) closes the other 3 |
+| 10 | Mobile UX | Out of scope all 3 checkpoints — input is `hidden md:flex`, dropdown inherits |
+
+### `SearchResult` type — Checkpoint 1 contract
+
+```ts
+export type SearchEntityType =
+  | "candidate" | "client" | "dispute" | "brief" | "prospect";
+
+export type SearchResult = {
+  id: string;
+  type: SearchEntityType;
+  title: string;       // primary display field
+  subtitle: string;    // secondary display
+  href: string;        // navigation target
+  haystack: string;    // lowercase concat for substring filter
+};
+```
+
+**Key design:** `haystack` is precomputed lowercase concatenation of
+all searchable fields. Filter (Checkpoint 2) does
+`haystack.includes(query.toLowerCase())` — O(N) on ~125 entries =
+sub-millisecond. No debouncing needed.
+
+### Field-name mismatches surfaced and resolved
+
+Audit revealed several proposed search fields don't exist on the
+canonical entity shapes. Substitutions documented:
+
+| Entity | Proposed | Actual | Substitution |
+|---|---|---|---|
+| Brief | `title` | ❌ Does not exist on `ClientBrief` | Use `role` as title; type-group header disambiguates from candidate role match |
+| Brief | `description` | ❌ Does not exist | Use `scope` (truncated 80 chars in haystack) |
+| Candidate | `role` | ❌ Not on universal `ManagedCandidate` | Substitute `category` ("Virtual Assistants") |
+| Candidate | `skills` | ❌ Only on 13/47 `CandidateProfile`s — asymmetric | **Dropped entirely.** Re-add when mock-data backfills universal skills OR when real service lands. |
+| Prospect | `fullName` | ❌ Field is `name` | Use `name` directly |
+
+**Convention locked (new):** when extending a static placeholder UI
+to functional, verify mock-data field names BEFORE writing filter
+logic. Asymmetric data coverage (e.g. 13/47 candidates with skills)
+is worse than no coverage — drop the field from the searchable set
+rather than create inconsistent search behavior.
+
+### Coverage after substitutions
+
+| Entity | Count | Title | Subtitle composition | Haystack fields |
+|---|---|---|---|---|
+| candidates | 47 | `fullName` | `{category} · {city}, {countryName}` | fullName + category + city + countryName + statusLabel |
+| clients | 12 | `companyName` | `{industry} · {city}, {countryName}` | companyName + industry + city + countryName + healthLabel |
+| disputes | 7 | `caseId` | `{claimantName} vs. {respondentName} · {reasonLabel}` | caseId + claimantName + respondentName + reasonLabel + truncated claim body (80 chars) |
+| briefs | 32 | `role` | `{clientName} · {scope (trunc 80)}` | role + clientName + scope (trunc 80) + status |
+| prospects | 27 | `name` | `{currentRole ?? "—"} · {location} · {sourceLabel}` | name + currentRole + location + sourceLabel |
+| **Total** | **125** | | | |
+
+### Deferred href updates
+
+| Entity | Checkpoint 1 href | Deferred to |
+|---|---|---|
+| candidate | `/specialist/candidates/{id}` | n/a — route exists today |
+| client | `/specialist/my-clients` | Session 9 introduces `/specialist/clients/{id}` — update then |
+| dispute | `/specialist/disputes?id={id}` | n/a — route exists |
+| brief | `/specialist/my-clients?focus={clientId}` | Session 9 introduces `/specialist/clients/{id}/briefs/{briefId}` — update then |
+| prospect | `/specialist/sourcing?id={id}` | n/a — route exists |
+
+### Popover coordination — bidirectional
+
+Topbar already owned 3-way coordination across notifications /
+messages / user-menu via `openPanel: OpenPanel | null` state. Search
+is a 4th coordinated affordance — but its state lives in
+`useSearch` (decoupled from `openPanel`). Coordination wired by
+the topbar:
+
+- Opening any non-search panel (`toggle()`) calls
+  `search.closeDropdown()` first.
+- Opening search (`handleOpenSearch()`) calls `setOpenPanel(null)`
+  first.
+
+useSearch stays independent and reusable; coordination is the
+parent's responsibility. This matches the precedent that the 3
+non-search popovers each own their close-on-Esc / click-outside
+listeners independently; the topbar just wires "what to close when
+something else opens."
+
+### Filter engine — substring match + score-based ranking + 5-per-group cap
+
+`useSearch.results` is now a `useMemo` derived from `query`:
+
+```ts
+const qLower = query.trim().toLowerCase();
+if (qLower.length < QUERY_MIN_LENGTH) return { results: [], matchCounts: ZERO_COUNTS };
+
+// Bucket by entity type, scoring each match
+for (const result of searchIndex) {
+  if (!result.haystack.includes(qLower)) continue;
+  buckets[result.type].push({ result, score: scoreOf(result, qLower) });
+}
+
+// Sort each bucket: score desc, title alpha asc; cap at 5
+```
+
+**Match rules:**
+- **2-character minimum** (`QUERY_MIN_LENGTH = 2`) — queries of 0 or 1
+  chars return `[]` so the dropdown shows the "Start typing to
+  search" placeholder. 1-character searches would match too many
+  entries to be useful.
+- **Substring on pre-lowercased `haystack`** — case-insensitive.
+- **Score-based ranking within entity type:**
+  - 2 = title contains query (priority match)
+  - 1 = subtitle contains query (secondary)
+  - 0 = haystack-only match (rest of fields)
+  - Tie-break alphabetically by title (case-insensitive).
+- **5-per-group cap** — at most 5 results per entity type in the
+  returned flat array.
+- **`matchCounts`** — per-type pre-cap totals; drives the
+  "X of Y" group-header count badges.
+
+Sub-millisecond on a 125-entry index. No debouncing.
+
+### Result rendering — grouped by entity type with type-iconed rows
+
+Dropdown body has 3 render paths (already wired in C1 shell, now
+populated with results in C2):
+
+| State | Trigger | Render |
+|---|---|---|
+| Placeholder | `query.trim().length < 2` | "Start typing to search" empty state |
+| No-match | query ≥ 2 chars, no matches | "No results for {query}" |
+| Results | query ≥ 2 chars, ≥ 1 match | Grouped result list (5 entity types) |
+
+**Group structure** (`SEARCH_GROUP_ORDER`): candidates → clients →
+disputes → briefs → prospects. Each non-empty group renders:
+
+- **GroupHeader** — mono-uppercase label + count badge
+  ("CANDIDATES" + "3 of 7" when capped, "CLIENTS" + "2" when total
+  ≤ cap), `bg-cream/40` strip with bottom border.
+- **ResultRow** per result — Next.js `<Link>` with:
+  - **Type icon** (24×24, `bg-cream-deep`):
+    - candidate → `User`
+    - client → `Building2`
+    - dispute → `Scale`
+    - brief → `ClipboardList`
+    - prospect → `Sparkles`
+  - **Content column** — title 14px medium + subtitle 12px ink-mute
+    (both truncated to one line).
+  - **Type pill** (right-aligned, mono uppercase 9.5px) —
+    "CANDIDATE" / "CLIENT" / "DISPUTE" / "BRIEF" / "PROSPECT".
+  - Hover: `bg-cream-deep`. Cursor: pointer. `role="option"`.
+- **Group separator** — `border-line-soft border-t` between groups;
+  none above the first rendered group.
+
+**Scroll constraint** — `max-h-[70vh] overflow-y-auto` on the
+results list. With 5 groups × 5 caps = 25 rows × ~50px ≈ 1250px the
+list would otherwise exceed viewport on narrow screens; scroll
+contains it.
+
+### Navigation — Link + closeDropdown on click
+
+Each result row is a Next.js `<Link href={result.href}>`. The
+`onClick` fires `onResultClick()` (= `closeDropdown()` from
+useSearch) BEFORE the Link navigates — synchronous state update
+happens first, then Next.js routes. Back button leaves dropdown
+closed (good UX — the dropdown's state isn't preserved across
+navigations because the topbar's state machine resets on route
+change).
+
+### Files added / modified
+
+| File | Change | Lines |
+|---|---|---|
+| `lib/mock-data/specialist/search-index.ts` | **NEW** — types + `buildSearchIndex()` + module-level `searchIndex` const + `SEARCH_INDEX_COUNTS` | ~200 |
+| `components/specialist/shell/use-search.ts` | **NEW** — hook with query + isOpen state + filter/rank/cap logic + `matchCounts` | ~165 |
+| `components/specialist/shell/topbar-search-dropdown.tsx` | **NEW** — portaled dropdown + 3-state body (placeholder / no-match / grouped results) + result rows + Link navigation | ~315 |
+| `components/specialist/shell/topbar.tsx` | **MODIFY** — controlled input, 4-way popover coordination, dropdown mount with `matchCounts` | +61 / −5 |
+| `docs/CONVERSION_LOG.md` | this entry | — |
+
+### Out of scope for this commit (deferred to Checkpoint 3)
+
+| Item | Notes |
+|---|---|
+| Cmd+K / Ctrl+K shortcut | Global keyboard listener at the topbar level; focuses input + opens dropdown |
+| Up / Down / Enter keyboard navigation | Active-index state in `useSearch`; arrow keys cycle through visible results; Enter activates selected row's href |
+| Recent searches (localStorage persistence) | Last 3-5 clicked results; first introduction of localStorage in the codebase (SSR-safe hydration via useEffect) |
+| Suggested search terms in empty state | Replace "Start typing to search" with recent + suggested queries when query is empty |
+| Matched-text highlighting in results | Wrap matched substring in `<mark>` within title/subtitle |
+| Mobile-specific search UX | Out of scope for all 3 checkpoints — input is `hidden md:flex` |
+
+### Deferred follow-ups
+
+- Brief href updates when Session 9 dedicated
+  `/specialist/clients/[id]/briefs/[briefId]` route lands
+- Client href updates when Session 9 dedicated
+  `/specialist/clients/[id]` route lands
+- Skills search when mock-data backfills universal `skills` field on
+  `ManagedCandidate` (currently only on 13/47 via `CandidateProfile`)
+- Mobile-specific search UX (flagged for future polish if reported)
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| Sessions 1-7 + polish + talent-specialist routes | ✓ Unchanged — only `topbar.tsx` modifies (affects all routes but visually unchanged) |
+| Marketing landing | ✓ Byte-identical |
+| Mock data records | ✓ Unchanged (`search-index.ts` reads from them; doesn't modify) |
+| Topbar visual layout | ✓ Unchanged on all routes — input renders identically; behavior changes from inert to focus-opens-dropdown |
+| Notifications popover | ✓ Existing behavior + closes on search-open |
+| Messages popover | ✓ Existing behavior + closes on search-open |
+| User menu popover | ✓ Existing behavior + closes on search-open |
+| `⌘ K` kbd hint copy | ✓ Stays visible (truthful — wiring lands in C3) |
+| Typecheck / lint / build | ✓ All clean; lint baseline (50 admin-side errors) preserved |
+
+### Summary
+
+- 3 new files + 1 modified topbar + log entry
+- ~125 SearchResult entries indexed across 5 entity types
+- Filter engine: substring + score-based ranking + 2-char minimum + 5-per-group cap
+- 3-state dropdown body: placeholder / no-match / grouped results
+- Result rows are Next.js `<Link>`s with `closeDropdown()` side effect
+- Bidirectional popover coordination wired across 4 affordances
+- Field-name mismatches caught + substituted (brief.role, candidate.category, prospect.name)
+- API contracts stable; Checkpoint 3 adds keyboard nav / Cmd+K / recent searches as a pure additive layer
+- Rationale for combining C1+C2: shipping plumbing alone produced an unshippable interim ("no results for X" on every query); folded both into one ship
+
+---
+
+## Session 9 — Dedicated client pages (Checkpoint 1 of 3)
+
+**Scope:** Net-new `/specialist/clients/[id]/...` route surface. C1
+ships the layout shell + overview page + sub-nav tabs primitive +
+Layer A/B refactor of the contracts/briefs sheet panel bodies. C2
+will add Contracts + Briefs list + detail pages. C3 will add Hires,
+Talent, Tags, Settings, the sheet→page navigation upgrade, and the
+disputes party-tile → dedicated-page link.
+
+**Build extends source.** Source HTML has no dedicated client pages
+— `/specialist/my-clients` is a single roster + slide-over sheet
+view. C1+ extends source by introducing a deep-route surface so
+client surfaces (contracts / briefs / hires / talent / tags) become
+real pages with shareable URLs, not just panels inside a sheet. The
+sheet stays as quick context; the page becomes deep work. **Both
+coexist.**
+
+### Architecture locked
+
+1. **Routes** — 9 total across the 3 checkpoints:
+   - `/specialist/clients/[id]` (overview) ← **C1**
+   - `/specialist/clients/[id]/contracts` (list) ← C2
+   - `/specialist/clients/[id]/contracts/[contractId]` (detail) ← C2
+   - `/specialist/clients/[id]/briefs` (list) ← C2
+   - `/specialist/clients/[id]/briefs/[briefId]` (detail) ← C2
+   - `/specialist/clients/[id]/hires` (list) ← C3
+   - `/specialist/clients/[id]/talent` (list) ← C3
+   - `/specialist/clients/[id]/tags` (list) ← C3
+   - `/specialist/clients/[id]/settings` (page) ← C3
+
+2. **SSG.** `generateStaticParams` pulls from
+   `ALL_MANAGED_CLIENT_IDS` (new helper). 12 client overview pages
+   pre-render at build time.
+
+3. **`notFound()` for invalid IDs.** Layout-level lookup; matches
+   the candidate-profile precedent at
+   `app/(specialist)/specialist/candidates/[id]/page.tsx`.
+
+4. **Params resolution across layout + page.** Next.js App Router
+   gives each segment its own `params` (no auto prop-drilling from
+   layout to page). Both the layout AND the page resolve `params.id`
+   independently and call `getManagedClient(id)` — the lookup is
+   O(1) against a 12-element in-memory array, so the duplication is
+   negligible. No `cache()` wrapper.
+
+5. **Sheet behavior unchanged.** Row click on `/specialist/my-clients`
+   still opens the sheet — sheet = quick context. Sheet "View" buttons
+   navigate to the dedicated pages in C3 (the sheet hero will also
+   get an "Open full profile" link).
+
+### Layer A / Layer B extraction pattern (new convention)
+
+The C1 refactor extracts the body of `ContractsPanel` and the list-
+view of `BriefsPanel` to **shared bodies** that the C2 dedicated
+pages will reuse:
+
+| Layer | Location | Owns | Doesn't own |
+|---|---|---|---|
+| **A — shared body** | `components/specialist/clients-shared/` | Pure list rendering + empty state | Modal state, chrome, page-vs-sheet decisions |
+| **B — sheet wrapper** | `components/specialist/my-clients/panels/` | `SheetPanelShell` + modal mounts + sheet-only flows (tabs, compose) | List rendering (delegated to A) |
+| **B — page wrapper** (C2) | dedicated route `page.tsx` + a Client wrapper | Page chrome (via layout) + modal mounts | List rendering (delegated to A) |
+
+**Convention locked:** when sheet and dedicated page share body
+rendering, extract to `clients-shared/` (Layer A) and keep chrome +
+state with each consumer (Layer B). Function-as-prop callbacks flow
+from the Client Component B-layer down through A to leaf components.
+A-layer files don't carry `"use client"` — they inherit from their
+consumer's bundle.
+
+**C1 Layer A files (new):**
+- `clients-shared/contracts-list-body.tsx` — body for the contracts
+  list; owns the empty state per Q5 lock (empty state travels with
+  body so sheet + page surface stay consistent).
+- `clients-shared/briefs-list-body.tsx` — body for a briefs list; empty
+  state supplied by the consumer (sheet has tab-aware copy, C2 page
+  will have filter-aware copy).
+
+**C1 Layer B refactors:**
+- `my-clients/panels/contracts-panel.tsx` — keeps modal + subtitle
+  computation; inline `.map(c => <ContractCard …>)` replaced with
+  `<ContractsListBody contracts={…} onViewDocument={…} />`. Inline
+  `<EmptyState>` removed (now in Layer A).
+- `my-clients/panels/briefs-panel.tsx` — `ListView`'s inline
+  `.map(b => <BriefCard …>)` replaced with `<BriefsListBody briefs={visible}
+  emptyState={<EmptyState tab={tab} />} />`. Tab state + compose
+  flow + per-tab empty copy stay in the sheet wrapper.
+
+Other 6 panels (talent-match / pause / tags / invite / etc.) — and
+the leaf cards (`ContractCard`, `BriefCard`) — untouched in C1.
+Their Layer A extractions happen in C3 when the matching dedicated
+pages land.
+
+### Sub-nav tabs primitive
+
+`components/specialist/clients-shared/client-sub-nav-tabs.tsx` —
+Client Component (uses `usePathname()`). 7 tab definitions, **6
+rendered** in C1 (Settings hidden until C3).
+
+| Order | Tab | Lucide icon | Badge source | C1 state |
+|---|---|---|---|---|
+| 1 | Overview | `LayoutDashboard` | — | enabled (Link) |
+| 2 | Contracts | `FileText` | `getClientContracts(id).length` | **disabled span** |
+| 3 | Briefs | `ClipboardList` | `splitBriefs(getClientBriefs(id)).open.length` (open only — Q2) | **disabled span** |
+| 4 | Hires | `Users` | active-status only (Q3) | **disabled span** |
+| 5 | Talent | `Sparkles` | `rankPoolForClient(id).length` (Q4) | **disabled span** |
+| 6 | Tags | `Tag` | `getClientTagKeys(id).length` | **disabled span** |
+| 7 | Settings | `Settings` | — | hidden in C1 (added in C3) |
+
+**Disabled tabs.** Q1 locked: 5 of the 6 visible tabs render as
+`<span aria-disabled>` (no Link, no nav) because their routes 404
+until C2/C3. Visual: `text-ink-mute opacity-60 cursor-not-allowed`.
+No tooltip in C1 (keep minimal). The tab DOM is stable across all
+3 checkpoints — only the `disabled?: boolean` flag flips as routes
+land.
+
+**Convention.** When net-new route surfaces ship in checkpoints,
+render the sub-nav with disabled placeholder spans for the routes
+that 404. Better than:
+- Live Links → 404 (broken affordance UX)
+- Trivial placeholder pages (file churn deleted in next checkpoint)
+
+The active flag becomes the only delta per checkpoint.
+
+**Sticky chrome.** Matches `queue-shared/ReviewTabs` line 32
+literally: `bg-cream/95 border-line-soft sticky top-[calc(36px+57px)]
+z-[5] border-b backdrop-blur-md backdrop-saturate-150`. Sub-nav
+clears search dropdown (`z-[20]`) and sits below topbar (`z-[6]`).
+
+### Page header band
+
+`clients-shared/client-page-header.tsx` — Server Component. NOT
+sticky (scrolls under topbar + sub-nav, matching `RosterHeader` /
+`DisputeHeader` / `ReviewHeader` precedent).
+
+Renders:
+- Breadcrumb (`Dashboard / My clients / {companyName}` — C1
+  overview). Sub-pages add a 4th segment via the `section` prop
+  in C2/C3.
+- Identity row: logo (gradient bucket) + companyName + trust tier
+  pill + VIP star (if `isVip`) + verified badge (if `verified`).
+- Meta strip: pre-composed `ManagedClient.metaLine` field.
+
+No action buttons on right side (C1 lock — revisit when product
+validates need).
+
+### Overview page sections
+
+`clients-shared/client-overview-app.tsx` — Server Component.
+
+1. **Quick stats** — 4 cards (Active hires / Lifetime spend / Their
+   rating / Briefs all-time). Direct field reads from `ManagedClient`.
+2. **Recent activity** — reuses `client.activityPreview`; same bullet
+   color mapping as the sheet timeline so visual continuity holds.
+   Section hidden when the array is empty.
+3. **Quick-action cards** — 4 cards to Contracts / Briefs / Hires
+   / Talent list routes. Show honest 0-counts when empty (per
+   locked decision — empty state is honest UX). **C1 consistency
+   fix:** the cards render as `<div aria-disabled>` (NOT `<Link>`)
+   to match Q1B's disabled-tab convention. Live-Link → 404 was the
+   original spec literal reading; on review it created an internal
+   inconsistency vs. the sub-nav (5 disabled tab spans + 4 live
+   404-trap cards on the same page). The cards each carry a
+   `disabled?: boolean` flag; C2 flips Contracts + Briefs to
+   `false` when those routes land; C3 flips Hires + Talent. DOM
+   stays stable across all 3 checkpoints — only the flag changes.
+   Visual: `cursor-not-allowed opacity-60`, no hover state change,
+   no "Coming soon" pill (minimal treatment matches sub-nav
+   precedent).
+
+Notes section deferred to C3. No action group.
+
+### Mock-data helpers (2 added; no records changed)
+
+Appended to `lib/mock-data/specialist/my-clients.ts`:
+
+```ts
+export function getManagedClient(id: string): ManagedClient | undefined {
+  return managedClients.find((c) => c.id === id);
+}
+
+export const ALL_MANAGED_CLIENT_IDS: ReadonlyArray<string> =
+  managedClients.map((c) => c.id);
+```
+
+Mirrors `candidate-profile.ts:546-557` literally. Cross-session ID
+continuity preserved — every `client-*` id resolved across all
+existing surfaces (Acme `client-acme-co`, Helios `client-helios-
+robotics`, etc.).
+
+### Files added (8) + 4 modified
+
+| File | Type |
+|---|---|
+| `app/(specialist)/specialist/clients/[id]/layout.tsx` | NEW (Server) |
+| `app/(specialist)/specialist/clients/[id]/page.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/index.ts` | NEW (barrel) |
+| `components/specialist/clients-shared/client-page-header.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/client-sub-nav-tabs.tsx` | NEW (Client) |
+| `components/specialist/clients-shared/client-overview-app.tsx` | NEW (Server) |
+| `components/specialist/clients-shared/contracts-list-body.tsx` | NEW (Layer A) |
+| `components/specialist/clients-shared/briefs-list-body.tsx` | NEW (Layer A) |
+| `components/specialist/my-clients/panels/contracts-panel.tsx` | MODIFIED (Layer B; delegates to A) |
+| `components/specialist/my-clients/panels/briefs-panel.tsx` | MODIFIED (Layer B; ListView delegates to A) |
+| `lib/mock-data/specialist/my-clients.ts` | MODIFIED (+2 helpers, no record changes) |
+| `docs/CONVERSION_LOG.md` | this entry |
+
+### Cross-session navigation — deferred to C2/C3
+
+| Surface | Current state | Update lands |
+|---|---|---|
+| Search index `brief` href | `/specialist/my-clients?focus={clientId}` | C2 (when brief detail page lands) |
+| Search index `client` href | `/specialist/my-clients` | C3 (sheet→page navigation upgrade) |
+| Sheet "View contracts" button | Opens ContractsPanel inside sheet | C3 (will navigate to `/specialist/clients/[id]/contracts`) |
+| Sheet "Open briefs" button | Opens BriefsPanel inside sheet | C3 |
+| Sheet "Suggest new talent" button | Opens TalentMatchPanel inside sheet | C3 |
+| Sheet hero | No "Open full profile" link | C3 |
+| Dispute respondent tile | Routes to `/specialist/my-clients` | C3 (will route to `/specialist/clients/[id]`) |
+
+### No-regression verification
+
+| | Status |
+|---|---|
+| `/specialist/my-clients` sheet — overview view | ✓ Untouched (orchestrator + `client-sheet-content.tsx` unchanged) |
+| `/specialist/my-clients` sheet — Contracts panel | ✓ Same render output (`<ContractsListBody>` produces identical DOM to the prior inline map) |
+| `/specialist/my-clients` sheet — Briefs list view | ✓ Same render output (Layer A wraps the same `<BriefCard>` map) |
+| `/specialist/my-clients` sheet — Briefs compose flow | ✓ Untouched |
+| Other 6 sheet panels (talent / pause / tags / invite / etc.) | ✓ Untouched |
+| Row click → opens sheet | ✓ Untouched |
+| All Sessions 1-7 + polish + talent-specialist routes | ✓ Untouched |
+| Marketing landing | ✓ Untouched |
+| Cross-session ID continuity | ✓ No record changes; 2 helpers appended only |
+| Search index | ✓ Unchanged (brief/client href updates deferred to C2/C3) |
+| Disputes / daily-activity / help / etc. | ✓ Untouched |
+| ApprovedFlash + queued-flash patterns | ✓ Untouched |
+
+### Summary
+
+- 8 new files + 4 modified + log entry
+- 12 new SSG routes pre-rendered at `/specialist/clients/[id]`
+- 1 new component family (`clients-shared/`) introduced
+- Layer A/B extraction pattern established as a new convention
+- Sub-nav primitive landed with `disabled?: boolean` per tab — DOM
+  stable across C1/C2/C3, only the flag changes
+- Settings tab hidden in C1 (no route exists); added in C3
+- 2 mock-data helpers added; no record changes
+- Sheet behavior preserved byte-identically (Contracts + Briefs
+  panels render the same DOM via the new shared bodies)
+- Build extends source: dedicated client pages don't exist in
+  source HTML — net-new architectural surface
+
+---

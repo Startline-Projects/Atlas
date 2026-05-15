@@ -1,9 +1,27 @@
 "use client";
 
 /**
- * Filter chips for the activity feed. Chips have colored leading dots
- * per category (`.act-filter-dot.<key>` in source CSS). Active chip
- * gets ink bg + paper text.
+ * ActivityFilterChips — daily-activity filter strip.
+ *
+ * Visual chrome mirrors `RosterCohorts` (sticky positioning at
+ * `top-[calc(36px+57px)] z-[7]`, paper-pill chips with rounded-full
+ * borders, bordered active state) so the filter strip on
+ * `/specialist/daily-activity` reads identically to the filter strips
+ * on `/specialist/my-candidates` and `/specialist/my-clients`.
+ *
+ * Forked from `RosterCohorts` (not consuming it directly) due to 3
+ * shape divergences:
+ *   1. Leading colored dot per filter category (6 semantic tones —
+ *      review / message / recert / dispute / match / system)
+ *   2. Right-aligned "N visible" meta affordance shown at the end of
+ *      the row
+ *   3. Typed union narrowing (`ActivityFilterKey` vs RosterCohorts'
+ *      generic `string`)
+ *
+ * Future audits: do NOT merge with `RosterCohorts` unless a 2nd
+ * consumer with the same dot + meta + typed-union shape lands.
+ * Per the 2-consumer-promote rule, API extensions on RosterCohorts
+ * should serve at least 2 consumers before being extracted.
  *
  * Counts come from the snapshot's `filterCounts` map; the parent
  * passes them down. Visible-count meta on the right reflects the
@@ -39,7 +57,7 @@ export function ActivityFilterChips({
   onChange: (next: ActivityFilterKey) => void;
 }) {
   return (
-    <div className="border-line-soft flex flex-wrap items-center gap-3 border-y bg-paper px-10 py-3 max-md:px-5">
+    <div className="border-line-soft bg-cream sticky top-[calc(36px+57px)] z-[7] flex flex-wrap items-center gap-3 border-b px-6 py-3.5 sm:px-10">
       <div className="flex flex-wrap gap-1.5">
         {ACTIVITY_FILTERS.map((f) => {
           const isActive = active === f.key;
@@ -50,10 +68,10 @@ export function ActivityFilterChips({
               type="button"
               onClick={() => onChange(f.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2.5 py-1.5 font-body text-[12px] transition-colors",
+                "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-paper px-3.5 py-1.5 text-[12.5px] font-medium whitespace-nowrap transition-colors",
                 isActive
-                  ? "bg-ink text-paper"
-                  : "text-ink-mute hover:bg-cream-deep hover:text-ink",
+                  ? "bg-ink text-paper border-ink"
+                  : "text-ink-soft hover:bg-cream-deep hover:border-ink-mute",
               )}
             >
               {f.key !== "all" ? (
@@ -69,9 +87,9 @@ export function ActivityFilterChips({
               {count > 0 ? (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-px font-mono text-[10px] font-medium",
+                    "rounded-full px-[7px] py-px font-mono text-[10px] font-medium tracking-[0.04em]",
                     isActive
-                      ? "bg-paper/15 text-paper"
+                      ? "bg-paper/14 text-paper"
                       : "bg-cream-deep text-ink-mute",
                   )}
                 >

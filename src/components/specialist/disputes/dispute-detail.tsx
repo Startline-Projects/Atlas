@@ -48,17 +48,32 @@ import { DisputeDecisionBar } from "./dispute-decision-bar";
 
 type Props = {
   dispute: Dispute;
+  /**
+   * True when this dispute is in the session-only draft overlay. Threaded
+   * from the orchestrator's `draftIds` set. Drives the DRAFT pill
+   * override on header + decision bar's button label/disabled state.
+   */
+  isDraft: boolean;
   /** Triggered by header "Escalate to admin" — opens the modal in the parent. */
   onRequestEscalate: () => void;
+  /**
+   * Triggered by decision bar's "Save as draft" button. Parent
+   * (DisputesApp) owns the `draftIds` set + flash trigger; this pane
+   * only forwards the click. Was a self-contained flash handler in
+   * Step 10; lifted to the parent so the click can also mutate state.
+   */
+  onSaveDraft: (dispute: Dispute) => void;
   /** Owned by DisputesApp; passed down so this pane's action handlers
-   *  (Export PDF, Save draft) can fire flashes without duplicating the
+   *  (Export PDF) can fire flashes without duplicating the
    *  useQueuedFlash hook. */
   fireQueuedFlash: (message: string, opts?: FireQueuedFlashOpts) => void;
 };
 
 export function DisputeDetail({
   dispute,
+  isDraft,
   onRequestEscalate,
+  onSaveDraft,
   fireQueuedFlash,
 }: Props) {
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -106,13 +121,12 @@ export function DisputeDetail({
     );
   }, [fireQueuedFlash]);
 
-  /* Decision bar F2: "Save as draft" → warn-tone flash. Decision drafts
-     service is backend-blocked. */
-  const handleSaveDraft = useCallback(() => {
-    fireQueuedFlash(
-      `Draft saved for ${dispute.caseId} — decision drafts service not yet wired`,
-    );
-  }, [fireQueuedFlash, dispute.caseId]);
+  /* Decision bar F2: "Save as draft" — forwards to the parent's
+     handler, which both fires the flash AND adds this dispute to the
+     `draftIds` overlay set. */
+  const handleSaveDraftClick = useCallback(() => {
+    onSaveDraft(dispute);
+  }, [onSaveDraft, dispute]);
 
   /* Decision bar F3: "Open decision form" (unresolved) / "View
      decision details" (resolved) → scroll-jump to the Decision tab.
@@ -145,9 +159,16 @@ export function DisputeDetail({
   const closePreview = useCallback(() => setPreviewSubject(null), []);
 
   return (
-    <div className="bg-cream flex min-w-0 flex-1 flex-col">
+    /* 93px = StaffRibbon 36 + Topbar 57. Asserts viewport-minus-topbar
+       min-height so flex-1 on tab content can expand and push the
+       sticky decision bar to viewport bottom on short content. Without
+       this, the parent (QueueShell child column) has no defined
+       height, flex-1 collapses, and the bar floats above viewport
+       bottom on short tabs (e.g. Timeline with 4 events). */
+    <div className="bg-cream flex min-h-[calc(100vh-36px-57px)] min-w-0 flex-1 flex-col">
       <DisputeHeader
         dispute={dispute}
+        isDraft={isDraft}
         onEscalate={onRequestEscalate}
         onJumpToAuditTab={handleJumpToAuditTab}
         onExportPdf={handleExportPdf}
@@ -234,9 +255,10 @@ export function DisputeDetail({
         slaLabel={dispute.slaLabel}
         evidenceReviewedCount={dispute.evidenceReviewedCount}
         evidenceTotalCount={dispute.evidenceTotalCount}
-        onSaveDraft={handleSaveDraft}
+        onSaveDraft={handleSaveDraftClick}
         onOpenDecisionForm={handleJumpToDecisionTab}
         isResolved={isResolved}
+        isDraft={isDraft}
       />
 
       <PreviewUnavailableModal

@@ -62,8 +62,16 @@ const SLA_TONE: Record<
   success: "text-success",
 };
 
+/* Session-only DRAFT overlay pill — amber-tinted to match the
+   in-progress / under-review warmth without claiming a real backend
+   state. When `row.isDraft` is true (set by the orchestrator's
+   `draftIds` set), this pill replaces the state-driven pill. */
+const DRAFT_PILL_CLASS = "bg-amber/15 text-amber";
+
 export function DisputeRow({ row }: { row: DisputeRowLite }) {
-  const pill = STATUS_PILL[row.state];
+  const pill = row.isDraft
+    ? { label: "DRAFT", className: DRAFT_PILL_CLASS }
+    : STATUS_PILL[row.state];
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">

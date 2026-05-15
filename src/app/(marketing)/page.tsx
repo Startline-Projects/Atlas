@@ -4,6 +4,7 @@ import { Faq } from "@/components/marketing/faq";
 import { FeaturedCandidates } from "@/components/marketing/featured-candidates";
 import { Fees } from "@/components/marketing/fees";
 import { Hero } from "@/components/marketing/hero";
+import { PrivacyStrip } from "@/components/marketing/privacy-strip";
 import { Testimonials } from "@/components/marketing/testimonials";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { Vetting } from "@/components/marketing/vetting";
@@ -19,6 +20,7 @@ export default function HomePage() {
       <Testimonials />
       <CandidateCta />
       <TrustStrip />
+      <PrivacyStrip />
       <Faq />
     </>
   );
