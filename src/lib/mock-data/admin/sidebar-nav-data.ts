@@ -238,7 +238,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'regulatory',
           label: 'Regulatory',
-          pathname: '#regulatory',
+          pathname: '/admin/compliance/regulatory-submissions',
           icon: RegulatoryNavIcon,
         },
       ],
