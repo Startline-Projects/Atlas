@@ -163,6 +163,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/compliance/data-subject-rights/');
     }
 
+    // Audit Logs: list view + detail descendant routes
+    if (itemPathname === '/admin/compliance/audit-logs') {
+      return pathname === '/admin/compliance/audit-logs'
+          || pathname.startsWith('/admin/compliance/audit-logs/');
+    }
+
     return pathname === itemPathname;
   };
 

@@ -226,7 +226,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'audit',
           label: 'Audit Logs',
-          pathname: '#audit-logs',
+          pathname: '/admin/compliance/audit-logs',
           icon: AuditLogsNavIcon,
         },
         {
