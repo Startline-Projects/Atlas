@@ -157,6 +157,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/compliance/legal-requests/');
     }
 
+    // Data Subject Rights: list view + detail descendant routes
+    if (itemPathname === '/admin/compliance/data-subject-rights') {
+      return pathname === '/admin/compliance/data-subject-rights'
+          || pathname.startsWith('/admin/compliance/data-subject-rights/');
+    }
+
     return pathname === itemPathname;
   };
 

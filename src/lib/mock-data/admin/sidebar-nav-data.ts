@@ -218,7 +218,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'dsr',
           label: 'Data Subject Rights',
-          pathname: '#data-subject-rights',
+          pathname: '/admin/compliance/data-subject-rights',
           icon: DataSubjectRightsNavIcon,
           count: '3',
           countType: 'warn',

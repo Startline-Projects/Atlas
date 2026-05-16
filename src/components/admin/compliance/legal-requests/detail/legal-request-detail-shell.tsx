@@ -194,7 +194,9 @@ export function LegalRequestDetailShell({ detail }: LegalRequestDetailShellProps
         </main>
 
         {/* fr-rail */}
-        <aside className="self-start sticky top-[88px] max-h-[calc(100vh-112px)] overflow-y-auto pr-[2px] flex flex-col gap-[14px] [scrollbar-width:thin] max-[1100px]:static max-[1100px]:max-h-none max-[1100px]:overflow-visible">
+        <aside
+          className="self-start sticky top-[88px] flex flex-col gap-[14px] max-[1100px]:static"
+        >
           <LrCountdownCard eyebrow={detail.countdown.eyebrow} label={detail.countdown.label} cells={[{value: detail.countdown.days, label: 'Days'}, {value: detail.countdown.hours, label: 'Hours'}, {value: detail.countdown.minutes, label: 'Minutes'}]} barFillPct={detail.countdown.barFillPct} meta={detail.countdown.meta} variant="urgent" />
           <LrCounselCard {...detail.counsel} />
           <LrQuickstatsCard title="At a glance" stats={detail.quickstats1} />

@@ -4,13 +4,14 @@ interface LrCounselCardProps {
   initials: string;
   avatarGradient: string;
   metaRows: Array<{ label: string; value: string }>;
+  title?: string;
 }
 
-export function LrCounselCard({ name, firm, initials, avatarGradient, metaRows }: LrCounselCardProps) {
+export function LrCounselCard({ name, firm, initials, avatarGradient, metaRows, title }: LrCounselCardProps) {
   return (
     <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] p-[16px_18px]">
       <h3 className="font-display text-[13px] font-medium text-[var(--ink)] tracking-[-0.005em] m-0 mb-[10px] pb-[8px] border-b border-b-dashed border-b-[var(--line-soft)]">
-        Assigned counsel
+        {title ?? 'Assigned counsel'}
       </h3>
 
       <div className="flex items-center gap-[10px] mb-[10px]">
