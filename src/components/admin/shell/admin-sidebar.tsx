@@ -169,6 +169,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           || pathname.startsWith('/admin/compliance/audit-logs/');
     }
 
+    // Privacy Reports: single flat route
+    if (itemPathname === '/admin/compliance/privacy-reports') {
+      return pathname === '/admin/compliance/privacy-reports';
+    }
+
     return pathname === itemPathname;
   };
 

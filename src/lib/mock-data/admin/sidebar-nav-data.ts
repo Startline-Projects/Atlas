@@ -232,7 +232,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'privacy',
           label: 'Privacy Reports',
-          pathname: '#privacy',
+          pathname: '/admin/compliance/privacy-reports',
           icon: LockIcon,
         },
         {
