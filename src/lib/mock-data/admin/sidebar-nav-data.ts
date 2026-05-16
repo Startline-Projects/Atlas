@@ -210,7 +210,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'legal',
           label: 'Legal Requests',
-          pathname: '#legal',
+          pathname: '/admin/compliance/legal-requests',
           icon: LegalRequestsNavIcon,
           count: '1',
           countType: 'urgent',

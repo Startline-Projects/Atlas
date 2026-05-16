@@ -151,6 +151,12 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/finance/tax-documents';
     }
 
+    // Legal Requests: list view + detail descendant routes
+    if (itemPathname === '/admin/compliance/legal-requests') {
+      return pathname === '/admin/compliance/legal-requests'
+          || pathname.startsWith('/admin/compliance/legal-requests/');
+    }
+
     return pathname === itemPathname;
   };
 
