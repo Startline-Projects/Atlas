@@ -18,8 +18,8 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | Step | Title | Status |
 |---|---|---|
 | 1   | Mode plumbing + ModeToggle on dashboard | ✅ done |
-| 1.5 | Post-auth Manager redirect (deferred mini-step) | ⏸ not started |
-| 2   | Sidebar TEAM MANAGEMENT section (mode-aware) | ❌ not started |
+| 1.5 | Post-auth Manager redirect | ⏸ deferred (see below — no commit) |
+| 2   | Sidebar TEAM MANAGEMENT section (mode-aware) | ✅ done |
 | 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ❌ not started |
 | 4   | My Team — 11-specialist grid | ❌ not started |
 | 5   | Specialist Detail — 7-tab layout + 30-day calendar + coaching | ❌ not started |
@@ -143,7 +143,93 @@ If keyboard-only QA reports the toggle's mode change being inaudible, revisit an
 
 ### Up next
 
-- Step 1.5 — Post-auth Manager redirect (small mock change). Under Path C this is documentation-only because Managers and Specialists already land on `/specialist/dashboard`; the "redirect" becomes a defaults contract rather than a route change.
-- Step 2 — Sidebar TEAM MANAGEMENT section (mode-aware conditional render inside the existing Specialist sidebar).
+- Step 1.5 — see deferral entry below.
+- Step 2 — see Session 1 / Step 2 entry below.
+
+---
+
+### Step 1.5 — Post-auth Manager redirect (DEFERRED — no commit)
+
+Under Path C this collapses to a defaults contract that's already satisfied:
+
+- Both roles land on `/specialist/dashboard` after sign-in (the existing Specialist signin form's success behavior — no change needed)
+- The role mock already returns `"manager"` (`src/lib/manager/use-session-role.ts`)
+- The mode default is `"manager"` (`ManagerModeProvider` constant `DEFAULT_MODE`)
+
+There is no Manager-specific redirect TARGET that differs from the Specialist default until real auth (Clerk per `docs/TECH_STACK.md` §2.5) provides session-time role data — at which point the contract becomes: "if `session.role === 'manager'`, set the initial `useManagerMode()` value to `'manager'`" (already the default for everyone).
+
+**Decision: no Step 1.5 commit.** Re-evaluate when real auth lands. If/when that re-evaluation produces a change, it will land as an amendment to whichever Step's commit introduces real auth (likely outside the Manager-conversion branch entirely).
+
+---
+
+## Session 1 — Step 2 — Sidebar TEAM MANAGEMENT section (mode-aware)
+
+**Goal:** Add the TEAM MANAGEMENT section to the existing Specialist Sidebar, mode-aware via `useSessionRole()` + `useManagerMode()`. Resolves the cross-route mode indicator friction from Step 1 (the section becomes the persistent on-screen cue once a Manager navigates off the dashboard, since `ModeToggle` is dashboard-only per scope MD §1).
+
+### Files added (3)
+
+| File | Purpose |
+|---|---|
+| `src/lib/mock-data/manager/manager-nav-items.ts` | 7 Manager nav items + types (`ManagerNavItem`, `ManagerNavIconKey`, `ManagerNavBadgeTone`). Each item carries `disabled?: boolean` — all 7 are `true` in Step 2; Steps 4-11 flip them as routes land. Locked the Path C URL prefix (`/specialist/team`, `/specialist/daily-audit`, etc.). |
+| `src/components/manager/shell/manager-sidebar-icons.tsx` | 7 inline SVG icon components mirroring `specialist/shell/sidebar-icons.tsx` shape. Shapes ported faithfully from `reference/manager.html` `TEAM_MANAGEMENT_ITEMS` (lines 33297-33345). Duplicated rather than shared per Step 2 lock — keeps role-surface boundary clean. |
+| `src/components/manager/shell/manager-sidebar-section.tsx` | Client Component. Render gate: `useSessionRole() === "manager" AND useManagerMode() === "manager"` — either failing returns `null`. Renders section header + 7 disabled `<span aria-disabled>` items. Item visual replicates `SidebarNavItem`'s layout without importing it (avoids extending Specialist `NavItem` union types). |
+
+### Files modified (3)
+
+| File | Diff shape |
+|---|---|
+| `src/components/specialist/shell/sidebar.tsx` | **(Specialist-side edit)** +1 import (with marker comment) and +1 component mount (with full marker fence) inside `<nav>` after the existing sections + before the `<SidebarProfile>` footer. Net ~13 lines added including comments. Sidebar's existing logic untouched. |
+| `src/lib/mock-data/manager/index.ts` | +1 barrel re-export. |
+| `docs/manager/CONVERSION_LOG.md` | Step 1.5 deferral note + this Step 2 entry. |
+
+### Locked decisions (Step 2)
+
+| | |
+|---|---|
+| **"Team Performance" dropped** | The prototype's 8-item TEAM_MANAGEMENT array includes "Team Performance" → `#team-performance` — but there is no `view-team-performance` in the 28-view list (sidebar-only dead navigation). Under Path C the Manager's own Specialist performance lives at `/specialist/performance` (existing), and team-wide performance lives at Team Reports (item 6 below, Step 10). Adding a dead nav entry would create user-visible "broken link UX." 7-item list final. |
+| **Manager icon-key union is separate** | `ManagerNavIconKey` is its own union; does NOT extend or reuse Specialist's `NavIconKey`. Even visually-similar icons (e.g. the calendar in "Daily Activity" and "Manager Daily Activity") are duplicated as separate inline SVGs in `manager-sidebar-icons.tsx` rather than imported across the boundary. |
+| **Disabled span pattern** | All 7 items render as `<span aria-disabled cursor-not-allowed opacity-60>` in Step 2 since their routes 404. Matches Session 9 C1's sub-nav-tabs convention from the Specialist surface. As each route lands (Steps 4-11), the corresponding `disabled` flag flips to `false` and the item becomes a real `<Link>`. DOM stays stable. |
+| **Active-state machinery deferred** | No no-op infrastructure in Step 2 (all items are disabled — there's nothing to highlight). Active-state logic lands in Step 4 with the first enabled item (`/specialist/team`). |
+| **Cross-route mode indicator** | TEAM MANAGEMENT section IS the indicator. No additional Topbar badge needed. The ModeToggle stays dashboard-only per scope MD §1. |
+| **Marker comment fence** | The single Specialist-file edit (`sidebar.tsx`) is wrapped in a clear comment fence containing "Manager-extension surface (ADR 0001 — Path C)" — the same string will fence every Manager-extension edit through Step 14. Grep-friendly for migration scripts if ADR 0001 ever reverses. |
+| **Badge counts** | `My Team` badge is derived from `specialists.length` (currently 1; auto-updates to 11 when Step 4 lands the full roster). Other badges (Daily Activity Audit "2", Team Disputes "3", Recruitment Sprints "4") are hardcoded prototype-derived placeholders — replaced with derived counts in Steps 6, 7, 9 respectively when their data files land. |
+
+### Hrefs locked (Step 2)
+
+| Item | Href (Path C: `/specialist/` prefix) | Enables in Step |
+|---|---|---|
+| My Team | `/specialist/team` | 4 |
+| Daily Activity Audit | `/specialist/daily-audit` | 6 |
+| Team Disputes | `/specialist/team-disputes` | 7 |
+| Pool Coordination | `/specialist/pool-coordination` | 8 |
+| Recruitment Sprints | `/specialist/recruitment-sprints` | 9 |
+| Team Reports | `/specialist/team-reports` | 10 |
+| Manager Daily Activity | `/specialist/manager-daily-activity` | 11 |
+
+### Known friction (Step 2)
+
+- **Hydration flash on section mount.** Server renders without the TEAM MANAGEMENT section (`getServerSnapshot` returns the default mode; on first paint `useManagerMode()` returns `"manager"` matching default; so server-rendered DOM INCLUDES the section). On hydration, if localStorage says `"specialist"`, the section flashes out (small layout shift, ~280px tall section vanishing). Inverse hydration flash from Step 1's toggle. Acceptable trade-off of localStorage-backed client state; revisit when/if a cookie-based pattern is preferred for SSR-side mode resolution.
+- **Step 1's cross-route mode indicator friction is resolved.** Once a Manager navigates off the dashboard, the TEAM MANAGEMENT section persists as the on-screen cue that Manager Mode is active.
+
+### Step 2 verification (a-l — all green)
+
+| | | |
+|---|---|---|
+| (a) | `/specialist/dashboard` renders unchanged | ✓ |
+| (b) | TEAM MANAGEMENT section visible at sidebar bottom with 7 items | ✓ |
+| (c) | Toggle to "Specialist" → section disappears instantly (no reload) | ✓ |
+| (d) | Toggle back to "Manager" → section reappears | ✓ |
+| (e) | Navigate to `/specialist/review-queue` → TEAM MANAGEMENT still visible (mode persists; toggle disappears as expected — dashboard-only) | ✓ |
+| (f) | Navigate back to dashboard → toggle + section both visible | ✓ |
+| (g) | Refresh on `/specialist/review-queue` → section state persists | ✓ |
+| (h) | Click any disabled item → no navigation, cursor-not-allowed | ✓ |
+| (i) | `<md` viewport → entire section hidden (`max-md:hidden`) | ✓ |
+| (j) | `pnpm typecheck`, `pnpm lint`, `pnpm build` all clean | ✓ |
+| (k) | Every Specialist route renders unchanged outside the sidebar section addition | ✓ |
+| (l) | Temporarily flipped `useSessionRole()` to `"specialist"` → section disappears even when `useManagerMode() === "manager"` (verifies both gates work independently); reverted to `"manager"` before commit | ✓ |
+
+### Up next
+
+- Step 3 — Manager dashboard content swap. The first step where toggling the mode produces a meaningful content change (urgent panel / today's snapshot / active items / rail all fork to team-wide). Removes the temporary "Current mode: ..." indicator from `ModeToggle` (Step 1 placeholder).
 
 ---

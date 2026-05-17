@@ -14,3 +14,4 @@
 
 export * from "./manager-identity";
 export * from "./team";
+export * from "./manager-nav-items";
