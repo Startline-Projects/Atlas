@@ -596,7 +596,124 @@ Do NOT do the audit now. Defer until before Step 6 begins.
 
 ### Up next
 
-- **Specialist shape audit pass** (do BEFORE Step 6) — re-read prototype exhaustively, identify all remaining per-specialist fields, lock in one commit.
-- **Step 6 — Daily Activity Audit.** `/specialist/daily-audit` Manager-only route. Submission overview, 11 audit rows, timing chart, timing distribution. Un-disables: dashboard urgent card 1 "Open daily audit" + dashboard rail "Audit a Specialist" + Specialist Detail hero "Audit daily" + sidebar TEAM MANAGEMENT "Daily Activity Audit" item.
+- See "Specialist shape audit" entry below.
+
+---
+
+## Session 1 — Specialist shape audit pass — kpis + dailyHistory + todayActivity + dailyActivity context
+
+**Goal:** Lock all remaining per-Specialist data fields needed across Steps 6-11 in one commit. Prevents further additive drift across the upcoming feature steps.
+
+### What changed (5 shape additions)
+
+| # | Change | Type | Steps consuming |
+|---|---|---|---|
+| 1 | `kpis: SpecialistKpis` (NEW nested object, 8 numeric stats) | Add | 5, 10 |
+| 2 | `DailyActivityState` discriminated union extended with per-status context | Extend | 5, 6 |
+| 3 | `todayActivity: TodayActivityCounts` (NEW nested object, 4 counts) | Add | 5, 6 |
+| 4 | `dailyHistory: ReadonlyArray<DailyHistoryDay>` (NEW — 14 weekday entries per spec) | Add | 10, 11 |
+| 5 | 3 NEW flat capacity fields (`contractsCapacity`, `reviewsPendingNow`, `reviewsPendingCapacity`) | Add (move from spec-detail-data.ts) | 5 (Workload tab) |
+
+### KPI value reconciliation — Step 10 charts override prior Step 5 numbers
+
+Step 5's `spec-detail-data.ts` `SPEC_STATS` map carried Mateo's reviewsMonth + SLA values that matched Step 10 — but the other 10 specialists' numbers were prior guesses that didn't match the canonical Step 10 chart bars. The audit reconciles to Step 10 canonical (prototype `view-team-reports` per-specialist comparison charts).
+
+Diffs vs. previous Step 5 numbers (Step 10 wins, in **bold**):
+
+| Specialist | reviewsMonth | SLA% | dispute hrs (NEW) | sourcing | hires | Other adjustments |
+|---|---|---|---|---|---|---|
+| Mateo | 22 (=) | 94 (=) | **28** | 48 (=) | 4 (=) | — |
+| Priya | 14 (=) | 78 (**was 76**) | **52** | **18** (was 38) | **1** (was 2) | dailyAdherence **78%** (was 65%) — Step 10 metric foot |
+| Diego | **19** (was 18) | 85 (=) | **40** | **32** (was 42) | **2** (was 3) | — |
+| Aisha | **26** (was 20) | **90** (was 88) | **34** | **41** (was 45) | 3 (=) | — |
+| Lucas | **31** (was 28) | **95** (was 90) | **24** | **56** (was 55) | 5 (=) | — |
+| Felipe | **18** (was 16) | **96** (was 92) | **18** | **38** (was 40) | 4 (=) | — |
+| Yara | **28** (was 24) | **98** (was 95) | **22** | **44** (was 50) | 5 (=) | — |
+| Min-Jun | **24** (was 19) | **92** (was 91) | **30** | **36** (was 44) | 3 (=) | — |
+| Olena | 12 (=) | **88** (was 87) | **32** | 22 (=) | 2 (=) | — |
+| Kavi | 17 (=) | 89 (=) | **26** | **28** (was 41) | 2 (=) | — |
+| Naomi | **20** (was 18) | **95** (was 93) | **32** | **31** (was 38) | 3 (=) | — |
+
+Other KPIs (disputesResolvedMonth, candidatesApprovedMonth) kept from Step 5 — prototype doesn't override.
+
+### `DailyActivityState` extensions
+
+Per-status context fields added for Step 6 audit-row copy:
+
+```ts
+| { kind: "pending"; dueLabel: string; lastActivityLabel: string }
+| { kind: "missed"; daysCount: number; lastSubmittedDate: string; lastSubmittedTime: string }
+| { kind: "excused"; untilLabel: string; resumesDate: string }
+```
+
+Only 3 specialists carry non-submitted state currently: Priya (missed), Aisha (pending), Olena (excused). Records updated accordingly.
+
+### `dailyHistory` — 14 weekdays, all 11 specialists
+
+Heatmap pattern from prototype `view-team-reports` heatmap (lines 31312-31396). Intensity scale extended to include `s0` (excused — Olena's last 4 vacation days render as `s0`). Lucas/Felipe/Yara render perfect adherence (mostly s4); Priya's last 3 days are `s1` (missed — matches her `dailyActivity.missed.daysCount: 2` + today's missed → 3 cells).
+
+A `makeHistory()` helper validates the 14-entry length at module load — typo-safety.
+
+### `todayActivity` — 4-count breakdown per specialist
+
+Mateo's values match the prototype Step 5 placeholder string (14/3/2/1). The other 10 specialists' values are inferred per persona (workload, status) — prototype only shows Mateo's. Documented in records as inferred.
+
+A new `TodayActivitySummary` sub-component in `sd-tab-daily.tsx` composes human copy from the 4 counts ("Logged X outreach, Y check-ins, Z interviews, N signups."). Handles vacation ("No activity logged — excused for vacation"), pending ("Logged so far today: …"), and missed (zero-state).
+
+### 3 flat workload-capacity fields
+
+Moved verbatim from `spec-detail-data.ts`'s `SPEC_STATS` map onto Specialist. Naming: `contractsCapacity` + `reviewsPendingCapacity` parallel pattern, but legacy `caseloadCapacity` (candidate denominator) stays — symmetry would have it as `candidatesCapacity`. Code-smell noted in team.ts comment near the field; no TODO grep marker (deliberately) — small inconsistency, future rename pass can address.
+
+### `spec-detail-data.ts` pruned
+
+Removed (~210 LOC):
+- `SpecStats` type
+- `SPEC_STATS: Record<SpecialistId, SpecStats>` const (11 records × 10 fields)
+- `getSpecStats(id)` lookup
+- `dailyTodayDetailTemplate` string
+- `SpecialistId` import (unused)
+
+What's left: pure shared placeholder content for tabs (`overviewTimelineEntries`, `performanceCards`, `workloadRecentAssignments`, `workloadNeedsAttention`, `recentSubmissions`, `coachingPastNotes`, `communicationThread`, `past1on1Sessions`, `workPortfolioCardDefs`). Per-Specialist data sits ENTIRELY on `Specialist` record.
+
+### Future-maintainer note (post-Clerk)
+
+KPI access is currently direct field reads on the canonical Specialist record (`s.kpis.reviewsMonth`). When KPIs become async-fetched (after real auth + backend land), an adapter layer at the page or orchestrator level should resolve KPIs and pass them down. The 5 consuming components (`sd-stats-strip`, `sd-tab-overview`, `sd-tab-workload`, `sd-tab-daily`, and Step 10 components when they land) stay unchanged.
+
+This is a breadcrumb for whoever lands real auth, not a Step 6 concern.
+
+### Files touched (3 new — by way of zero — and 6 modified)
+
+| File | Diff |
+|---|---|
+| `src/lib/mock-data/manager/team.ts` | +~330 / -~30 — 5 new type defs, 11 records expanded with new fields, KPI reconciliation per Step 10 |
+| `src/lib/mock-data/manager/spec-detail-data.ts` | +~30 / -~210 — remove SpecStats/SPEC_STATS/getSpecStats/dailyTodayDetailTemplate; update file header |
+| `src/components/manager/specialist-detail/sd-stats-strip.tsx` | -1 import, swap `getSpecStats(s.id).*` → `s.kpis.*`. ~-4/+4 |
+| `src/components/manager/specialist-detail/sd-tab-overview.tsx` | Same pattern. ~-4/+4 |
+| `src/components/manager/specialist-detail/sd-tab-workload.tsx` | Same pattern + `s.contractsCapacity` / `s.reviewsPendingNow` / `s.reviewsPendingCapacity` direct reads. ~-5/+5 |
+| `src/components/manager/specialist-detail/sd-tab-daily.tsx` | Drop `dailyTodayDetailTemplate` import; add `<TodayActivitySummary>` sub-component composing per-spec copy from `s.todayActivity` discriminated by `dailyActivity.kind`. ~+55/-4 |
+| `docs/manager/CONVERSION_LOG.md` | This entry |
+
+### Verification — all green
+
+| | | |
+|---|---|---|
+| (a) | `pnpm typecheck` clean | ✓ |
+| (b) | `pnpm lint` baseline preserved (0 new) | ✓ |
+| (c) | `pnpm build` clean — 177 routes preserved (no new, no removed) | ✓ |
+| (d) | Specialist Detail renders for all 11 specialists with updated stat numbers | ✓ |
+| (e) | Mateo self-adjustments still work (suppress Message + Schedule 1:1, "You" tag, etc.) | ✓ |
+| (f) | Modal a11y unchanged | ✓ |
+| (g) | `grep -rn "TODO(step-5)" src/` returns 0 | ✓ |
+| (h) | `useSessionRole()` flip → all detail pages redirect (regression check) | ✓ |
+| (i) | All other Specialist routes unchanged | ✓ |
+
+### What's NOT in this audit (intentionally deferred)
+
+- **Skills / specialization** — Step 8 Pool Coordination uses ROLE (already in Specialist). No skill-tagging surface in Steps 6-11.
+- **Communication channels** — Step 13 (Specialist Chat) is out of scope here.
+- **Audit history / coaching frequency** — Steps 5 + 6 don't reference per-specialist.
+- **Hire success metrics breakdown** — Team aggregates only in Step 10; per-specialist breakdown not in any 6-11 surface.
+
+If any of these surface in Steps 6-11 once we build them, address as a one-off Specialist extension (small) rather than another audit pass.
 
 ---

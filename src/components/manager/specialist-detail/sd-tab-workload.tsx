@@ -18,7 +18,6 @@
  */
 
 import {
-  getSpecStats,
   workloadNeedsAttention,
   workloadRecentAssignments,
 } from "@/lib/mock-data/manager/spec-detail-data";
@@ -26,7 +25,6 @@ import type { Specialist } from "@/lib/mock-data/manager/team";
 import { cn } from "@/lib/utils/cn";
 
 export function SdTabWorkload({ specialist: s }: { specialist: Specialist }) {
-  const stats = getSpecStats(s.id);
   return (
     <div className="flex flex-col gap-4">
       <section className="bg-paper border-line rounded-md border p-5">
@@ -54,12 +52,12 @@ export function SdTabWorkload({ specialist: s }: { specialist: Specialist }) {
         <CapacityBar
           label="Contracts"
           numerator={s.workload.contractsCount}
-          denominator={stats.contractsCapacity}
+          denominator={s.contractsCapacity}
         />
         <CapacityBar
           label="Reviews pending"
-          numerator={stats.reviewsPendingNow}
-          denominator={stats.reviewsPendingCapacity}
+          numerator={s.reviewsPendingNow}
+          denominator={s.reviewsPendingCapacity}
         />
       </section>
 

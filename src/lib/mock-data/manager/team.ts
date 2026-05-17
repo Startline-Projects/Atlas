@@ -1,12 +1,11 @@
 /**
- * Specialist roster — full 11-Specialist canonical lock (Step 4).
+ * Specialist roster — full 11-Specialist canonical lock.
  *
  * This is the single source of truth for Specialist identity, role,
- * status, workload, performance, and the mt-avatar slot mapping for
- * the entire Manager surface (Steps 4-11). Every Manager view that
- * references a Specialist by name pulls from this file via
- * `getSpecialist(id)`. No Specialist data should be hardcoded
- * elsewhere — refactor anything that drifts.
+ * status, workload, performance, daily activity history, monthly
+ * KPIs, and the mt-avatar slot mapping for the entire Manager
+ * surface (Steps 4-11). Every Manager view that references a
+ * Specialist by name pulls from this file via `getSpecialist(id)`.
  *
  * ## Mateo Vargas — dual identity
  *
@@ -15,50 +14,28 @@
  * as a Specialist record at `spec-mateo-vargas` with:
  *
  *   - `isManager: true` — drives the `is-you` card treatment + the
- *     special "View dashboard / Performance" button pair (Step 4)
+ *     special "View dashboard / Performance" button pair
  *   - `managerId: "mgr-001-v8b2c4"` — cross-link back to
- *     `currentManager` for shared identity reads (greetings, signin
- *     dropdowns, etc. — Steps 5+)
- *   - `avatarSlot: "you"` — the prototype's `av-you` slot (ink
- *     background, lime-deep border, lime text) — visually distinct
- *     from the 10 numbered slots so "self" stays findable across
- *     team views
+ *     `currentManager` for shared identity reads
+ *   - `avatarSlot: "you"` — the prototype's `av-you` slot
  *
  * Display initials are "MV" (not the prototype's single "M") to align
- * with the canonical identity lock. Minor visual departure from
- * prototype — single letter looked decent for "Miguel"; two
- * matches the namespace and stays readable in the avatar circle.
+ * with the canonical identity lock.
  *
  * ## SpecialistRole — prototype-faithful 10 categories
- *
- * The union expanded from Step 1's stub (which guessed at the
- * category list) to match the prototype literally. Six of ten
- * entries changed:
- *
- *   - Step 1 "Marketing"           → "Marketing Ops"
- *   - Step 1 "Engineering"         → REMOVED (no specialist owns it)
- *   - Step 1 "Content & Writing"   → REMOVED
- *   - Step 1 "Operations"          → REMOVED (became "Marketing Ops")
- *   - Step 1 "Design"              → "Designers"
- *   - Step 1 "Data & Analytics"    → "Data Operations"
- *   - Step 1 (Tech Support)         → NEW
- *   - Step 1 (Project Management)   → NEW
- *   - Step 1 (Recruiting Coords)    → NEW
  *
  * Source: prototype lines 27338-27631 (`view-my-team` card data).
  *
  * ## Performance score banding
  *
- * The 0-100 `performanceScore` field is rendered with a 3-band visual
- * (locked Step 4 Q3). Documented HERE so Steps 5 (Specialist Detail),
- * 10 (Team Reports), 11 (Manager Daily Activity) use the SAME logic:
+ * The 0-100 `performanceScore` field is rendered with a 3-band visual:
  *
  *   - `high` (≥85)  → bg-success bar
  *   - `mid`  (75-84) → bg-amber bar
  *   - `low`  (<75)   → bg-danger bar
  *
  * Value text tone (separate concern):
- *   - `success` text when score ≥95 (only Yara meets this in Step 4)
+ *   - `success` text when score ≥95 (only Yara meets this)
  *   - `attn` text (amber) when score is mid-band (Diego at 85)
  *   - Neutral text otherwise
  *
@@ -67,15 +44,34 @@
  * The prototype's filter chips (Active, Vacation, Performance flagged,
  * At capacity) all map to `status`, NOT `cohort`. The `cohort` field
  * exists for downstream Steps 5/10 (1:1 cadence, performance review
- * frequency). Values are INFERRED from tenure + performance + role
- * complexity — not directly sourced from the prototype:
+ * frequency). Values are INFERRED.
  *
- *   - senior (7): Mateo, Diego, Felipe, Yara, Min-Jun, Olena, Naomi
- *   - mid    (4): Priya, Aisha, Lucas, Kavi
- *   - junior (0), on-trial (0): no specialists assigned at Step 4
+ * ## Specialist shape audit pass (this commit)
  *
- * Revisit cohort assignments at Step 10 (Team Reports) if the
- * comparison heatmap surfaces a different signal.
+ * 5 changes ship together to lock per-Specialist data ahead of
+ * Steps 6-11:
+ *
+ *   1. `kpis: SpecialistKpis` — 8 monthly stats (Step 5 + Step 10)
+ *   2. `DailyActivityState` extended with per-status context fields
+ *      (Step 6 audit-row copy)
+ *   3. `todayActivity: TodayActivityCounts` — 4-count breakdown
+ *      (Step 5 Daily tab + Step 6 audit-row expanded notes)
+ *   4. `dailyHistory: ReadonlyArray<DailyHistoryDay>` — 14 weekdays
+ *      of intensity scores (Step 10 heatmap + Step 11 calendar)
+ *   5. 3 flat workload-capacity fields (Step 5 Workload tab),
+ *      previously in `spec-detail-data.ts`'s `SPEC_STATS` map
+ *
+ * Step 10 prototype values are canonical for any KPI that appears
+ * in both Step 5 and Step 10 (charts override prior Step 5 numbers).
+ * Reconciled values documented in CONVERSION_LOG.
+ *
+ * Future-maintainer note (post-Clerk): KPI access is currently
+ * direct field reads (`s.kpis.reviewsMonth`). When KPIs become
+ * async-fetched, an adapter layer at the page or orchestrator level
+ * should resolve KPIs and pass them down. The 5 consuming
+ * components (sd-stats-strip, sd-tab-overview, sd-tab-workload,
+ * sd-tab-daily, and Step 10 components when they land) stay
+ * unchanged.
  */
 
 import { currentManager } from "./manager-identity";
@@ -121,12 +117,62 @@ export type SpecialistCohort = "senior" | "mid" | "junior" | "on-trial";
 /** mt-avatar slot 1-10, or "you" for the Manager's Specialist card. */
 export type AvatarSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | "you";
 
-/** Daily activity submission state for "today". */
+/** Daily activity submission state for "today".
+ *
+ *  Per-status context fields added in the Step 5 audit pass:
+ *    - PENDING gets `lastActivityLabel` (Step 6 audit-row meta)
+ *    - MISSED gets `lastSubmittedDate` + `lastSubmittedTime`
+ *    - EXCUSED gets `resumesDate`
+ *  SUBMITTED needs no extension — `timeLabel` already carries
+ *  everything the UI shows. */
 export type DailyActivityState =
   | { kind: "submitted"; timeLabel: string }
-  | { kind: "pending"; dueLabel: string }
-  | { kind: "missed"; daysCount: number }
-  | { kind: "excused"; untilLabel: string };
+  | { kind: "pending"; dueLabel: string; lastActivityLabel: string }
+  | {
+      kind: "missed";
+      daysCount: number;
+      lastSubmittedDate: string;
+      lastSubmittedTime: string;
+    }
+  | { kind: "excused"; untilLabel: string; resumesDate: string };
+
+/** Per-Specialist monthly KPIs. Drives Step 5 (Specialist Detail
+ *  stats strip + Overview tile) AND Step 10 (Team Reports per-spec
+ *  comparison charts). Step 10 prototype values are canonical
+ *  wherever the two surfaces overlap. */
+export type SpecialistKpis = {
+  reviewsMonth: number;
+  reviewsMonthSLAPct: number;
+  disputesResolvedMonth: number;
+  /** Avg dispute resolution time in hours. Step 10 chart consumes. */
+  disputeAvgResolutionHours: number;
+  dailyAdherencePct: number;
+  sourcingProspectsMonth: number;
+  hiresPlacedMonth: number;
+  candidatesApprovedMonth: number;
+};
+
+/** Today's daily activity breakdown — feeds Step 5 Daily tab + Step 6
+ *  audit row expanded notes. Counts MAY be partial (specialist hasn't
+ *  submitted yet) — the consumer's copy says "logged so far". */
+export type TodayActivityCounts = {
+  outreach: number;
+  checkIns: number;
+  interviews: number;
+  signups: number;
+};
+
+/** Intensity score for one cell of the 14-weekday daily-activity
+ *  heatmap. `s0` is excused/vacation; `s1`=missed, `s2`=late,
+ *  `s3`=mostly on time, `s4`=on time. Prototype CSS classes literally. */
+export type DailyHistoryIntensity = "s0" | "s1" | "s2" | "s3" | "s4";
+
+/** One day in the 14-weekday history. */
+export type DailyHistoryDay = {
+  /** Header letter in heatmap row (prototype renders M/T/W/T/F repeating). */
+  weekdayLetter: "M" | "T" | "W" | "F";
+  intensity: DailyHistoryIntensity;
+};
 
 export type Specialist = {
   id: SpecialistId;
@@ -150,25 +196,16 @@ export type Specialist = {
   /** Vacation coverage — only set when status="vacation". */
   coverageSpecialistId?: SpecialistId;
   /** When true, this Specialist record is the logged-in Manager's
-   *  Specialist persona. Drives `is-you` treatment in team grid +
-   *  the special button pair (View dashboard / Performance). */
+   *  Specialist persona. */
   isManager?: boolean;
-  /** Cross-link to `currentManager.id` (`mgr-001-v8b2c4`) for the
-   *  Mateo Vargas record. Lets shared components read either side
-   *  of the dual identity. */
+  /** Cross-link to `currentManager.id` for the Mateo Vargas record. */
   managerId?: string;
 
   /* ============================================================
-     Step 5 additions — Specialist Detail page fields. The "Step 5
-     follow-up — Specialist shape audit pass" (flagged in
-     CONVERSION_LOG) will re-read the prototype exhaustively before
-     Step 6 to identify any remaining per-specialist fields and lock
-     all additions in one go. Until then, these 6 are the only
-     additions beyond Step 4.
+     Step 4 additions — Specialist Detail page fields
      ============================================================ */
 
-  /** "ATLAS-TS-NNN" — sequential id rendered in the detail hero
-   *  eyebrow ("TALENT SPECIALIST · ATLAS-TS-001"). */
+  /** "ATLAS-TS-NNN" — sequential id rendered in the detail hero. */
   atlasTsId: string;
   /** Origin city — rendered in detail hero meta strip. */
   city: string;
@@ -178,13 +215,56 @@ export type Specialist = {
   timeZone: string;
   /** Languages — rendered as `Spanish · English`. */
   languages: ReadonlyArray<string>;
-  /** Caseload candidate-capacity (the workload bar denominator).
-   *  Lucas at 40 with workload 41 → renders over-capacity (103%).
-   *  Default story per Step 5 Q6: capacity 40 is the dramatic
-   *  visual; Lucas's "high-volume senior" prototype narrative
-   *  reads better as over-capacity than at-capacity. */
+  /** Caseload candidate-capacity (the workload-tab candidate bar
+   *  denominator). Naming inconsistency vs. the audit-pass additions
+   *  `contractsCapacity` + `reviewsPendingCapacity` below — by
+   *  symmetry this would be `candidatesCapacity`. Not renamed to
+   *  avoid churning Steps 4-5; document for any future rename pass. */
   caseloadCapacity: number;
+
+  /* ============================================================
+     Specialist shape audit pass — Steps 6-11 additions
+     ============================================================ */
+
+  /** Monthly KPIs. Single source of truth for Step 5 stats strip +
+   *  Step 10 comparison charts. */
+  kpis: SpecialistKpis;
+  /** Today's activity breakdown (4 counts). */
+  todayActivity: TodayActivityCounts;
+  /** 14-weekday intensity history for the Step 10 heatmap +
+   *  Step 11 calendar. Always exactly 14 entries. */
+  dailyHistory: ReadonlyArray<DailyHistoryDay>;
+  /** Contracts capacity (workload bar denominator for "Contracts"). */
+  contractsCapacity: number;
+  /** Reviews-pending right now (workload bar numerator for
+   *  "Reviews pending"). */
+  reviewsPendingNow: number;
+  /** Reviews-pending capacity (workload bar denominator). */
+  reviewsPendingCapacity: number;
 };
+
+/* ============================================================
+   14-weekday history pattern — shared header sequence
+   ============================================================
+   Heatmap header row: M T W T F | M T W T F | M T W T (14 cells = 3
+   work weeks of M-F minus the last weekday). Each Specialist's
+   `dailyHistory` array reads in this exact order. */
+const HEATMAP_WEEKDAYS: ReadonlyArray<DailyHistoryDay["weekdayLetter"]> = [
+  "M", "T", "W", "T", "F", "M", "T", "W", "T", "F", "M", "T", "W", "T",
+];
+
+function makeHistory(intensities: ReadonlyArray<DailyHistoryIntensity>): ReadonlyArray<DailyHistoryDay> {
+  if (intensities.length !== 14) {
+    throw new Error(`dailyHistory must have 14 entries, got ${intensities.length}`);
+  }
+  return intensities.map((intensity, i) => {
+    const weekdayLetter = HEATMAP_WEEKDAYS[i];
+    if (!weekdayLetter) {
+      throw new Error(`weekdayLetter undefined at index ${i}`);
+    }
+    return { weekdayLetter, intensity };
+  });
+}
 
 /* ============================================================
    Roster — 11 canonical records
@@ -216,9 +296,28 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT-6",
     languages: ["Spanish", "English"],
     caseloadCapacity: 40,
+    kpis: {
+      reviewsMonth: 22,
+      reviewsMonthSLAPct: 94,
+      disputesResolvedMonth: 3,
+      disputeAvgResolutionHours: 28,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 48,
+      hiresPlacedMonth: 4,
+      candidatesApprovedMonth: 11,
+    },
+    todayActivity: { outreach: 14, checkIns: 3, interviews: 2, signups: 1 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s3",
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4",
+    ]),
+    contractsCapacity: 12,
+    reviewsPendingNow: 3,
+    reviewsPendingCapacity: 10,
   },
 
-  /* 2. Priya Mehra — performance flag, missed daily activity. */
+  /* 2. Priya Mehra — performance flag, missed daily activity 2 days. */
   {
     id: "spec-priya-mehra",
     fullName: "Priya Mehra",
@@ -231,7 +330,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     countryCode: "IN",
     countryName: "India",
     avatarSlot: 3,
-    dailyActivity: { kind: "missed", daysCount: 2 },
+    dailyActivity: {
+      kind: "missed",
+      daysCount: 2,
+      lastSubmittedDate: "Mon Apr 28",
+      lastSubmittedTime: "7:14 PM",
+    },
     workload: { candidatesCount: 22, contractsCount: 6 },
     performanceScore: 76,
     lastActiveLabel: "4h ago",
@@ -241,6 +345,29 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+5:30",
     languages: ["Hindi", "English"],
     caseloadCapacity: 30,
+    /* Step 10 canonical values (chart row). reviewsMonth + SLA come
+       from the Step 10 charts; Step 5's earlier 76% SLA was a stale
+       guess — reconciled to 78% per Step 10 "Below target: Priya". */
+    kpis: {
+      reviewsMonth: 14,
+      reviewsMonthSLAPct: 78,
+      disputesResolvedMonth: 1,
+      disputeAvgResolutionHours: 52,
+      dailyAdherencePct: 78,
+      sourcingProspectsMonth: 18,
+      hiresPlacedMonth: 1,
+      candidatesApprovedMonth: 6,
+    },
+    /* Missed 2 days → no today activity. Zeros are honest. */
+    todayActivity: { outreach: 0, checkIns: 0, interviews: 0, signups: 0 },
+    dailyHistory: makeHistory([
+      "s4", "s3", "s4", "s2", "s4",
+      "s4", "s4", "s3", "s2", "s4",
+      "s3", "s1", "s1", "s1",
+    ]),
+    contractsCapacity: 8,
+    reviewsPendingNow: 6,
+    reviewsPendingCapacity: 10,
   },
 
   /* 3. Diego Cabrera — performance flag, review SLA dropped. */
@@ -266,6 +393,25 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT-6",
     languages: ["Spanish", "English"],
     caseloadCapacity: 35,
+    kpis: {
+      reviewsMonth: 19,
+      reviewsMonthSLAPct: 85,
+      disputesResolvedMonth: 4,
+      disputeAvgResolutionHours: 40,
+      dailyAdherencePct: 95,
+      sourcingProspectsMonth: 32,
+      hiresPlacedMonth: 2,
+      candidatesApprovedMonth: 9,
+    },
+    todayActivity: { outreach: 12, checkIns: 4, interviews: 1, signups: 0 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s3",
+      "s4", "s3", "s4", "s4", "s2",
+      "s4", "s4", "s3", "s3",
+    ]),
+    contractsCapacity: 9,
+    reviewsPendingNow: 4,
+    reviewsPendingCapacity: 10,
   },
 
   /* 4. Aisha Bello — at capacity, Customer Support pool depleted. */
@@ -281,7 +427,11 @@ export const specialists: ReadonlyArray<Specialist> = [
     countryCode: "NG",
     countryName: "Nigeria",
     avatarSlot: 4,
-    dailyActivity: { kind: "pending", dueLabel: "due EOD" },
+    dailyActivity: {
+      kind: "pending",
+      dueLabel: "due EOD",
+      lastActivityLabel: "1h ago",
+    },
     workload: { candidatesCount: 31, contractsCount: 8 },
     performanceScore: 88,
     lastActiveLabel: "1h ago",
@@ -291,14 +441,30 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+1",
     languages: ["English", "Yoruba"],
     caseloadCapacity: 35,
+    kpis: {
+      reviewsMonth: 26,
+      reviewsMonthSLAPct: 90,
+      disputesResolvedMonth: 2,
+      disputeAvgResolutionHours: 34,
+      dailyAdherencePct: 80,
+      sourcingProspectsMonth: 41,
+      hiresPlacedMonth: 3,
+      candidatesApprovedMonth: 10,
+    },
+    /* Pending (not yet submitted) — partial counts of what's been
+       logged so far today. */
+    todayActivity: { outreach: 8, checkIns: 2, interviews: 1, signups: 0 },
+    dailyHistory: makeHistory([
+      "s4", "s3", "s4", "s4", "s4",
+      "s3", "s4", "s4", "s2", "s4",
+      "s4", "s3", "s4", "s2",
+    ]),
+    contractsCapacity: 10,
+    reviewsPendingNow: 5,
+    reviewsPendingCapacity: 10,
   },
 
-  /* 5. Lucas Andersen — at capacity. Step 1 stub; Sweden corrected
-       in Step 3 per prototype dashboard 🇸🇪 flag (line 19747).
-       Step 5: caseloadCapacity = 40 → over-capacity at 41/40
-       (103%) per the "dramatic visual" lock — Lucas is the
-       high-volume senior; "At capacity" badge in the My Team
-       grid reads truer with workload exceeding capacity. */
+  /* 5. Lucas Andersen — at capacity, high-volume marketing ops. */
   {
     id: "spec-lucas-andersen",
     fullName: "Lucas Andersen",
@@ -320,7 +486,29 @@ export const specialists: ReadonlyArray<Specialist> = [
     joinDate: "Sep 2023",
     timeZone: "GMT+1",
     languages: ["Swedish", "English"],
+    /* 40 = workload 41 → over-capacity (103%); dramatic visual per
+       Step 4 Q6 lock. */
     caseloadCapacity: 40,
+    /* Step 10 canonical: Lucas tops most charts (reviewsMonth 31). */
+    kpis: {
+      reviewsMonth: 31,
+      reviewsMonthSLAPct: 95,
+      disputesResolvedMonth: 5,
+      disputeAvgResolutionHours: 24,
+      dailyAdherencePct: 95,
+      sourcingProspectsMonth: 56,
+      hiresPlacedMonth: 5,
+      candidatesApprovedMonth: 14,
+    },
+    todayActivity: { outreach: 22, checkIns: 4, interviews: 3, signups: 1 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s3", "s4",
+    ]),
+    contractsCapacity: 15,
+    reviewsPendingNow: 6,
+    reviewsPendingCapacity: 12,
   },
 
   /* 6. Felipe Santos — active. */
@@ -346,9 +534,28 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT-3",
     languages: ["Portuguese", "Spanish", "English"],
     caseloadCapacity: 30,
+    kpis: {
+      reviewsMonth: 18,
+      reviewsMonthSLAPct: 96,
+      disputesResolvedMonth: 2,
+      disputeAvgResolutionHours: 18,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 38,
+      hiresPlacedMonth: 4,
+      candidatesApprovedMonth: 8,
+    },
+    todayActivity: { outreach: 18, checkIns: 6, interviews: 2, signups: 2 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4",
+    ]),
+    contractsCapacity: 7,
+    reviewsPendingNow: 2,
+    reviewsPendingCapacity: 8,
   },
 
-  /* 7. Yara Khalil — active, top performer. */
+  /* 7. Yara Khalil — active, top performer (Yara 98% SLA). */
   {
     id: "spec-yara-khalil",
     fullName: "Yara Khalil",
@@ -371,11 +578,29 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+2",
     languages: ["Arabic", "English", "French"],
     caseloadCapacity: 30,
+    kpis: {
+      reviewsMonth: 28,
+      reviewsMonthSLAPct: 98,
+      disputesResolvedMonth: 4,
+      disputeAvgResolutionHours: 22,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 44,
+      hiresPlacedMonth: 5,
+      candidatesApprovedMonth: 12,
+    },
+    todayActivity: { outreach: 11, checkIns: 3, interviews: 2, signups: 1 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4",
+    ]),
+    contractsCapacity: 9,
+    reviewsPendingNow: 2,
+    reviewsPendingCapacity: 10,
   },
 
-  /* 8. Min-Jun Park — active. ID differs from prototype's
-       data-mt-id="minjun-park" — kebab convention requires
-       "min-jun-park". */
+  /* 8. Min-Jun Park — active. ID is "min-jun-park" (kebab),
+       NOT prototype's "minjun-park". */
   {
     id: "spec-min-jun-park",
     fullName: "Min-Jun Park",
@@ -398,6 +623,25 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+9",
     languages: ["Korean", "English"],
     caseloadCapacity: 35,
+    kpis: {
+      reviewsMonth: 24,
+      reviewsMonthSLAPct: 92,
+      disputesResolvedMonth: 3,
+      disputeAvgResolutionHours: 30,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 36,
+      hiresPlacedMonth: 3,
+      candidatesApprovedMonth: 9,
+    },
+    todayActivity: { outreach: 9, checkIns: 2, interviews: 1, signups: 0 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s3", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4",
+    ]),
+    contractsCapacity: 8,
+    reviewsPendingNow: 3,
+    reviewsPendingCapacity: 10,
   },
 
   /* 9. Olena Kovalenko — on vacation. Coverage by Diego. */
@@ -413,7 +657,11 @@ export const specialists: ReadonlyArray<Specialist> = [
     countryCode: "UA",
     countryName: "Ukraine",
     avatarSlot: 9,
-    dailyActivity: { kind: "excused", untilLabel: "Apr 28" },
+    dailyActivity: {
+      kind: "excused",
+      untilLabel: "Apr 28",
+      resumesDate: "Mon Apr 28",
+    },
     workload: { candidatesCount: 18, contractsCount: 4 },
     performanceScore: 87,
     coverageSpecialistId: "spec-diego-cabrera",
@@ -423,6 +671,28 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+2",
     languages: ["Ukrainian", "Russian", "English"],
     caseloadCapacity: 25,
+    kpis: {
+      reviewsMonth: 12,
+      reviewsMonthSLAPct: 88,
+      disputesResolvedMonth: 1,
+      disputeAvgResolutionHours: 32,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 22,
+      hiresPlacedMonth: 2,
+      candidatesApprovedMonth: 5,
+    },
+    /* On vacation today → zeros. */
+    todayActivity: { outreach: 0, checkIns: 0, interviews: 0, signups: 0 },
+    /* Vacation kicks in at the end of the 14-day window — last 4
+       days render as s0 (excused). */
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s3", "s4", "s4",
+      "s0", "s0", "s0", "s0",
+    ]),
+    contractsCapacity: 6,
+    reviewsPendingNow: 0,
+    reviewsPendingCapacity: 8,
   },
 
   /* 10. Kavi Rajan — active. */
@@ -448,6 +718,25 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+5:30",
     languages: ["Tamil", "English"],
     caseloadCapacity: 30,
+    kpis: {
+      reviewsMonth: 17,
+      reviewsMonthSLAPct: 89,
+      disputesResolvedMonth: 2,
+      disputeAvgResolutionHours: 26,
+      dailyAdherencePct: 95,
+      sourcingProspectsMonth: 28,
+      hiresPlacedMonth: 2,
+      candidatesApprovedMonth: 8,
+    },
+    todayActivity: { outreach: 16, checkIns: 5, interviews: 3, signups: 1 },
+    dailyHistory: makeHistory([
+      "s4", "s3", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s3", "s4",
+      "s4", "s4", "s3", "s4",
+    ]),
+    contractsCapacity: 7,
+    reviewsPendingNow: 2,
+    reviewsPendingCapacity: 8,
   },
 
   /* 11. Naomi Adebayo — active. */
@@ -473,6 +762,25 @@ export const specialists: ReadonlyArray<Specialist> = [
     timeZone: "GMT+1",
     languages: ["English", "Yoruba"],
     caseloadCapacity: 25,
+    kpis: {
+      reviewsMonth: 20,
+      reviewsMonthSLAPct: 95,
+      disputesResolvedMonth: 2,
+      disputeAvgResolutionHours: 32,
+      dailyAdherencePct: 100,
+      sourcingProspectsMonth: 31,
+      hiresPlacedMonth: 3,
+      candidatesApprovedMonth: 9,
+    },
+    todayActivity: { outreach: 10, checkIns: 4, interviews: 1, signups: 0 },
+    dailyHistory: makeHistory([
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s4", "s4", "s4", "s4",
+      "s4", "s3", "s4", "s4",
+    ]),
+    contractsCapacity: 6,
+    reviewsPendingNow: 1,
+    reviewsPendingCapacity: 8,
   },
 ];
 
@@ -494,8 +802,7 @@ export function formatFirstAndInitial(id: SpecialistId): string {
   return `${s.firstName} ${s.lastName.charAt(0)}.`;
 }
 
-/** Reverse lookup by display name. Used during the Step 3 refactor
- *  where active-items dashboard data carried denormalized names. */
+/** Reverse lookup by display name. */
 export function getSpecialistByName(fullName: string): Specialist | undefined {
   return specialists.find((s) => s.fullName === fullName);
 }
@@ -513,8 +820,6 @@ export function countSpecialistsByCohort(): {
   let flag = 0;
   let capacity = 0;
   for (const s of specialists) {
-    /* "Active today" = anyone NOT on vacation (per prototype's
-       cohort chip count: 10 of 11 = excludes Olena only). */
     if (s.status !== "vacation") active += 1;
     if (s.status === "vacation") vacation += 1;
     if (s.status === "flag") flag += 1;
@@ -523,8 +828,7 @@ export function countSpecialistsByCohort(): {
   return { all: specialists.length, active, vacation, flag, capacity };
 }
 
-/** Static list of valid Specialist ids. Step 5 will pull from this
- *  for `generateStaticParams()` on `/specialist/team/[id]`. */
+/** Static list of valid Specialist ids — drives `generateStaticParams`. */
 export const ALL_SPECIALIST_IDS: ReadonlyArray<SpecialistId> = specialists.map(
   (s) => s.id,
 );

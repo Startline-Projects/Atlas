@@ -15,12 +15,12 @@
  * Inherits Client boundary from SpecialistDetailApp.
  */
 
-import { getSpecStats, overviewTimelineEntries } from "@/lib/mock-data/manager/spec-detail-data";
+import { overviewTimelineEntries } from "@/lib/mock-data/manager/spec-detail-data";
 import type { Specialist } from "@/lib/mock-data/manager/team";
 import { cn } from "@/lib/utils/cn";
 
 export function SdTabOverview({ specialist: s }: { specialist: Specialist }) {
-  const stats = getSpecStats(s.id);
+  const kpis = s.kpis;
   return (
     <div className="flex flex-col gap-4">
       <section className="bg-paper border-line rounded-md border p-5">
@@ -36,10 +36,10 @@ export function SdTabOverview({ specialist: s }: { specialist: Specialist }) {
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <PerfTile label="Candidates approved" value={String(stats.candidatesApprovedMonth)} sub="up 3 vs last mo" />
-          <PerfTile label="Reviews · pending" value={String(stats.reviewsPendingNow)} sub="avg 18h wait" />
-          <PerfTile label="Sourcing volume" value={String(stats.sourcingProspectsMonth)} sub="prospects this mo" />
-          <PerfTile label="Hires placed" value={String(stats.hiresPlacedMonth)} sub="$8.2k team revenue" tone="success" />
+          <PerfTile label="Candidates approved" value={String(kpis.candidatesApprovedMonth)} sub="up 3 vs last mo" />
+          <PerfTile label="Reviews · pending" value={String(s.reviewsPendingNow)} sub="avg 18h wait" />
+          <PerfTile label="Sourcing volume" value={String(kpis.sourcingProspectsMonth)} sub="prospects this mo" />
+          <PerfTile label="Hires placed" value={String(kpis.hiresPlacedMonth)} sub="$8.2k team revenue" tone="success" />
         </div>
       </section>
 

@@ -1,190 +1,39 @@
 /**
- * Specialist Detail page — per-tab content data (Step 5).
+ * Specialist Detail page — SHARED tab content.
  *
- * Two layers:
+ * This file holds ONLY shared placeholder content — same across all
+ * specialists (timeline, sparklines, coaching notes, communication
+ * threads, 1:1 sessions, workload assignments, etc.). Mirrors the
+ * prototype's pattern of one HTML block + JS data swap of hero/stats.
  *
- *   1. **Per-Specialist stats** (`SpecStats`) — `getSpecStats(id)`
- *      returns numbers for the hero stats strip, workload capacity
- *      bars, and Overview tiles. Locked here pending the "Step 5
- *      follow-up — Specialist shape audit pass" (CONVERSION_LOG)
- *      which may relocate some of these onto the `Specialist` record
- *      directly.
+ * Per-Specialist data lives on the `Specialist` record (team.ts):
  *
- *   2. **Shared placeholder content** — most tab bodies (timeline,
- *      sparklines, coaching notes, communication threads, 1:1
- *      sessions, workload assignments) are SAME across specialists.
- *      This mirrors the prototype's pattern of one HTML block + JS
- *      data swap of hero/stats only. Per Step 5 Q3 lock: shared
- *      content is faithful; per-specialist content goes through
- *      `getSpecStats` + the Specialist record fields.
+ *   - KPIs (reviews, SLA, disputes, sourcing, hires, etc.)
+ *     → `Specialist.kpis`
+ *   - Today's activity counts (outreach / check-ins / interviews /
+ *     signups) → `Specialist.todayActivity`
+ *   - 14-weekday history (heatmap intensities)
+ *     → `Specialist.dailyHistory`
+ *   - Workload-bar denominators + reviews-pending
+ *     → `Specialist.contractsCapacity / reviewsPendingNow /
+ *        reviewsPendingCapacity`
  *
  * Name interpolation: tab components inject the specialist's name
- * into shared strings at render time (e.g. "You" vs "{name}" in
- * Communication thread). Mateo's case: both sides render "You"
- * (self-referential) per Q3 reminder.
+ * into shared strings at render time. Mateo's communication thread:
+ * both sides render "You" (self-referential).
+ *
+ * ## What used to be here (Step 5 → audit pass)
+ *
+ * Removed in the Specialist shape audit pass:
+ *   - `SpecStats` type + `SPEC_STATS` map + `getSpecStats()` lookup
+ *   - `dailyTodayDetailTemplate` string
+ *
+ * Consumers (sd-stats-strip, sd-tab-overview, sd-tab-workload,
+ * sd-tab-daily) now read from `Specialist` record fields directly.
  */
 
-import type { SpecialistId } from "./team";
-
-/* ============================================================
-   Per-Specialist stats (locked at Step 5)
-   ============================================================ */
-
-export type SpecStats = {
-  /* hero stats strip (5 stats) */
-  reviewsMonth: number;
-  reviewsMonthSLAPct: number;
-  disputesResolvedMonth: number;
-  dailyAdherencePct: number;
-  /* workload capacity bars (denominators; numerator comes from
-     Specialist.workload) */
-  contractsCapacity: number;
-  reviewsPendingNow: number;
-  reviewsPendingCapacity: number;
-  /* overview tiles */
-  candidatesApprovedMonth: number;
-  sourcingProspectsMonth: number;
-  hiresPlacedMonth: number;
-};
-
-const SPEC_STATS: Record<SpecialistId, SpecStats> = {
-  "spec-mateo-vargas": {
-    reviewsMonth: 22,
-    reviewsMonthSLAPct: 94,
-    disputesResolvedMonth: 3,
-    dailyAdherencePct: 100,
-    contractsCapacity: 12,
-    reviewsPendingNow: 3,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 11,
-    sourcingProspectsMonth: 48,
-    hiresPlacedMonth: 4,
-  },
-  "spec-priya-mehra": {
-    reviewsMonth: 14,
-    reviewsMonthSLAPct: 76,
-    disputesResolvedMonth: 1,
-    dailyAdherencePct: 65,
-    contractsCapacity: 8,
-    reviewsPendingNow: 6,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 6,
-    sourcingProspectsMonth: 38,
-    hiresPlacedMonth: 2,
-  },
-  "spec-diego-cabrera": {
-    reviewsMonth: 18,
-    reviewsMonthSLAPct: 85,
-    disputesResolvedMonth: 4,
-    dailyAdherencePct: 95,
-    contractsCapacity: 9,
-    reviewsPendingNow: 4,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 9,
-    sourcingProspectsMonth: 42,
-    hiresPlacedMonth: 3,
-  },
-  "spec-aisha-bello": {
-    reviewsMonth: 20,
-    reviewsMonthSLAPct: 88,
-    disputesResolvedMonth: 2,
-    dailyAdherencePct: 80,
-    contractsCapacity: 10,
-    reviewsPendingNow: 5,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 10,
-    sourcingProspectsMonth: 45,
-    hiresPlacedMonth: 4,
-  },
-  "spec-lucas-andersen": {
-    reviewsMonth: 28,
-    reviewsMonthSLAPct: 90,
-    disputesResolvedMonth: 5,
-    dailyAdherencePct: 95,
-    contractsCapacity: 15,
-    reviewsPendingNow: 6,
-    reviewsPendingCapacity: 12,
-    candidatesApprovedMonth: 14,
-    sourcingProspectsMonth: 55,
-    hiresPlacedMonth: 5,
-  },
-  "spec-felipe-santos": {
-    reviewsMonth: 16,
-    reviewsMonthSLAPct: 92,
-    disputesResolvedMonth: 2,
-    dailyAdherencePct: 100,
-    contractsCapacity: 7,
-    reviewsPendingNow: 2,
-    reviewsPendingCapacity: 8,
-    candidatesApprovedMonth: 8,
-    sourcingProspectsMonth: 40,
-    hiresPlacedMonth: 3,
-  },
-  "spec-yara-khalil": {
-    reviewsMonth: 24,
-    reviewsMonthSLAPct: 95,
-    disputesResolvedMonth: 4,
-    dailyAdherencePct: 100,
-    contractsCapacity: 9,
-    reviewsPendingNow: 2,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 12,
-    sourcingProspectsMonth: 50,
-    hiresPlacedMonth: 5,
-  },
-  "spec-min-jun-park": {
-    reviewsMonth: 19,
-    reviewsMonthSLAPct: 91,
-    disputesResolvedMonth: 3,
-    dailyAdherencePct: 100,
-    contractsCapacity: 8,
-    reviewsPendingNow: 3,
-    reviewsPendingCapacity: 10,
-    candidatesApprovedMonth: 9,
-    sourcingProspectsMonth: 44,
-    hiresPlacedMonth: 4,
-  },
-  "spec-olena-kovalenko": {
-    reviewsMonth: 12,
-    reviewsMonthSLAPct: 87,
-    disputesResolvedMonth: 1,
-    dailyAdherencePct: 100,
-    contractsCapacity: 6,
-    reviewsPendingNow: 0,
-    reviewsPendingCapacity: 8,
-    candidatesApprovedMonth: 5,
-    sourcingProspectsMonth: 22,
-    hiresPlacedMonth: 2,
-  },
-  "spec-kavi-rajan": {
-    reviewsMonth: 17,
-    reviewsMonthSLAPct: 89,
-    disputesResolvedMonth: 2,
-    dailyAdherencePct: 95,
-    contractsCapacity: 7,
-    reviewsPendingNow: 2,
-    reviewsPendingCapacity: 8,
-    candidatesApprovedMonth: 8,
-    sourcingProspectsMonth: 41,
-    hiresPlacedMonth: 3,
-  },
-  "spec-naomi-adebayo": {
-    reviewsMonth: 18,
-    reviewsMonthSLAPct: 93,
-    disputesResolvedMonth: 2,
-    dailyAdherencePct: 100,
-    contractsCapacity: 6,
-    reviewsPendingNow: 1,
-    reviewsPendingCapacity: 8,
-    candidatesApprovedMonth: 9,
-    sourcingProspectsMonth: 38,
-    hiresPlacedMonth: 4,
-  },
-};
-
-export function getSpecStats(id: SpecialistId): SpecStats {
-  return SPEC_STATS[id];
-}
+/* (Per-Specialist stats removed in audit pass — see file header.
+   Now sourced from `Specialist.kpis` + flat fields on team.ts.) */
 
 /* ============================================================
    Shared content — Overview tab
@@ -360,10 +209,9 @@ export const recentSubmissions: ReadonlyArray<RecentSubmission> = [
   },
 ];
 
-/** Today's submission body — interpolation target for "Logged X
- *  outreach, Y check-ins, Z interviews" line. */
-export const dailyTodayDetailTemplate =
-  "Logged <strong>14 outreach messages</strong>, <strong>3 client check-ins</strong>, and <strong>2 candidate interviews</strong>.";
+/* (Removed in audit pass: `dailyTodayDetailTemplate`. Today's
+   activity now comes from `Specialist.todayActivity` per record;
+   the Daily tab renders the counts directly.) */
 
 /* ============================================================
    Shared content — Coaching Notes tab

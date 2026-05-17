@@ -18,10 +18,7 @@
  * Ported from prototype lines 28042-28122.
  */
 
-import {
-  dailyTodayDetailTemplate,
-  recentSubmissions,
-} from "@/lib/mock-data/manager/spec-detail-data";
+import { recentSubmissions } from "@/lib/mock-data/manager/spec-detail-data";
 import type { Specialist } from "@/lib/mock-data/manager/team";
 
 export function SdTabDaily({ specialist: s }: { specialist: Specialist }) {
@@ -46,10 +43,7 @@ export function SdTabDaily({ specialist: s }: { specialist: Specialist }) {
             {todayLabel.text}
           </span>
         </div>
-        <p
-          className="text-ink-soft m-0 text-[13.5px] leading-[1.5]"
-          dangerouslySetInnerHTML={{ __html: dailyTodayDetailTemplate }}
-        />
+        <TodayActivitySummary specialist={s} />
       </section>
 
       {/* TODO(step-11): 30-day calendar grid lands when Step 11 builds
@@ -113,6 +107,63 @@ export function SdTabDaily({ specialist: s }: { specialist: Specialist }) {
         </ul>
       </section>
     </div>
+  );
+}
+
+function TodayActivitySummary({ specialist: s }: { specialist: Specialist }) {
+  const t = s.todayActivity;
+  const isSubmitted = s.dailyActivity.kind === "submitted";
+  const isPending = s.dailyActivity.kind === "pending";
+  const isExcused = s.dailyActivity.kind === "excused";
+
+  /* Vacation/excused → no activity copy. */
+  if (isExcused) {
+    return (
+      <p className="text-ink-mute m-0 text-[13.5px] leading-[1.5]">
+        No activity logged — excused for vacation.
+      </p>
+    );
+  }
+
+  const allZero =
+    t.outreach === 0 &&
+    t.checkIns === 0 &&
+    t.interviews === 0 &&
+    t.signups === 0;
+
+  if (allZero) {
+    return (
+      <p className="text-ink-mute m-0 text-[13.5px] leading-[1.5]">
+        No activity logged today.
+      </p>
+    );
+  }
+
+  /* Compose human copy: "Logged X outreach, Y check-ins, Z interviews,
+     N signups." Pending specialists get "Logged so far today: ..." */
+  const fragments: string[] = [];
+  if (t.outreach > 0) fragments.push(`<strong>${t.outreach} outreach</strong>`);
+  if (t.checkIns > 0) fragments.push(`<strong>${t.checkIns} check-in${t.checkIns === 1 ? "" : "s"}</strong>`);
+  if (t.interviews > 0) fragments.push(`<strong>${t.interviews} interview${t.interviews === 1 ? "" : "s"}</strong>`);
+  if (t.signups > 0) fragments.push(`<strong>${t.signups} signup${t.signups === 1 ? "" : "s"}</strong>`);
+
+  /* Oxford-comma join. */
+  let body: string;
+  if (fragments.length === 1) {
+    body = `${fragments[0]}.`;
+  } else if (fragments.length === 2) {
+    body = `${fragments[0]} and ${fragments[1]}.`;
+  } else {
+    const last = fragments.pop()!;
+    body = `${fragments.join(", ")}, and ${last}.`;
+  }
+
+  const prefix = isSubmitted ? "Logged " : isPending ? "Logged so far today: " : "Logged ";
+  return (
+    <p
+      className="text-ink-soft m-0 text-[13.5px] leading-[1.5]"
+      dangerouslySetInnerHTML={{ __html: prefix + body }}
+    />
   );
 }
 

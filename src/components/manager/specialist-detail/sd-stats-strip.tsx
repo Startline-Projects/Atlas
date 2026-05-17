@@ -8,16 +8,15 @@
  * Server Component. Ported from prototype lines 27801-27828.
  */
 
-import { getSpecStats } from "@/lib/mock-data/manager/spec-detail-data";
 import type { Specialist } from "@/lib/mock-data/manager/team";
 import { cn } from "@/lib/utils/cn";
 
 export function SdStatsStrip({ specialist: s }: { specialist: Specialist }) {
-  const stats = getSpecStats(s.id);
+  const kpis = s.kpis;
   const adherenceTone =
-    stats.dailyAdherencePct >= 95
+    kpis.dailyAdherencePct >= 95
       ? "text-success"
-      : stats.dailyAdherencePct >= 80
+      : kpis.dailyAdherencePct >= 80
         ? "text-amber"
         : "text-danger";
 
@@ -27,17 +26,17 @@ export function SdStatsStrip({ specialist: s }: { specialist: Specialist }) {
       <Stat label="Active contracts" num={s.workload.contractsCount} sub="live engagements" />
       <Stat
         label="Reviews · month"
-        num={stats.reviewsMonth}
-        sub={`SLA ${stats.reviewsMonthSLAPct}%`}
+        num={kpis.reviewsMonth}
+        sub={`SLA ${kpis.reviewsMonthSLAPct}%`}
       />
       <Stat
         label="Disputes resolved"
-        num={stats.disputesResolvedMonth}
+        num={kpis.disputesResolvedMonth}
         sub="this month"
       />
       <Stat
         label="Daily adherence"
-        num={`${stats.dailyAdherencePct}%`}
+        num={`${kpis.dailyAdherencePct}%`}
         sub="30-day rolling"
         numClass={adherenceTone}
       />
