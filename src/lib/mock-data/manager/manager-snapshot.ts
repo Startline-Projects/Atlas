@@ -75,7 +75,10 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
     ],
   },
 
-  /* 2. Daily activity */
+  /* 2. Daily activity.
+        Step 6: /specialist/daily-audit is now live — disabledRoute
+        removed; the snapshot section component reads `disabledRoute`
+        to fork between span and link, so the card auto-upgrades. */
   {
     id: "snap-daily-activity",
     label: "Daily activity",
@@ -84,7 +87,6 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
       { kind: "strong", value: "2 pending" },
       { kind: "text", value: " · 1 overdue" },
     ],
-    disabledRoute: { href: "/specialist/daily-audit", landsInStep: 6 },
   },
 
   /* 3. Open disputes */

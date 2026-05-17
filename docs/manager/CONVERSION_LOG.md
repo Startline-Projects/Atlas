@@ -23,7 +23,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ✅ done |
 | 4   | My Team — 11-specialist grid | ✅ done |
 | 5   | Specialist Detail — 7-tab layout + coaching tab | ✅ done (calendar deferred to Step 11 per trim) |
-| 6   | Daily Activity Audit — submission overview + audit rows + timing | ❌ not started |
+| 6   | Daily Activity Audit — submission overview + audit rows + timing | ✅ done (channels section dropped per trim a) |
 | 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ❌ not started |
 | 8   | Pool Coordination — 10-category grid + opportunities + sprint priorities | ❌ not started |
 | 9   | Recruitment Sprints — goal banner + 4 active sprints + analytics + history | ❌ not started |

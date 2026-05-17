@@ -38,16 +38,19 @@ export type ManagerActionStep = 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 13 | 14;
 
 export type ManagerActionCTA = {
   label: string;
-  landsInStep: ManagerActionStep;
+  /** Required for modal CTAs; OPTIONAL when `href` is set (the CTA
+   *  renders as a Link and never opens the modal, so landsInStep is
+   *  unused). Step 6 audit: CTAs that flipped to `href` drop their
+   *  landsInStep field to keep the `grep "landsInStep: N"` canary
+   *  honest — N hits = N CTAs that still route through the modal. */
+  landsInStep?: ManagerActionStep;
   /** Optional copy override. When omitted, the modal renders its
    *  auto-derived body using the step-features lookup. */
   description?: string;
   /** Step 5+: when set, the CTA renders as a real `<Link href={href}>`
    *  instead of a button-that-opens-modal. Used when an action's
-   *  target step has landed and the CTA can navigate directly
-   *  (e.g. dashboard urgent card "Open profile" once Step 5 lands
-   *  `/specialist/team/[id]`). The consumer's render code forks
-   *  on `href` presence. */
+   *  target step has landed and the CTA can navigate directly. The
+   *  consumer's render code forks on `href` presence. */
   href?: string;
 };
 
@@ -83,7 +86,9 @@ export const managerQuickActions: ReadonlyArray<ManagerQuickAction> = [
     id: "qa-audit-specialist",
     label: "Audit a Specialist",
     iconKey: "audit-specialist",
-    landsInStep: 6,
+    /* Step 6 un-disable: route exists. `href` set → renders as Link;
+       `landsInStep` dropped (would be vestigial for href-set CTAs). */
+    href: "/specialist/daily-audit",
   },
   {
     id: "qa-team-analytics",

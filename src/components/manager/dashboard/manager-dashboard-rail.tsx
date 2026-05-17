@@ -24,6 +24,7 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { OnCallCard } from "@/components/specialist/dashboard/on-call-card";
 import {
   managerDailyReportState,
@@ -84,17 +85,27 @@ function QuickActionButton({
   action: ManagerQuickAction;
   onClick: () => void;
 }) {
+  const className = cn(
+    "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[12.5px] font-medium transition-colors",
+    action.isPrimary
+      ? "bg-ink text-paper border-ink hover:bg-ink-soft"
+      : "bg-paper border-line text-ink-soft hover:bg-cream-deep hover:text-ink",
+  );
+
+  /* Step 6+ un-disable pattern: actions with `href` render as real
+     `<Link>` (the target step has landed). Without `href`, button
+     opens the placeholder modal. */
+  if (action.href) {
+    return (
+      <Link href={action.href} className={className}>
+        <QuickActionIcon iconKey={action.iconKey} />
+        <span className="flex-1">{action.label}</span>
+      </Link>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[12.5px] font-medium transition-colors",
-        action.isPrimary
-          ? "bg-ink text-paper border-ink hover:bg-ink-soft"
-          : "bg-paper border-line text-ink-soft hover:bg-cream-deep hover:text-ink",
-      )}
-    >
+    <button type="button" onClick={onClick} className={className}>
       <QuickActionIcon iconKey={action.iconKey} />
       <span className="flex-1">{action.label}</span>
     </button>

@@ -126,10 +126,15 @@ export function ManagerActionPlaceholderModal({
 
   if (!open || !cta) return null;
 
-  const feature = STEP_FEATURES[cta.landsInStep];
+  /* Fallback for CTAs without `landsInStep` (href-set CTAs that
+     somehow opened the modal — shouldn't happen since consumers
+     fork on href, but defensive). */
+  const feature = cta.landsInStep ? STEP_FEATURES[cta.landsInStep] : "a future step";
   const body =
     cta.description ??
-    `${cta.label} lands in Step ${cta.landsInStep} — ${feature}.`;
+    (cta.landsInStep
+      ? `${cta.label} lands in Step ${cta.landsInStep} — ${feature}.`
+      : `${cta.label} — coming soon.`);
 
   return (
     <div

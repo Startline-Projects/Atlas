@@ -109,8 +109,8 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
     label: "Daily Activity Audit",
     href: "/specialist/daily-audit",
     iconKey: "daily-audit",
-    badge: { value: 2, tone: "attention" }, // Step 6: replace with derived count
-    disabled: true, // Step 6: flip to false
+    badge: { value: 2, tone: "attention" }, // TODO: replace with derived count from team.ts (missed + pending)
+    /* Step 6: enabled — /specialist/daily-audit now exists. */
   },
   {
     key: "team-disputes",

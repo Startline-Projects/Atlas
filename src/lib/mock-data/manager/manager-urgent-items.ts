@@ -78,7 +78,9 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
        detail page). The `landsInStep` stays for back-compat — when
        href is set the modal code path is skipped. */
     primary: { label: "Open profile", landsInStep: 5, href: "/specialist/team/spec-priya-mehra" },
-    ghost: { label: "Open daily audit", landsInStep: 6 },
+    /* Step 6 un-disable: route exists. `href` set → renders as Link;
+       `landsInStep` dropped (vestigial for href-set CTAs). */
+    ghost: { label: "Open daily audit", href: "/specialist/daily-audit" },
   },
 
   /* Card 2 — RED — Disputes SLA at risk */

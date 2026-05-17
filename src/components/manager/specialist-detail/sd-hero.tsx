@@ -25,7 +25,8 @@
  *   - Schedule 1:1 → modal `landsInStep: 14` (coming soon — 1:1
  *     scheduling has no dedicated step)
  *   - View dashboard (Mateo only) → real Link `/specialist/dashboard`
- *   - Audit daily → modal `landsInStep: 6` (Daily Activity Audit)
+ *   - **Audit daily → real Link `/specialist/daily-audit?row={id}`**
+ *     (un-disabled in Step 6 with deep-link to the specialist's row)
  *   - Performance review → modal `landsInStep: 10` (Team Reports)
  *   - Log coaching note → callback (switches active tab to "coaching")
  */
@@ -60,10 +61,8 @@ const SCHEDULE_CTA: ManagerActionCTA = {
   landsInStep: 14,
   description: "1:1 scheduling — coming soon.",
 };
-const AUDIT_DAILY_CTA: ManagerActionCTA = {
-  label: "Audit daily",
-  landsInStep: 6,
-};
+/* Audit daily — Step 6 un-disabled. Real Link with ?row= deep-link
+   so the audit page expands this specialist's row on entry. */
 const PERFORMANCE_REVIEW_CTA: ManagerActionCTA = {
   label: "Performance review",
   landsInStep: 10,
@@ -134,13 +133,12 @@ export function SdHero({ specialist: s, onSetTab }: SdHeroProps) {
             View dashboard
           </Link>
         ) : null}
-        <button
-          type="button"
-          onClick={() => setActiveCta(AUDIT_DAILY_CTA)}
+        <Link
+          href={`/specialist/daily-audit?row=${s.id}`}
           className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
         >
           Audit daily
-        </button>
+        </Link>
         <button
           type="button"
           onClick={() => setActiveCta(PERFORMANCE_REVIEW_CTA)}
