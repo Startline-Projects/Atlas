@@ -92,7 +92,7 @@ export function ModeToggle() {
   };
 
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-3">
+    <div className="mb-6">
       <div
         role="tablist"
         aria-label="Switch between Specialist and Manager view"
@@ -131,12 +131,8 @@ export function ModeToggle() {
           );
         })}
       </div>
-
-      {/* Temporary Step 1 indicator. Removed in Step 3 when real
-          dashboard content forks make the mode visually obvious. */}
-      <span className="text-ink-mute font-mono text-[10.5px] tracking-[0.14em] uppercase">
-        Current mode: {mode === "manager" ? "Manager" : "Specialist"}
-      </span>
+      {/* Step 1's "Current mode: ..." indicator was removed in Step 3.
+          The dashboard content swap is now the visible mode indicator. */}
     </div>
   );
 }

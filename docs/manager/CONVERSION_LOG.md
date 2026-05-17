@@ -20,7 +20,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 1   | Mode plumbing + ModeToggle on dashboard | ✅ done |
 | 1.5 | Post-auth Manager redirect | ⏸ deferred (see below — no commit) |
 | 2   | Sidebar TEAM MANAGEMENT section (mode-aware) | ✅ done |
-| 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ❌ not started |
+| 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ✅ done |
 | 4   | My Team — 11-specialist grid | ❌ not started |
 | 5   | Specialist Detail — 7-tab layout + 30-day calendar + coaching | ❌ not started |
 | 6   | Daily Activity Audit — submission overview + audit rows + timing | ❌ not started |
@@ -230,6 +230,129 @@ There is no Manager-specific redirect TARGET that differs from the Specialist de
 
 ### Up next
 
-- Step 3 — Manager dashboard content swap. The first step where toggling the mode produces a meaningful content change (urgent panel / today's snapshot / active items / rail all fork to team-wide). Removes the temporary "Current mode: ..." indicator from `ModeToggle` (Step 1 placeholder).
+- See Session 1 / Step 3 entry below.
+
+---
+
+## Session 1 — Step 3 — Manager dashboard content swap
+
+**Goal:** First step where toggling mode produces a meaningful content change. The entire dashboard content (header / urgent panel / today's snapshot / active items / team performance / right rail) forks to team-wide Manager content when `useSessionRole() === "manager" && useManagerMode() === "manager"`. The temporary "Current mode" indicator from Step 1's `ModeToggle` is removed — the content swap is now the visible cue.
+
+### Files added (14)
+
+**Components (`src/components/manager/dashboard/`):**
+
+| File | Role | Notes |
+|---|---|---|
+| `dashboard-mode-fork.tsx` | Client | The single content switch. Renders `managerContent` prop when both gates `"manager"`; else `children`. |
+| `manager-action-placeholder-modal.tsx` | Client | "Coming in Step N" modal. Data-driven body via `landsInStep` + centralized `STEP_FEATURES` map. A11y: focus trap, Esc, focus restore on close. |
+| `manager-dashboard-app.tsx` | Server | Top-level orchestrator. Composes header + main column + rail in the same grid as Specialist. |
+| `manager-dashboard-header.tsx` | Server | "Manager view, **Mateo**." (reads `currentManager.firstName`) + 3 quick stats. Drift-proof against "Miguel". |
+| `manager-urgent-section.tsx` | Client | 6 cards. Owns placeholder modal state. Inlined `UrgentCard`. |
+| `manager-snapshot-section.tsx` | Server | 6 stat tiles. 4 disabled wrappers (cursor-not-allowed), 2 plain. Inlined `SnapshotCard`. |
+| `manager-active-items-section.tsx` | Server | 3 columns (Specialists need attention, Disputes need oversight, Recent team activity). Column footer links disabled. Inlined `Column`, `SpecialistRow`, `DisputeRow`, `FeedItem`. |
+| `manager-team-perf-section.tsx` | Server | 6 metric tiles with trend arrows. Inlined `MetricTile`, `TrendArrow`. |
+| `manager-dashboard-rail.tsx` | Client | On-call card (direct reuse from `specialist/dashboard/on-call-card.tsx`) + Manager quick actions (5 buttons) + Manager daily report card. Owns placeholder modal state. Inlined sub-cards. |
+
+**Mock data (`src/lib/mock-data/manager/`):**
+
+| File | Content | Item count |
+|---|---|---|
+| `manager-urgent-items.ts` | 6 urgent cards (priority, type, body, SLA, 2 CTAs per) | 6 |
+| `manager-snapshot.ts` | 6 snapshot tiles (number/pill value, detail, disabledRoute target) | 6 |
+| `manager-active-items.ts` | 3 lists: 4 Specialists + 4 Disputes + 6 feed items | 14 |
+| `manager-team-perf.ts` | 6 team performance metrics with trend tone + delta | 6 |
+| `manager-rail.ts` | 5 quick actions + daily report state + shared `ManagerActionCTA`/`ManagerActionStep` types | 6 |
+
+### Files modified (4)
+
+| File | Diff shape |
+|---|---|
+| `src/app/(specialist)/specialist/dashboard/page.tsx` | **(Specialist-side edit, marker-fenced)** Restructured: `ModeToggle` hoisted ABOVE the `<DashboardModeFork>` switch (focus + keyboard state survive mode swaps per Q1B). The fork wraps the existing Specialist body unchanged (`DashboardHeader` + UrgentSection + SnapshotSection + ActiveItemsSection + PerformanceSection + DashboardRail). Two marker-fence comment blocks. Net ~15 lines changed; logic stable. |
+| `src/components/manager/shell/mode-toggle.tsx` | Removed the Step 1 temporary "Current mode: …" indicator + the now-unused outer flex wrapper. Net −10 lines. |
+| `src/lib/mock-data/manager/team.ts` | **Stub correction:** Lucas Andersen `countryCode` Denmark → Sweden, `countryName` updated. Prototype dashboard (line 19747) shows 🇸🇪; Step 1 guessed DK. Single-line correction with inline comment. |
+| `src/lib/mock-data/manager/index.ts` | +5 barrel re-exports for the new dashboard data files. |
+| `docs/manager/CONVERSION_LOG.md` | This entry. |
+
+### Locked decisions (Step 3)
+
+| | |
+|---|---|
+| **Single switch (Q1B)** | One `<DashboardModeFork>` wraps the entire main+rail body. ModeToggle hoisted ABOVE the fork so it doesn't unmount on swap — focus + keyboard state survive. The fork is a Client Component; the page stays a Server Component. |
+| **Two-tier CTA pattern (Q2)** | Navigation links (Open profile, View team, "→" footers, snapshot card clicks) render as `<span aria-disabled cursor-not-allowed opacity-60>`. Action buttons (Run sprint, Schedule 1:1, Submit now, etc.) open `<ManagerActionPlaceholderModal>` with data-driven copy. No silent no-ops anywhere. |
+| **Denormalized specialist names (Q3)** | Mock data uses plain strings for "Priya Mehra", "Diego Cabrera", "Aisha Bello", "Yara Khalil", "Felipe Santos", "Min-Jun Park", "Olena K." — paired with `TODO(step-4)` comments at every site. Grep `TODO(step-4)` in `src/lib/mock-data/manager/` for the Step 4 refactor target list. |
+| **Lucas → Sweden (Q4)** | One-line correction to Step 1 stub. Prototype is the spec; Step 1's Denmark was a guess. |
+| **On-call card direct reuse (Q5)** | `ManagerDashboardRail` imports `OnCallCard` from `@/components/specialist/dashboard/on-call-card`. Genuinely shared (Sofia Reyes call applies to both modes); duplicating would create drift. Different from the sidebar-icons situation in Step 2 (where the icons differed visually). |
+| **Inlined sub-components (Q6)** | UrgentCard, SnapshotCard, Column, SpecialistRow, DisputeRow, FeedItem, MetricTile, TrendArrow, QuickActionsCard, QuickActionButton, QuickActionIcon, DailyReportCard all inlined into their parent section files. Keeps file count lean; each parent stays under ~340 LOC. |
+| **Modal copy is data-driven (per Q7 + addendum)** | `STEP_FEATURES` map lives inside `ManagerActionPlaceholderModal`. Each `ManagerActionCTA` carries `landsInStep` (4-11 union); modal renders `{label} lands in Step {N} — {feature}` by default, or honors a per-call `description` override. Single file changes if step numbering shifts. |
+| **Removed Step 1 temporary indicator** | The "Current mode: Manager/Specialist" ink-mute label is gone from `ModeToggle`. Step 3's content swap is the visible mode indicator. |
+
+### Prototype → Path C translation notes
+
+- **`data-mode-show` CSS swaps** in the prototype (29 attribute selectors) → React conditional rendering via `<DashboardModeFork>`. The Manager content lives in its own component tree; the Specialist content stays untouched.
+- **The Specialist content INSIDE the fork is byte-identical to its pre-Step-3 state.** Only the wrapping JSX changed.
+- **The shared on-call card** (which the prototype rendered ONCE outside both `data-mode-show` divs) is rendered in each mode's rail component — Specialist `DashboardRail` already has it; Manager `ManagerDashboardRail` imports it. Functionally identical to "share once" because both modes render the same component instance with the same mock data.
+
+### A11y verification — `ManagerActionPlaceholderModal` (Q7m)
+
+| | |
+|---|---|
+| Focus traps inside the modal while open | ✓ — keydown handler cycles Tab between Close (X) and "Got it" buttons |
+| Esc closes | ✓ — keydown handler matches Escape |
+| Focus returns to trigger element on close | ✓ — captures `document.activeElement` at open in a ref; restores on unmount via cleanup |
+| Backdrop click closes | ✓ — `<button aria-label="Close dialog">` underlay |
+| `role="dialog" + aria-modal="true" + aria-labelledby` | ✓ |
+
+Established once here; downstream Manager steps that use the same modal don't need to re-verify a11y.
+
+### Canonical numbers preserved (lock check)
+
+| Number | Source | Step 3 location |
+|---|---|---|
+| 12 open disputes, 3 SLA at risk | Header quick stats + snapshot card 3 + urgent card 2 | ✓ |
+| 9 of 11 daily submitted | Header quick stat + snapshot card 2 | ✓ |
+| 91% team SLA hit rate | Team perf metric 3 | ✓ |
+| 19 hires this month | Team perf metric 4 | ✓ |
+| 4 active sprints, 2 on track, 2 behind | Snapshot card 6 | ✓ |
+| Mixed pool (9 strong, 1 depleted) | Snapshot card 5 | ✓ |
+| $48.2k revenue | NOT in dashboard — that's Team Reports (Step 10) | n/a |
+
+### Specialist name references — Step 4 refactor target list
+
+Generated via `grep -rn "TODO(step-4)" src/lib/mock-data/manager/`:
+
+- `manager-urgent-items.ts` — Priya Mehra, Lucas (in dispute attribution), Aisha Bello, Diego Cabrera (3 sites)
+- `manager-active-items.ts` — Priya Mehra, Diego Cabrera, Aisha Bello, Lucas Andersen, Yara Khalil, Aaliyah Kone (candidate, NOT a specialist), Felipe Santos, Min-Jun Park
+- `manager-snapshot.ts` — Olena K.
+
+Step 4 lands the full 11-Specialist roster in `team.ts`. The refactor flips each denormalized string to a `getSpecialist(id)?.fullName` call.
+
+### Known friction (Step 3)
+
+- **Hydration flash on dashboard content swap.** Server renders the Manager dashboard (default mode = `"manager"`). On hydration, if localStorage says `"specialist"`, the entire dashboard body flashes from Manager → Specialist. Larger visual impact than Step 1's toggle flash or Step 2's sidebar section flash. Trade-off of localStorage-backed client state without SSR-readable mode. Revisit if/when a cookie-based pattern is introduced for SSR-side mode resolution (cleanest fix; would require a parallel auth-time decision).
+- **Mateo's initials/avatar deferred.** Manager header renders the greeting "Manager view, Mateo." but no avatar pill anywhere yet. The `currentManager.initials = "MV"` lock is in place; first UI consumer lands in Step 4 (My Team grid) or later.
+- **Column 1 ordering** — "Specialists need attention" row order matches prototype: Priya / Diego / Aisha / Lucas. If product wants severity-sorted (urgent → attn → neutral), revisit in Step 4 when full roster lands.
+
+### Step 3 verification (a-m — all green)
+
+| | | |
+|---|---|---|
+| (a) | `/specialist/dashboard` in Manager Mode renders the full Manager dashboard | ✓ |
+| (b) | Toggle to "Specialist" → existing Specialist dashboard renders, unchanged | ✓ |
+| (c) | Toggle back to "Manager" → Manager dashboard returns | ✓ |
+| (d) | All 6 urgent card CTAs open the placeholder modal with the correct step number | ✓ |
+| (e) | All 4 snapshot clickable tiles render as disabled wrappers; no nav on click | ✓ |
+| (f) | All 3 column footers + "View team" / "View all" header links render disabled | ✓ |
+| (g) | All 5 quick action buttons open the placeholder modal with the correct step | ✓ |
+| (h) | "Submit now" in daily report card opens the placeholder modal (Step 11) | ✓ |
+| (i) | Mode toggle preserves focus + keyboard state across swap (hoisted above fork) | ✓ |
+| (j) | `pnpm typecheck`, `pnpm lint`, `pnpm build` all clean (165 routes preserved; no new routes) | ✓ |
+| (k) | Every other Specialist route renders unchanged | ✓ |
+| (l) | Temporarily flipped `useSessionRole()` to `"specialist"` → Manager dashboard never renders even when mode is `"manager"`; flipped back to `"manager"` before commit | ✓ |
+| (m) | Modal a11y verified: focus traps cycle Close ↔ Got it; Esc closes; focus returns to trigger on close. Once verified here; downstream Manager steps using the same modal don't need to re-verify | ✓ |
+
+### Up next
+
+- Step 4 — My Team. Lands the full 11-Specialist roster in `team.ts` and refactors all `TODO(step-4)` sites in dashboard mock data to use canonical `spec-*` ids. First Manager-only route enabled in the sidebar (`/specialist/team` Link replaces disabled span).
 
 ---

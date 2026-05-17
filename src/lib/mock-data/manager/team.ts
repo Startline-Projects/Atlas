@@ -79,8 +79,11 @@ export const specialists: ReadonlyArray<Specialist> = [
     role: "Operations",
     status: "performance-flag",
     cohort: "mid",
-    countryCode: "DK",
-    countryName: "Denmark",
+    /* Step 3 stub correction: prototype dashboard (manager.html line
+       19747) shows Lucas with 🇸🇪. Step 1 guessed Denmark; updated
+       to Sweden to align with the spec. */
+    countryCode: "SE",
+    countryName: "Sweden",
     avatarGradient: 1,
   },
 ];
