@@ -18,11 +18,17 @@ import { DashboardRail } from "@/components/specialist/dashboard/dashboard-rail"
 import { PerformanceSection } from "@/components/specialist/dashboard/performance-section";
 import { SnapshotSection } from "@/components/specialist/dashboard/snapshot-section";
 import { UrgentSection } from "@/components/specialist/dashboard/urgent-section";
+/* Manager-extension toggle (Path C — ADR 0001). Renders ONLY when
+   `useSessionRole() === "manager"` — non-Manager Specialist users
+   see nothing. Mounts only here on the dashboard per scope MD §1
+   ("toggle is only visible on the dashboard view"). */
+import { ModeToggle } from "@/components/manager/shell/mode-toggle";
 
 export default function SpecialistDashboardPage() {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-y-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-x-6">
       <div className="min-w-0 px-5 pt-7 pb-20 sm:px-7 lg:px-9">
+        <ModeToggle />
         <DashboardHeader />
         <UrgentSection />
         <SnapshotSection />
