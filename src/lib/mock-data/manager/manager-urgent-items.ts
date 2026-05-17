@@ -74,7 +74,10 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
           " missed daily activity submission — 2 days running. Needs immediate follow-up.",
       },
     ],
-    primary: { label: "Open profile", landsInStep: 5 },
+    /* Step 5: `href` set → renders as Link (direct nav to Priya's
+       detail page). The `landsInStep` stays for back-compat — when
+       href is set the modal code path is skipped. */
+    primary: { label: "Open profile", landsInStep: 5, href: "/specialist/team/spec-priya-mehra" },
     ghost: { label: "Open daily audit", landsInStep: 6 },
   },
 
@@ -128,8 +131,12 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "em", value: "85%" },
       { kind: "text", value: " this week — down from 94%." },
     ],
-    primary: { label: "View performance", landsInStep: 5 },
-    ghost: { label: "Schedule 1:1", landsInStep: 5 },
+    /* Step 5: tab-deep-linked navigation. Performance jumps into
+       Diego's detail page with the Performance tab pre-selected;
+       Schedule 1:1 jumps into Communication tab (where past
+       sessions + Schedule next live). */
+    primary: { label: "View performance", landsInStep: 5, href: "/specialist/team/spec-diego-cabrera?tab=performance" },
+    ghost: { label: "Schedule 1:1", landsInStep: 5, href: "/specialist/team/spec-diego-cabrera?tab=communication" },
   },
 
   /* Card 5 — ORANGE — Performance reviews overdue */

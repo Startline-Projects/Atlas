@@ -1,4 +1,5 @@
-"use client";
+/* No "use client" — Step 5 removed the modal state; this is now a
+   Server Component composed of Server SpecialistCards. */
 
 /**
  * MyTeamGrid — renders the 11 SpecialistCards + empty state.
@@ -9,24 +10,27 @@
  * Inlined `SpecialistCard` per Step 3 Q6 — one file, easier to
  * follow card composition.
  *
- * ## CTA pattern (per Step 3 Q2 / Step 4 Q1)
+ * ## CTA pattern (per Step 3 Q2 / Step 4 Q1 / Step 5 un-disable)
  *
  *   - Mateo's "is-you" card: View dashboard + Performance buttons
  *     are real `<Link>` to existing Specialist routes.
- *   - Other 10 cards: View profile + Message buttons are DISABLED
- *     `<span aria-disabled>` (their routes land in Steps 5 / 13).
- *     1:1 button is an action that opens the placeholder modal
- *     (`landsInStep: 5`).
+ *   - Other 10 cards (Step 5 un-disable pass):
+ *     - View profile → real `<Link>` to `/specialist/team/[id]`
+ *     - 1:1 → real `<Link>` to `/specialist/team/[id]?tab=communication`
+ *     - Message → still DISABLED span (Step 13 — Specialist Chat)
  *
  * Ported from `reference/manager.html` lines 27336-27640 (the 11
  * `mt-card` articles + empty state).
+ *
+ * No local state needed in Step 5 (the modal moved out — 1:1 became
+ * a real Link). The file omits `"use client"` since it doesn't use
+ * hooks; it inherits the Client boundary from its consumer
+ * (`MyTeamApp`) which is Client. Function props (onResetFilters)
+ * flow Client→Client cleanly.
  */
 
-import { useState } from "react";
 import Link from "next/link";
 import { MgrAvatar } from "@/components/manager/shell/mgr-avatar";
-import { ManagerActionPlaceholderModal } from "@/components/manager/dashboard/manager-action-placeholder-modal";
-import type { ManagerActionCTA } from "@/lib/mock-data/manager/manager-rail";
 import {
   getSpecialist,
   type DailyActivityState,
@@ -51,12 +55,6 @@ const STATUS_BADGE_LABEL: Record<SpecialistStatus, string> = {
   flag: "Performance",
 };
 
-const ONE_ON_ONE_CTA: ManagerActionCTA = {
-  label: "1:1",
-  landsInStep: 5,
-  description: "1:1 scheduling lands in Step 5 — Specialist Detail.",
-};
-
 type MyTeamGridProps = {
   visible: ReadonlyArray<Specialist>;
   totalCount: number;
@@ -64,37 +62,15 @@ type MyTeamGridProps = {
 };
 
 export function MyTeamGrid({ visible, totalCount, onResetFilters }: MyTeamGridProps) {
-  const [activeCta, setActiveCta] = useState<ManagerActionCTA | null>(null);
-
   if (visible.length === 0) {
-    return (
-      <div className="border-line bg-cream/40 rounded-md border border-dashed px-6 py-12 text-center">
-        <h4 className="text-ink m-0 text-[15px] font-semibold">
-          No specialists match your filters
-        </h4>
-        <p className="text-ink-mute mt-1 m-0 text-[13px]">
-          Try clearing the search or selecting a different cohort.
-        </p>
-        <button
-          type="button"
-          onClick={onResetFilters}
-          className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink mt-4 inline-flex items-center rounded-md border bg-paper px-3.5 py-2 text-[12.5px] font-medium transition-colors"
-        >
-          Reset filters
-        </button>
-      </div>
-    );
+    return <EmptyState onResetFilters={onResetFilters} />;
   }
 
   return (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visible.map((s) => (
-          <SpecialistCard
-            key={s.id}
-            s={s}
-            onAction={(cta) => setActiveCta(cta)}
-          />
+          <SpecialistCard key={s.id} s={s} />
         ))}
       </div>
       {visible.length < totalCount ? (
@@ -102,11 +78,29 @@ export function MyTeamGrid({ visible, totalCount, onResetFilters }: MyTeamGridPr
           Showing {visible.length} of {totalCount}
         </div>
       ) : null}
-      <ManagerActionPlaceholderModal
-        cta={activeCta}
-        onClose={() => setActiveCta(null)}
-      />
     </>
+  );
+}
+
+/* Empty state is its own component so the parent can stay
+   parameter-free for the render path (no callback needed below it). */
+function EmptyState({ onResetFilters }: { onResetFilters: () => void }) {
+  return (
+    <div className="border-line bg-cream/40 rounded-md border border-dashed px-6 py-12 text-center">
+      <h4 className="text-ink m-0 text-[15px] font-semibold">
+        No specialists match your filters
+      </h4>
+      <p className="text-ink-mute mt-1 m-0 text-[13px]">
+        Try clearing the search or selecting a different cohort.
+      </p>
+      <button
+        type="button"
+        onClick={onResetFilters}
+        className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink mt-4 inline-flex items-center rounded-md border bg-paper px-3.5 py-2 text-[12.5px] font-medium transition-colors"
+      >
+        Reset filters
+      </button>
+    </div>
   );
 }
 
@@ -114,13 +108,7 @@ export function MyTeamGrid({ visible, totalCount, onResetFilters }: MyTeamGridPr
    SpecialistCard — single team-grid card
    ============================================================ */
 
-function SpecialistCard({
-  s,
-  onAction,
-}: {
-  s: Specialist;
-  onAction: (cta: ManagerActionCTA) => void;
-}) {
+function SpecialistCard({ s }: { s: Specialist }) {
   return (
     <article
       className={cn(
@@ -215,18 +203,17 @@ function SpecialistCard({
             </Link>
           </>
         ) : (
-          /* Other Specialists: 3 buttons.
-             - View profile → disabled span (Step 5)
-             - Message → disabled span (Step 13)
-             - 1:1 → modal trigger (Step 5) */
+          /* Other Specialists (Step 5 un-disable pass):
+             - View profile → real Link to /specialist/team/[id]
+             - 1:1 → real Link to /specialist/team/[id]?tab=communication
+             - Message → still disabled (Step 13 — Specialist Chat) */
           <>
-            <span
-              aria-disabled="true"
-              title="Specialist detail lands in Step 5"
-              className="border-line text-ink-mute bg-cream/60 inline-flex cursor-not-allowed items-center justify-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium opacity-70"
+            <Link
+              href={`/specialist/team/${s.id}`}
+              className="bg-ink text-paper hover:bg-ink-soft inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
             >
               View profile
-            </span>
+            </Link>
             <span
               aria-disabled="true"
               title="Specialist chat lands in Step 13"
@@ -235,13 +222,12 @@ function SpecialistCard({
               Message
             </span>
             {s.status !== "vacation" ? (
-              <button
-                type="button"
-                onClick={() => onAction(ONE_ON_ONE_CTA)}
+              <Link
+                href={`/specialist/team/${s.id}?tab=communication`}
                 className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
               >
                 1:1
-              </button>
+              </Link>
             ) : null}
           </>
         )}

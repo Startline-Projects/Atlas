@@ -157,6 +157,33 @@ export type Specialist = {
    *  Mateo Vargas record. Lets shared components read either side
    *  of the dual identity. */
   managerId?: string;
+
+  /* ============================================================
+     Step 5 additions — Specialist Detail page fields. The "Step 5
+     follow-up — Specialist shape audit pass" (flagged in
+     CONVERSION_LOG) will re-read the prototype exhaustively before
+     Step 6 to identify any remaining per-specialist fields and lock
+     all additions in one go. Until then, these 6 are the only
+     additions beyond Step 4.
+     ============================================================ */
+
+  /** "ATLAS-TS-NNN" — sequential id rendered in the detail hero
+   *  eyebrow ("TALENT SPECIALIST · ATLAS-TS-001"). */
+  atlasTsId: string;
+  /** Origin city — rendered in detail hero meta strip. */
+  city: string;
+  /** "Joined" date — short label ("May 2024"). */
+  joinDate: string;
+  /** IANA-ish timezone caption ("GMT-6") for the slim meta bar. */
+  timeZone: string;
+  /** Languages — rendered as `Spanish · English`. */
+  languages: ReadonlyArray<string>;
+  /** Caseload candidate-capacity (the workload bar denominator).
+   *  Lucas at 40 with workload 41 → renders over-capacity (103%).
+   *  Default story per Step 5 Q6: capacity 40 is the dramatic
+   *  visual; Lucas's "high-volume senior" prototype narrative
+   *  reads better as over-capacity than at-capacity. */
+  caseloadCapacity: number;
 };
 
 /* ============================================================
@@ -183,6 +210,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     lastActiveLabel: "Just now",
     isManager: true,
     managerId: currentManager.id,
+    atlasTsId: "ATLAS-TS-001",
+    city: "Mexico City",
+    joinDate: "May 2024",
+    timeZone: "GMT-6",
+    languages: ["Spanish", "English"],
+    caseloadCapacity: 40,
   },
 
   /* 2. Priya Mehra — performance flag, missed daily activity. */
@@ -202,6 +235,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 22, contractsCount: 6 },
     performanceScore: 76,
     lastActiveLabel: "4h ago",
+    atlasTsId: "ATLAS-TS-002",
+    city: "Mumbai",
+    joinDate: "Jan 2024",
+    timeZone: "GMT+5:30",
+    languages: ["Hindi", "English"],
+    caseloadCapacity: 30,
   },
 
   /* 3. Diego Cabrera — performance flag, review SLA dropped. */
@@ -221,6 +260,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 28, contractsCount: 7 },
     performanceScore: 85,
     lastActiveLabel: "32 min ago",
+    atlasTsId: "ATLAS-TS-003",
+    city: "Guadalajara",
+    joinDate: "Aug 2023",
+    timeZone: "GMT-6",
+    languages: ["Spanish", "English"],
+    caseloadCapacity: 35,
   },
 
   /* 4. Aisha Bello — at capacity, Customer Support pool depleted. */
@@ -240,10 +285,20 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 31, contractsCount: 8 },
     performanceScore: 88,
     lastActiveLabel: "1h ago",
+    atlasTsId: "ATLAS-TS-004",
+    city: "Lagos",
+    joinDate: "Feb 2024",
+    timeZone: "GMT+1",
+    languages: ["English", "Yoruba"],
+    caseloadCapacity: 35,
   },
 
   /* 5. Lucas Andersen — at capacity. Step 1 stub; Sweden corrected
-       in Step 3 per prototype dashboard 🇸🇪 flag (line 19747). */
+       in Step 3 per prototype dashboard 🇸🇪 flag (line 19747).
+       Step 5: caseloadCapacity = 40 → over-capacity at 41/40
+       (103%) per the "dramatic visual" lock — Lucas is the
+       high-volume senior; "At capacity" badge in the My Team
+       grid reads truer with workload exceeding capacity. */
   {
     id: "spec-lucas-andersen",
     fullName: "Lucas Andersen",
@@ -260,6 +315,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 41, contractsCount: 12 },
     performanceScore: 90,
     lastActiveLabel: "12 min ago",
+    atlasTsId: "ATLAS-TS-005",
+    city: "Stockholm",
+    joinDate: "Sep 2023",
+    timeZone: "GMT+1",
+    languages: ["Swedish", "English"],
+    caseloadCapacity: 40,
   },
 
   /* 6. Felipe Santos — active. */
@@ -279,6 +340,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 19, contractsCount: 5 },
     performanceScore: 92,
     lastActiveLabel: "18 min ago",
+    atlasTsId: "ATLAS-TS-006",
+    city: "São Paulo",
+    joinDate: "Jun 2023",
+    timeZone: "GMT-3",
+    languages: ["Portuguese", "Spanish", "English"],
+    caseloadCapacity: 30,
   },
 
   /* 7. Yara Khalil — active, top performer. */
@@ -298,6 +365,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 24, contractsCount: 7 },
     performanceScore: 95,
     lastActiveLabel: "45 min ago",
+    atlasTsId: "ATLAS-TS-007",
+    city: "Cairo",
+    joinDate: "Mar 2023",
+    timeZone: "GMT+2",
+    languages: ["Arabic", "English", "French"],
+    caseloadCapacity: 30,
   },
 
   /* 8. Min-Jun Park — active. ID differs from prototype's
@@ -319,6 +392,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 26, contractsCount: 6 },
     performanceScore: 91,
     lastActiveLabel: "2h ago",
+    atlasTsId: "ATLAS-TS-008",
+    city: "Seoul",
+    joinDate: "Apr 2023",
+    timeZone: "GMT+9",
+    languages: ["Korean", "English"],
+    caseloadCapacity: 35,
   },
 
   /* 9. Olena Kovalenko — on vacation. Coverage by Diego. */
@@ -338,6 +417,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 18, contractsCount: 4 },
     performanceScore: 87,
     coverageSpecialistId: "spec-diego-cabrera",
+    atlasTsId: "ATLAS-TS-009",
+    city: "Kyiv",
+    joinDate: "Nov 2022",
+    timeZone: "GMT+2",
+    languages: ["Ukrainian", "Russian", "English"],
+    caseloadCapacity: 25,
   },
 
   /* 10. Kavi Rajan — active. */
@@ -357,6 +442,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 23, contractsCount: 5 },
     performanceScore: 89,
     lastActiveLabel: "3h ago",
+    atlasTsId: "ATLAS-TS-010",
+    city: "Bengaluru",
+    joinDate: "Oct 2023",
+    timeZone: "GMT+5:30",
+    languages: ["Tamil", "English"],
+    caseloadCapacity: 30,
   },
 
   /* 11. Naomi Adebayo — active. */
@@ -376,6 +467,12 @@ export const specialists: ReadonlyArray<Specialist> = [
     workload: { candidatesCount: 20, contractsCount: 4 },
     performanceScore: 93,
     lastActiveLabel: "55 min ago",
+    atlasTsId: "ATLAS-TS-011",
+    city: "Lagos",
+    joinDate: "Jul 2023",
+    timeZone: "GMT+1",
+    languages: ["English", "Yoruba"],
+    caseloadCapacity: 25,
   },
 ];
 

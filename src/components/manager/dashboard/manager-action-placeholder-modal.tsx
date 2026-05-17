@@ -55,6 +55,7 @@ const STEP_FEATURES: Record<ManagerActionStep, string> = {
   9: "Recruitment Sprints",
   10: "Team Reports",
   11: "Manager Daily Activity",
+  13: "Specialist Chat",
   14: "Help & resources",
 };
 

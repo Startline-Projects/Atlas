@@ -22,7 +22,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 2   | Sidebar TEAM MANAGEMENT section (mode-aware) | ✅ done |
 | 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ✅ done |
 | 4   | My Team — 11-specialist grid | ✅ done |
-| 5   | Specialist Detail — 7-tab layout + 30-day calendar + coaching | ❌ not started |
+| 5   | Specialist Detail — 7-tab layout + coaching tab | ✅ done (calendar deferred to Step 11 per trim) |
 | 6   | Daily Activity Audit — submission overview + audit rows + timing | ❌ not started |
 | 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ❌ not started |
 | 8   | Pool Coordination — 10-category grid + opportunities + sprint priorities | ❌ not started |
@@ -466,6 +466,137 @@ Resolving the 14 `TODO(step-4)` hits:
 
 ### Up next
 
-- Step 5 — Specialist Detail. `/specialist/team/[id]` route with 7-tab layout, 30-day calendar, coaching tab. SSG via `generateStaticParams` from `ALL_SPECIALIST_IDS`. Un-disables the Attention strip cards + the SpecialistCard "View profile" buttons (grep `TODO(step-5)`). Also un-disables the "Schedule a 1:1" / View performance / View profile / Open profile / 1:1 CTAs across the dashboard's urgent cards + the rail quick actions (cross-step cleanup pass).
+- See Session 1 / Step 5 entry below.
+
+---
+
+## Session 1 — Step 5 — Specialist Detail + 11 SSG routes + Step 4 un-disable pass
+
+**Goal:** `/specialist/team/[id]` route lands with 11 SSG pages (one per Specialist). 7-tab layout per prototype (Overview / Performance / Workload / Daily Activity / Coaching Notes / Communication / Their Work). 6 fields added to each Specialist record (`atlasTsId`, `city`, `joinDate`, `timeZone`, `languages`, `caseloadCapacity`). All Step 4 `TODO(step-5)` un-disable sites resolved.
+
+### Files added (15)
+
+| File | Role | Notes |
+|---|---|---|
+| `src/app/(specialist)/specialist/team/[id]/page.tsx` | Server | Dynamic route. `generateStaticParams(ALL_SPECIALIST_IDS)` + strict-union `notFound()` validation. Wraps content in `<ManagerRouteGuard>` + `<Suspense>` (required for `useSearchParams()` under SSG). |
+| `src/components/manager/specialist-detail/specialist-detail-app.tsx` | Client | Orchestrator. Owns active-tab state via `useState`. Reads `?tab=` searchParam ONCE on mount for initial state (per Q1 lock); local React state after clicks (no URL sync). |
+| `src/components/manager/specialist-detail/sd-back-link.tsx` | Server | "← Back to My team" Link. |
+| `src/components/manager/specialist-detail/sd-hero.tsx` | Client | Avatar + name + eyebrow + meta + status tag + 6 action buttons. Owns modal state. Mateo self-adjustments per Q2 (suppress Message + Schedule 1:1; keep Audit daily). |
+| `src/components/manager/specialist-detail/sd-meta-bar.tsx` | Server | Slim meta bar: Time zone / Languages / Performance score / Last active. |
+| `src/components/manager/specialist-detail/sd-stats-strip.tsx` | Server | 5-stat strip: Candidates / Contracts / Reviews · month / Disputes resolved / Daily adherence. |
+| `src/components/manager/specialist-detail/sd-tabs.tsx` | Client | 7-tab nav. Controlled by orchestrator. |
+| `src/components/manager/specialist-detail/sd-tab-overview.tsx` | Client | At-a-glance tiles + recent timeline (6 entries — shared placeholder). |
+| `src/components/manager/specialist-detail/sd-tab-performance.tsx` | Client | 4 cards 2x2: Reviews / Disputes / Sourcing / Pool, each with 4 tiles + sparkline. |
+| `src/components/manager/specialist-detail/sd-tab-workload.tsx` | Client | 3 cards: capacity bars (3) + recent assignments (4) + needs attention now (4). Capacity bar tone forks at ≥100% / ≥85% / else. |
+| `src/components/manager/specialist-detail/sd-tab-daily.tsx` | Client | **Per trim (b): no 30-day calendar.** Today's submission + recent submissions (3 rows). Placeholder card with `TODO(step-11)` marker for calendar primitive. |
+| `src/components/manager/specialist-detail/sd-tab-coaching.tsx` | Client | Editor (textarea, local draft state) + past notes (3 entries). Mateo self-page: past notes empty state. |
+| `src/components/manager/specialist-detail/sd-tab-communication.tsx` | Client | Recent thread (3 msgs) + past 1:1 sessions (3). Owns modal state. Mateo self-page: both sides render as "You" per Q3 reminder; Open chat + Schedule next buttons suppressed. |
+| `src/components/manager/specialist-detail/sd-tab-work.tsx` | Client | 5 portfolio cards (all disabled — destination routes don't exist) + Manager actions (Flag for admin / Suspend disabled). Mateo: Manager actions section suppressed. |
+| `src/lib/mock-data/manager/spec-detail-data.ts` | — | Per-Specialist stats (`getSpecStats(id)`) + shared placeholder content for tabs (timeline, performance cards/sparklines, workload items, recent submissions, coaching notes, communication thread, 1:1 sessions, work portfolio defs). |
+
+### Files modified (7)
+
+| File | Diff shape |
+|---|---|
+| `src/lib/mock-data/manager/team.ts` | **Specialist type extended:** added 6 new required fields (`atlasTsId`, `city`, `joinDate`, `timeZone`, `languages`, `caseloadCapacity`). All 11 records updated with locked values. Lucas's `caseloadCapacity: 40` documented with the over-capacity rationale (41/40 = 103%). |
+| `src/lib/mock-data/manager/manager-rail.ts` | `ManagerActionStep` union extended with `13` (Specialist Chat for hero Message CTA). `ManagerActionCTA` extended with optional `href?: string` field — CTAs with `href` render as real `<Link>` (Step 5 un-disable). |
+| `src/components/manager/dashboard/manager-action-placeholder-modal.tsx` | `STEP_FEATURES` map: added `13: "Specialist Chat"`. |
+| `src/components/manager/dashboard/manager-urgent-section.tsx` | Action buttons fork on `href` presence: `<Link>` if set, button + modal otherwise. Extracted `<ArrowIcon>` helper. |
+| `src/lib/mock-data/manager/manager-urgent-items.ts` | Card 1 primary + Card 4 primary + Card 4 ghost: added `href` for direct navigation to Specialist Detail (with tab deep-linking where appropriate). |
+| `src/components/manager/team/my-team-attention-strip.tsx` | Un-disabled: 3 wrappers flipped from `<div aria-disabled>` to `<Link>`. Added hover tone per priority. |
+| `src/components/manager/team/my-team-grid.tsx` | Un-disabled: "View profile" buttons (10 cards) → `<Link>`. 1:1 button → `<Link>` with `?tab=communication` deep-link. Dropped the placeholder modal mount + `ONE_ON_ONE_CTA` constant. File no longer owns state; comment updated to reflect inherited Client boundary. |
+| `docs/manager/CONVERSION_LOG.md` | This entry. |
+
+### Locked decisions (Step 5)
+
+| | |
+|---|---|
+| **Tab state (Q1)** | `?tab=` searchParam for initial state only (deep-linkable from urgent cards). Local React state after clicks. No URL sync, no history push. Suspense boundary required for `useSearchParams()` under SSG. |
+| **Mateo self-adjustments (Q2)** | "You" tag in hero. Suppress Message + Schedule 1:1 (interpersonal). Keep Audit daily (auditing own submissions is legitimate — Mateo IS a Specialist). Keep View dashboard (real Link). Suppress Manager actions in Their Work (Flag/Suspend). Coaching past notes + Communication thread/sessions all show self-empty/self-referential states. |
+| **Tab content variance (Q3)** | Per-specialist: hero / meta bar / stats strip / workload capacity. Shared placeholder: Overview timeline, Performance sparklines, Workload assignments + queue, Coaching past notes, Communication thread + sessions. Name interpolation handled at render time. |
+| **Calendar trim (Q4 = b)** | Daily tab in Step 5 renders text-only today's status + 3 recent submissions. The 30-day calendar grid lands in Step 11 — Manager Daily Activity has a "past 14-day calendar" that's the same primitive. `TODO(step-11)` marker mounted at the intended insertion point. |
+| **Performance review CTA (Q5)** | Hero "Performance review" button → modal `landsInStep: 10` (Team Reports). Default auto-derived copy ("Performance review lands in Step 10 — Team Reports"); no description override. |
+| **Caseload capacity (Q6)** | Per-specialist capacity field locked. Lucas at 40 (over-capacity at 41/40 = 103%) — rationale documented in `team.ts` comment near the field. All other specialists' capacities documented as inferred. |
+| **Two-tier CTA via `href`** | `ManagerActionCTA` extended with optional `href`. URGENT section + future consumers fork: `href` set → render as `<Link>`; otherwise button + modal. Backward-compatible (existing CTAs without `href` keep modal behavior). |
+| **Self vs others rendering** | All 7 tabs check `s.isManager === true` and adjust where applicable. Most tabs render identically; Coaching + Communication + Work have self-specific adjustments. |
+| **`Suspense` boundary** | Wraps `<SpecialistDetailApp>` at the page level. Required by Next.js when a Client Component uses `useSearchParams()` under SSG. Fallback is `null`; server renders with default tab (Overview), client hydrates and may swap to `?tab=` initial. |
+
+### Step 4 un-disable pass — all `landsInStep: 5` sites resolved
+
+| Site | Step 4 state | Step 5 state |
+|---|---|---|
+| 3 attention strip cards | disabled `<div>` wrappers | `<Link href="/specialist/team/${id}">` |
+| 10 "View profile" buttons on SpecialistCard | disabled `<span>` | `<Link href="/specialist/team/${id}">` |
+| 10 "1:1" buttons on SpecialistCard | modal trigger (Step 5) | `<Link href="/specialist/team/${id}?tab=communication">` |
+| Dashboard urgent card 1 "Open profile" | modal trigger | `href="/specialist/team/spec-priya-mehra"` |
+| Dashboard urgent card 4 "View performance" | modal trigger | `href="/specialist/team/spec-diego-cabrera?tab=performance"` |
+| Dashboard urgent card 4 "Schedule 1:1" | modal trigger | `href="/specialist/team/spec-diego-cabrera?tab=communication"` |
+
+Sites that **stayed as modal** (intentional):
+- Dashboard urgent card 5 "Open templates" — no template feature in any step
+- Dashboard rail "Schedule a 1:1" — generic action; no target specialist
+
+### 6 new Specialist fields locked
+
+| Field | All 11 specialists |
+|---|---|
+| `atlasTsId` | ATLAS-TS-001 through ATLAS-TS-011 |
+| `city` | Mexico City / Mumbai / Guadalajara / Lagos / Stockholm / São Paulo / Cairo / Seoul / Kyiv / Bengaluru / Lagos |
+| `joinDate` | Range: Nov 2022 (Olena, longest tenure) → May 2024 (Mateo, newest as Manager) |
+| `timeZone` | Per city (GMT-6 to GMT+9) |
+| `languages` | 1-3 per specialist; rendered as `Spanish · English` |
+| `caseloadCapacity` | 25-40 per specialist; Lucas at 40 (over at 41); Aisha at 35 (89% — capacity flag) |
+
+### Locked-shape drift — flagged for follow-up
+
+Step 4 extended `SpecialistRole` union (10 entries replacing Step 1's stub union). Step 5 added 6 fields per record. Two locked-shape changes in two steps.
+
+**Step 5 follow-up — Specialist shape audit pass (proposed before Step 6):** Re-read the prototype exhaustively, identify every per-specialist field still missing from `team.ts`, lock all remaining shape additions in one go. Prevents further additive drift across Steps 6-11.
+
+Candidate fields to audit (preliminary list — NOT a commit):
+- Skills / specialization (Step 8 Pool Coordination might need)
+- Communication channels (Step 13 Specialist Chat might need)
+- Audit history / coaching frequency (Step 6 Audit + Step 5 Coaching might want)
+- Hire success metrics (Step 10 Team Reports references)
+
+Do NOT do the audit now. Defer until before Step 6 begins.
+
+### Known friction (Step 5)
+
+- **Sparkline numbers are shared across all 11 specialists.** Faithful to prototype which uses one HTML block + JS data swap of hero/stats only. Numbers will vary per specialist when Step 10's audit pass parameterizes them.
+- **Coaching notes editor has no persistence.** Auto-saving indicator is decorative. Real save flow lands when backend wires up.
+- **Their Work portfolio cards all disabled.** The "Manager view as specialist" surface doesn't exist in any step — it would require a major architectural addition (Manager reads Specialist routes in shadow mode). Deferred indefinitely; cards render as honest unavailable affordances.
+- **Suspense boundary fallback is `null`.** Brief flash on tab deep-link from `?tab=...` URL before hydration. Acceptable per the user's "no URL sync after clicks" lock — the deep-link is the only path that uses searchParam state.
+
+### Step 5 verification (a-p — all green)
+
+| | | |
+|---|---|---|
+| (a) | `/specialist/team/[id]` renders for all 11 ids | ✓ |
+| (b) | `/specialist/team/invalid-id` returns 404 | ✓ |
+| (c) | Tab clicks switch active panel (local state) | ✓ |
+| (d) | `?tab=communication` initial URL renders with Communication tab active | ✓ |
+| (e) | Back link navigates to `/specialist/team` | ✓ |
+| (f) | Mateo's page suppresses Message + Schedule 1:1; renders "You" tag; keeps Audit daily | ✓ |
+| (g) | Other specialists show all hero buttons (Message + Schedule 1:1 + Audit daily + Performance review + Log coaching note) | ✓ |
+| (h) | All 5 portfolio cards in Their Work are disabled wrappers | ✓ |
+| (i) | Suspend Specialist button is disabled (prototype precedent) | ✓ |
+| (j) | `pnpm typecheck` + lint + build clean. 177 routes prerender (166 + 11 SSG specialist detail pages) | ✓ |
+| (k) | Other Specialist routes unchanged | ✓ |
+| (l) | `useSessionRole()` flip → 11 detail pages redirect to dashboard via ManagerRouteGuard | ✓ |
+| (m) | `grep -rn "TODO(step-5)" src/` returns 0 hits | ✓ |
+| (n) | Modal a11y still works (regression — focus trap, Esc close, focus restore) | ✓ |
+| (o) | Dashboard urgent cards' "Open profile" / "View performance" / "Schedule 1:1" buttons now navigate to specialist detail with correct tab pre-selected | ✓ |
+| (p) | Click Dashboard urgent card 4 "View performance" → `/specialist/team/spec-diego-cabrera?tab=performance` with Performance tab pre-selected (NOT Overview). End-to-end tab-deep-linking verified | ✓ |
+
+### Future grep targets created
+
+- `TODO(step-11)` — calendar primitive insertion point in `sd-tab-daily.tsx` (deferred from Step 5)
+- `TODO(step-7)` — dispute attribution refactor in `manager-active-items.ts` (still open from Step 4)
+
+### Up next
+
+- **Specialist shape audit pass** (do BEFORE Step 6) — re-read prototype exhaustively, identify all remaining per-specialist fields, lock in one commit.
+- **Step 6 — Daily Activity Audit.** `/specialist/daily-audit` Manager-only route. Submission overview, 11 audit rows, timing chart, timing distribution. Un-disables: dashboard urgent card 1 "Open daily audit" + dashboard rail "Audit a Specialist" + Specialist Detail hero "Audit daily" + sidebar TEAM MANAGEMENT "Daily Activity Audit" item.
 
 ---

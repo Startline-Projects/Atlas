@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * MyTeamAttentionStrip — the 3-card priority strip above the main
  * team grid. Shows Specialists with the most pressing issues:
@@ -10,19 +8,18 @@
  *
  * Ported from `reference/manager.html` lines 27298-27332.
  *
- * Each card is a wrapper that LINKS to the Specialist's detail
- * page (`/specialist/team/[id]`). Step 5 lands those routes — until
- * then the wrappers render as `<div aria-disabled cursor-not-allowed>`
- * per the two-tier CTA pattern (nav links = disabled spans).
- *
- * TODO(step-5): un-disable the Attention card wrappers — flip
- * the `<div aria-disabled>` to `<Link href={...}>` for each card.
- * Grep target.
+ * Step 5: each card now renders as a real `<Link>` to the
+ * Specialist's detail page (`/specialist/team/[id]`). The Step 4
+ * disabled-wrapper markers (formerly tagged for the Step 5 pass)
+ * are resolved.
  *
  * Detail copy uses derived Specialist names + canonical avatar
  * slots from team.ts.
+ *
+ * Server Component — no state.
  */
 
+import Link from "next/link";
 import {
   getSpecialist,
   type SpecialistId,
@@ -82,6 +79,11 @@ const CARD_BORDER: Record<AttentionTone, string> = {
   warn: "border-l-amber",
 };
 
+const CARD_HOVER: Record<AttentionTone, string> = {
+  danger: "hover:bg-danger-bg/40",
+  warn: "hover:bg-amber-bg/40",
+};
+
 const TAG_TONE: Record<AttentionTone, string> = {
   danger: "bg-danger-bg text-danger border-danger/30",
   warn: "bg-amber-bg text-amber border-amber/30",
@@ -111,15 +113,12 @@ function AttentionCardView({ card }: { card: AttentionCard }) {
   const s = getSpecialist(card.specialistId);
   if (!s) return null;
   return (
-    /* TODO(step-5): swap this `<div aria-disabled>` wrapper for a
-       `<Link href={`/specialist/team/${card.specialistId}`}>` when
-       Step 5 lands the Specialist Detail route. Grep target. */
-    <div
-      aria-disabled="true"
-      title={`${s.fullName} — detail lands in Step 5`}
+    <Link
+      href={`/specialist/team/${card.specialistId}`}
       className={cn(
-        "bg-cream/40 border-line flex cursor-not-allowed items-center gap-3 rounded-md border border-l-[3px] p-3 opacity-90",
+        "bg-cream/40 border-line group flex items-center gap-3 rounded-md border border-l-[3px] p-3 transition-colors",
         CARD_BORDER[card.tone],
+        CARD_HOVER[card.tone],
       )}
     >
       <MgrAvatar
@@ -153,6 +152,6 @@ function AttentionCardView({ card }: { card: AttentionCard }) {
       >
         {card.tagLabel}
       </span>
-    </div>
+    </Link>
   );
 }

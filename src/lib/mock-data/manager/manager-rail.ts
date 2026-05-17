@@ -30,9 +30,11 @@
  */
 
 /** Step numbers Manager-extension CTAs can land in.
+ *  Step 13 (Messages + Specialist Chat) is included for hero
+ *  "Message" CTAs that route to the Specialist chat surface.
  *  Step 14 (Help) is included for "coming soon" actions whose target
  *  never lands as a dedicated step (e.g. team meeting scheduling). */
-export type ManagerActionStep = 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 14;
+export type ManagerActionStep = 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 13 | 14;
 
 export type ManagerActionCTA = {
   label: string;
@@ -40,6 +42,13 @@ export type ManagerActionCTA = {
   /** Optional copy override. When omitted, the modal renders its
    *  auto-derived body using the step-features lookup. */
   description?: string;
+  /** Step 5+: when set, the CTA renders as a real `<Link href={href}>`
+   *  instead of a button-that-opens-modal. Used when an action's
+   *  target step has landed and the CTA can navigate directly
+   *  (e.g. dashboard urgent card "Open profile" once Step 5 lands
+   *  `/specialist/team/[id]`). The consumer's render code forks
+   *  on `href` presence. */
+  href?: string;
 };
 
 export type ManagerQuickAction = ManagerActionCTA & {

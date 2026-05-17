@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   managerUrgentItems,
   managerUrgentOpenCount,
@@ -135,38 +136,65 @@ function UrgentCard({
         })}
       </p>
 
-      {/* Actions */}
+      {/* Actions. Step 5: CTAs with `href` render as Link (real
+          navigation); without `href` stay as buttons that open the
+          placeholder modal. */}
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <button
-          type="button"
-          onClick={() => onAction(item.primary)}
-          className="bg-ink text-paper hover:bg-ink-soft inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-        >
-          {item.primary.label}
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            aria-hidden="true"
+        {item.primary.href ? (
+          <Link
+            href={item.primary.href}
+            className="bg-ink text-paper hover:bg-ink-soft inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
           >
-            <path
-              d="M2.5 6h7M6 3 9 6 6 9"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={() => onAction(item.ghost)}
-          className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-        >
-          {item.ghost.label}
-        </button>
+            {item.primary.label}
+            <ArrowIcon />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onAction(item.primary)}
+            className="bg-ink text-paper hover:bg-ink-soft inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+          >
+            {item.primary.label}
+            <ArrowIcon />
+          </button>
+        )}
+        {item.ghost.href ? (
+          <Link
+            href={item.ghost.href}
+            className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+          >
+            {item.ghost.label}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onAction(item.ghost)}
+            className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+          >
+            {item.ghost.label}
+          </button>
+        )}
       </div>
     </article>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M2.5 6h7M6 3 9 6 6 9"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
