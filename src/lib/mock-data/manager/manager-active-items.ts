@@ -12,38 +12,50 @@
  * Canonical content for downstream Steps 4 (My Team), 5 (Specialist
  * Detail), 7 (Team Disputes), 10 (Team Reports' activity feed).
  *
- * ## Denormalized specialist + candidate + client names
+ * ## Step 4 refactor — Specialist data sourced from team.ts
  *
- * All identity references are plain strings.
- *
- * TODO(step-4): refactor specialist names + initials + countryFlag
- * to reference canonical `spec-*` ids once Step 4 lands the
- * 11-specialist roster in `team.ts`. Grep `TODO(step-4)` to find
- * every site.
+ * Rows are now built via `buildSpecialistRow()` which derives
+ * `initials`, `fullName`, `countryFlag` from the canonical
+ * `Specialist` record. The `colorSlot` (1-5) stays inline — it's
+ * the active-items context's OWN color cycle, deliberately
+ * independent from each Specialist's `avatarSlot`. (The prototype
+ * itself drifts here: Priya's team-grid avatar is `av-3` but her
+ * active-items avatar is `cl-2`. We preserve the prototype's
+ * visual rhythm.)
  *
  * TODO(step-7): refactor dispute owner attribution (the "Owner:
  * Lucas Andersen" lines) to reference dispute records once Step 7
  * lands `manager-team-disputes-data.ts`. The "Owner: you" phrasing
- * means owned by the current Manager — translate via
- * `currentManager` in Step 7.
+ * means owned by the current Manager.
  *
  * Sofia Reyes × Quill & Co dispute is `DSP-2026-04-12` — the
  * canonical dispute locked at the start of the initiative.
+ *
+ * Aaliyah Kone in the activity feed is a candidate (NOT a
+ * specialist), so the name stays inline.
  */
+
+import { countryFlag } from "@/lib/utils/country-flag";
+import {
+  getSpecialist,
+  type SpecialistId,
+} from "./team";
 
 export type ActiveNeedTone = "urgent" | "attn" | "neutral";
 
 /** A row in the "Specialists need attention" column. */
 export type ActiveSpecialistRow = {
   id: string;
-  /** Initials shown in the cl-{N} avatar circle. */
+  /** Canonical Specialist id — Step 4 refactor. */
+  specialistId: SpecialistId;
+  /** Initials derived from team.ts. Cached at build for render. */
   initials: string;
-  /** Color slot (1-5 in prototype). Maps to existing Atlas avatar
-   *  gradients via a one-off mapping in the section component. */
+  /** Active-items color slot (1-5) — deliberately independent from
+   *  specialist.avatarSlot (see file header). */
   colorSlot: 1 | 2 | 3 | 4 | 5;
-  /** Specialist full name. TODO(step-4): replace with spec-* id lookup. */
+  /** Specialist full name — derived from team.ts. */
   fullName: string;
-  /** Country flag emoji. TODO(step-4): derive from spec-*.countryCode. */
+  /** Country flag emoji — derived from team.ts via countryFlag(). */
   countryFlag: string;
   /** Short tag rendered before the detail text. */
   needTag: { label: string; tone: ActiveNeedTone };
@@ -82,46 +94,72 @@ export type ActivityFeedItem = {
   when: string;
 };
 
+/* ============================================================
+   Row builder — derives display fields from canonical Specialist
+   ============================================================ */
+
+function buildSpecialistRow(opts: {
+  specialistId: SpecialistId;
+  colorSlot: 1 | 2 | 3 | 4 | 5;
+  needTag: { label: string; tone: ActiveNeedTone };
+  detail: string;
+}): ActiveSpecialistRow {
+  const s = getSpecialist(opts.specialistId);
+  const idSlug = opts.specialistId.replace("spec-", "");
+  return {
+    id: `asra-${idSlug}`,
+    specialistId: opts.specialistId,
+    initials: s?.initials ?? "??",
+    colorSlot: opts.colorSlot,
+    fullName: s?.fullName ?? "Unknown",
+    countryFlag: countryFlag(s?.countryCode ?? ""),
+    needTag: opts.needTag,
+    detail: opts.detail,
+  };
+}
+
+/* Resolve disputed-Specialist names from team.ts. */
+const lucasName = getSpecialist("spec-lucas-andersen")?.fullName ?? "Lucas Andersen";
+const diegoName = getSpecialist("spec-diego-cabrera")?.fullName ?? "Diego Cabrera";
+const yaraName = getSpecialist("spec-yara-khalil")?.fullName ?? "Yara Khalil";
+const felipeName = getSpecialist("spec-felipe-santos")?.fullName ?? "Felipe Santos";
+const minJunName = getSpecialist("spec-min-jun-park")?.fullName ?? "Min-Jun Park";
+
+/* ============================================================
+   Column 1 — Specialists need attention
+   ============================================================ */
+
 export const activeSpecialistsNeedingAttention: ReadonlyArray<ActiveSpecialistRow> =
   [
-    /* TODO(step-4): swap denormalized rows for spec-* lookups */
-    {
-      id: "asra-priya",
-      initials: "PM",
+    buildSpecialistRow({
+      specialistId: "spec-priya-mehra",
       colorSlot: 2,
-      fullName: "Priya Mehra",
-      countryFlag: "🇮🇳",
       needTag: { label: "Daily activity", tone: "urgent" },
       detail: "Missed 2 days running",
-    },
-    {
-      id: "asra-diego",
-      initials: "DC",
+    }),
+    buildSpecialistRow({
+      specialistId: "spec-diego-cabrera",
       colorSlot: 3,
-      fullName: "Diego Cabrera",
-      countryFlag: "🇲🇽",
       needTag: { label: "Review SLA", tone: "attn" },
       detail: "Hit rate dropped to 85%",
-    },
-    {
-      id: "asra-aisha",
-      initials: "AB",
+    }),
+    buildSpecialistRow({
+      specialistId: "spec-aisha-bello",
       colorSlot: 4,
-      fullName: "Aisha Bello",
-      countryFlag: "🇳🇬",
       needTag: { label: "Review", tone: "attn" },
       detail: "Performance review overdue",
-    },
-    {
-      id: "asra-lucas",
-      initials: "LA",
+    }),
+    buildSpecialistRow({
+      specialistId: "spec-lucas-andersen",
       colorSlot: 5,
-      fullName: "Lucas Andersen",
-      countryFlag: "🇸🇪",
       needTag: { label: "Capacity", tone: "neutral" },
       detail: "4 reviews pending past 18h",
-    },
+    }),
   ];
+
+/* ============================================================
+   Column 2 — Disputes need oversight
+   ============================================================ */
 
 export const activeDisputesNeedingOversight: ReadonlyArray<ActiveDisputeRow> = [
   /* TODO(step-7): refactor to reference manager-team-disputes-data
@@ -132,7 +170,7 @@ export const activeDisputesNeedingOversight: ReadonlyArray<ActiveDisputeRow> = [
     colorSlot: 4,
     title: "Quill & Co × Min-Jun Park",
     slaTag: { label: "9h SLA", tone: "urgent" },
-    owner: { youOwn: false, specialistName: "Lucas Andersen" },
+    owner: { youOwn: false, specialistName: lucasName },
   },
   {
     id: "adn-sofia-quill",
@@ -148,7 +186,7 @@ export const activeDisputesNeedingOversight: ReadonlyArray<ActiveDisputeRow> = [
     colorSlot: 1,
     title: "Mercer Capital × Hana Tanaka",
     slaTag: { label: "36h SLA", tone: "attn" },
-    owner: { youOwn: false, specialistName: "Diego Cabrera" },
+    owner: { youOwn: false, specialistName: diegoName },
   },
   {
     id: "adn-lumio-felipe",
@@ -156,18 +194,22 @@ export const activeDisputesNeedingOversight: ReadonlyArray<ActiveDisputeRow> = [
     colorSlot: 3,
     title: "Lumio Health × Felipe Santos",
     slaTag: { label: "56h SLA", tone: "neutral" },
-    owner: { youOwn: false, specialistName: "Yara Khalil" },
+    owner: { youOwn: false, specialistName: yaraName },
   },
 ];
+
+/* ============================================================
+   Column 3 — Recent team activity feed
+   ============================================================ */
 
 export const recentTeamActivity: ReadonlyArray<ActivityFeedItem> = [
   {
     id: "rta-yara-approve",
     kind: "review",
     body: [
-      /* TODO(step-4): swap "Yara Khalil" / "Aaliyah Kone" for canonical refs */
-      { kind: "strong", value: "Yara Khalil" },
+      { kind: "strong", value: yaraName },
       { kind: "text", value: " approved " },
+      /* Aaliyah Kone is a candidate (NOT a specialist) — stays inline. */
       { kind: "strong", value: "Aaliyah Kone" },
       { kind: "text", value: " to go live." },
     ],
@@ -177,7 +219,7 @@ export const recentTeamActivity: ReadonlyArray<ActivityFeedItem> = [
     id: "rta-diego-resolve",
     kind: "neutral",
     body: [
-      { kind: "strong", value: "Diego Cabrera" },
+      { kind: "strong", value: diegoName },
       { kind: "text", value: " resolved the Mercer × Hana dispute." },
     ],
     when: "28 min ago",
@@ -186,7 +228,7 @@ export const recentTeamActivity: ReadonlyArray<ActivityFeedItem> = [
     id: "rta-lucas-daily",
     kind: "neutral",
     body: [
-      { kind: "strong", value: "Lucas Andersen" },
+      { kind: "strong", value: lucasName },
       { kind: "text", value: " submitted daily activity." },
     ],
     when: "45 min ago",
@@ -205,7 +247,7 @@ export const recentTeamActivity: ReadonlyArray<ActivityFeedItem> = [
     id: "rta-felipe-dispute",
     kind: "neutral",
     body: [
-      { kind: "strong", value: "Felipe Santos" },
+      { kind: "strong", value: felipeName },
       { kind: "text", value: " opened dispute with Lumio Health." },
     ],
     when: "2h ago",
@@ -214,7 +256,7 @@ export const recentTeamActivity: ReadonlyArray<ActivityFeedItem> = [
     id: "rta-minjun-recert",
     kind: "review",
     body: [
-      { kind: "strong", value: "Min-Jun Park" },
+      { kind: "strong", value: minJunName },
       { kind: "text", value: " completed re-cert for 3 candidates." },
     ],
     when: "3h ago",

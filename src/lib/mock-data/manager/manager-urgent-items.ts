@@ -10,27 +10,23 @@
  * ## CTA pattern (per Step 3 Q2 lock)
  *
  * Each card has TWO actions, one primary + one ghost. Both are
- * `ManagerActionCTA` records carrying:
+ * `ManagerActionCTA` records carrying `label` + `landsInStep` +
+ * optional `description`. Step 3 routes them all through the
+ * placeholder modal. Steps 4-11 retarget individual CTAs as they
+ * become real (some become real `<Link>` navigation; some become
+ * inline actions).
  *
- *   - `label` — button text
- *   - `landsInStep` — step number where the action becomes real;
- *     drives the `ManagerActionPlaceholderModal` body copy
- *   - optional `description` override
+ * ## Step 4 refactor — Specialist names sourced from team.ts
  *
- * Step 3 routes them all through the placeholder modal. As Steps
- * 4-11 land, individual CTAs will be retargeted (some become real
- * `<Link>` navigation; some become inline actions). At that point
- * the `landsInStep` field becomes vestigial for the retargeted
- * action; we'll prune as we go.
- *
- * ## Denormalized specialist names
- *
- * Names are plain strings (`"Priya Mehra"`, `"Diego Cabrera"`).
- * TODO(step-4): refactor to reference canonical `spec-*` ids once
- * Step 4 lands the full 11-Specialist roster in `team.ts`. Grep
- * for `TODO(step-4)` to find every site.
+ * The Step 3 placeholder strings ("Priya Mehra", "Diego Cabrera",
+ * etc.) are replaced with `getSpecialist("spec-…")?.fullName`
+ * lookups against the canonical 11-Specialist roster locked in
+ * Step 4's `team.ts`. Fallback strings preserve display if a
+ * lookup ever fails (defensive — shouldn't happen with the strict
+ * `SpecialistId` union).
  */
 
+import { getSpecialist } from "./team";
 import type { ManagerActionCTA } from "./manager-rail";
 
 export type UrgentPriority = "red" | "orange" | "yellow";
@@ -54,6 +50,15 @@ export type ManagerUrgentItem = {
   ghost: ManagerActionCTA;
 };
 
+/* Resolve specialist display names once at module load. The
+   `?? "<literal>"` fallback is defensive — the strict SpecialistId
+   union should make lookup-misses impossible. */
+const priyaName = getSpecialist("spec-priya-mehra")?.fullName ?? "Priya Mehra";
+const diegoName = getSpecialist("spec-diego-cabrera")?.fullName ?? "Diego Cabrera";
+const aishaName = getSpecialist("spec-aisha-bello")?.fullName ?? "Aisha Bello";
+const lucasFirstName = getSpecialist("spec-lucas-andersen")?.firstName ?? "Lucas";
+const lucasName = getSpecialist("spec-lucas-andersen")?.fullName ?? "Lucas Andersen";
+
 export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
   /* Card 1 — RED — Daily activity missed */
   {
@@ -62,8 +67,7 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
     typeLabel: "Daily activity",
     slaLabel: "2 days",
     body: [
-      /* TODO(step-4): swap "Priya Mehra" for getSpecialist("spec-priya-mehra")?.fullName */
-      { kind: "strong", value: "Priya Mehra" },
+      { kind: "strong", value: priyaName },
       {
         kind: "text",
         value:
@@ -82,14 +86,9 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
     slaLabel: "3 at risk",
     body: [
       { kind: "strong", value: "3 disputes" },
-      {
-        kind: "text",
-        value:
-          " nearing 72-hour SLA across team. Oldest is ",
-      },
-      /* TODO(step-4): swap "Lucas" reference once spec-lucas-andersen is fully wired */
+      { kind: "text", value: " nearing 72-hour SLA across team. Oldest is " },
       { kind: "em", value: "Quill & Co × Min-Jun Park" },
-      { kind: "text", value: " at 9h (Lucas)." },
+      { kind: "text", value: ` at 9h (${lucasFirstName}).` },
     ],
     primary: { label: "Open team disputes", landsInStep: 7 },
     ghost: {
@@ -111,8 +110,7 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "text", value: " pool critically low at " },
       { kind: "em", value: "8 candidates" },
       { kind: "text", value: " (threshold 15). Owning Specialist: " },
-      /* TODO(step-4): swap "Aisha Bello" for getSpecialist("spec-aisha-bello")?.fullName */
-      { kind: "text", value: "Aisha Bello." },
+      { kind: "text", value: `${aishaName}.` },
     ],
     primary: { label: "Run sprint", landsInStep: 9 },
     ghost: { label: "Pool coordination", landsInStep: 8 },
@@ -125,8 +123,7 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
     typeLabel: "Performance flag",
     slaLabel: "This week",
     body: [
-      /* TODO(step-4): swap "Diego Cabrera" for getSpecialist("spec-diego-cabrera")?.fullName */
-      { kind: "strong", value: "Diego Cabrera" },
+      { kind: "strong", value: diegoName },
       { kind: "text", value: "'s review SLA hit rate dropped to " },
       { kind: "em", value: "85%" },
       { kind: "text", value: " this week — down from 94%." },
@@ -144,10 +141,9 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
     body: [
       { kind: "strong", value: "2 performance reviews" },
       { kind: "text", value: " overdue: " },
-      /* TODO(step-4): swap "Aisha Bello" / "Lucas Andersen" for getSpecialist() lookups */
-      { kind: "em", value: "Aisha Bello" },
+      { kind: "em", value: aishaName },
       { kind: "text", value: " (3 days), " },
-      { kind: "em", value: "Lucas Andersen" },
+      { kind: "em", value: lucasName },
       { kind: "text", value: " (1 day)." },
     ],
     primary: { label: "Open templates", landsInStep: 5 },

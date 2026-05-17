@@ -102,7 +102,7 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
     href: "/specialist/team",
     iconKey: "my-team",
     badge: { value: specialists.length, tone: "default" },
-    disabled: true, // Step 4: flip to false when /specialist/team lands
+    /* Step 4: enabled — /specialist/team now exists. */
   },
   {
     key: "daily-audit",

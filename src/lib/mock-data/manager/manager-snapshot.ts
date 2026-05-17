@@ -24,9 +24,15 @@
  * The 2 non-clickable cards (Reviews · today + the one without a
  * `disabledRoute`) render as plain wrappers — no disabled treatment.
  *
- * TODO(step-4..10): As each disabledRoute target lands, swap the
+ * TODO(step-6..10): As each disabledRoute target lands, swap the
  * disabled wrapper for a real `<Link>`. Single per-card change.
+ * Step 4 enabled `/specialist/team` — the My Team snapshot card's
+ * disabledRoute target is now live; remove its `disabledRoute` to
+ * make the card a real Link. (Doing this in Step 4 as part of the
+ * cross-step cleanup pass.)
  */
+
+import { formatFirstAndInitial } from "./team";
 
 export type SnapshotTone = "neutral" | "attn" | "urgent";
 export type SnapshotPillTone = "neutral" | "lime";
@@ -50,17 +56,23 @@ export type ManagerSnapshotItem = {
 };
 
 export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
-  /* 1. Specialists active */
+  /* 1. Specialists active.
+        Step 4: `/specialist/team` is now live — `disabledRoute`
+        removed so the dashboard snapshot card upgrades from
+        disabled wrapper to a real `<Link>` automatically (the
+        snapshot section component reads `disabledRoute` to fork
+        between span and link). */
   {
     id: "snap-specialists-active",
     label: "Specialists active",
     value: { kind: "number", value: 10, suffix: "of 11" },
     detail: [
       { kind: "strong", value: "1" },
-      /* TODO(step-4): swap "Olena K." for getSpecialist() lookup */
-      { kind: "text", value: " on vacation · Olena K." },
+      {
+        kind: "text",
+        value: ` on vacation · ${formatFirstAndInitial("spec-olena-kovalenko")}`,
+      },
     ],
-    disabledRoute: { href: "/specialist/team", landsInStep: 4 },
   },
 
   /* 2. Daily activity */

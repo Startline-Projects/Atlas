@@ -48,6 +48,7 @@
  */
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   managerNavItems,
   type ManagerNavBadgeTone,
@@ -68,6 +69,7 @@ const BADGE_TONE_CLASS: Record<ManagerNavBadgeTone, string> = {
 export function ManagerSidebarSection() {
   const role = useSessionRole();
   const { mode } = useManagerMode();
+  const pathname = usePathname();
 
   /* Dual gate. Either failing → no render. Documented at the top. */
   if (role !== "manager") return null;
@@ -78,31 +80,51 @@ export function ManagerSidebarSection() {
       <div className="border-line-soft text-ink-mute mt-2.5 border-t px-2.5 pt-3.5 pb-1.5 font-mono text-[9px] tracking-[0.18em] uppercase">
         Team Management
       </div>
-      {managerNavItems.map((item) => (
-        <ManagerSidebarItem key={item.key} item={item} />
-      ))}
+      {managerNavItems.map((item) => {
+        /* Active when pathname matches exactly OR is a child route.
+           Child match covers Step 5's `/specialist/team/[id]` etc. */
+        const isActive =
+          !item.disabled &&
+          (pathname === item.href || pathname.startsWith(`${item.href}/`));
+        return (
+          <ManagerSidebarItem key={item.key} item={item} isActive={isActive} />
+        );
+      })}
     </div>
   );
 }
 
 /* ============================================================
-   Item renderer — disabled <span> in Step 2, Link in Steps 4-11
+   Item renderer — disabled <span>, active Link, or inactive Link
    ============================================================ */
 
-function ManagerSidebarItem({ item }: { item: ManagerNavItem }) {
-  /* Shared content for both disabled and enabled paths. */
+function ManagerSidebarItem({
+  item,
+  isActive,
+}: {
+  item: ManagerNavItem;
+  isActive: boolean;
+}) {
+  /* Shared inner content. Icon coloring forks on active state to
+     match the existing Specialist `SidebarNavItem` visual exactly:
+     active = lime icon over bg-ink; inactive = ink-mute icon. */
   const inner = (
     <>
       <ManagerSidebarIcon
         iconKey={item.iconKey}
-        className="text-ink-mute h-4 w-4 flex-shrink-0"
+        className={cn(
+          "h-4 w-4 flex-shrink-0 transition-colors",
+          isActive ? "text-lime" : "text-ink-mute group-hover:text-ink-soft",
+        )}
       />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.badge ? (
         <span
           className={cn(
             "flex-shrink-0 rounded-[3px] border px-1.5 py-px font-mono text-[9.5px] font-semibold tracking-[0.06em]",
-            BADGE_TONE_CLASS[item.badge.tone],
+            isActive
+              ? "bg-paper/10 text-paper border-paper/15"
+              : BADGE_TONE_CLASS[item.badge.tone],
           )}
         >
           {item.badge.value}
@@ -125,7 +147,13 @@ function ManagerSidebarItem({ item }: { item: ManagerNavItem }) {
   return (
     <Link
       href={item.href}
-      className="text-ink-soft hover:bg-cream-deep hover:text-ink group relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13.5px] font-medium transition-colors"
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "group relative flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13.5px] font-medium transition-colors",
+        isActive
+          ? "bg-ink text-paper"
+          : "text-ink-soft hover:bg-cream-deep hover:text-ink",
+      )}
     >
       {inner}
     </Link>

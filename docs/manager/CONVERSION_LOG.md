@@ -21,7 +21,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 1.5 | Post-auth Manager redirect | ⏸ deferred (see below — no commit) |
 | 2   | Sidebar TEAM MANAGEMENT section (mode-aware) | ✅ done |
 | 3   | Manager dashboard content swap (urgent / snapshot / active items / rail) | ✅ done |
-| 4   | My Team — 11-specialist grid | ❌ not started |
+| 4   | My Team — 11-specialist grid | ✅ done |
 | 5   | Specialist Detail — 7-tab layout + 30-day calendar + coaching | ❌ not started |
 | 6   | Daily Activity Audit — submission overview + audit rows + timing | ❌ not started |
 | 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ❌ not started |
@@ -353,6 +353,119 @@ Step 4 lands the full 11-Specialist roster in `team.ts`. The refactor flips each
 
 ### Up next
 
-- Step 4 — My Team. Lands the full 11-Specialist roster in `team.ts` and refactors all `TODO(step-4)` sites in dashboard mock data to use canonical `spec-*` ids. First Manager-only route enabled in the sidebar (`/specialist/team` Link replaces disabled span).
+- See Session 1 / Step 4 entry below.
+
+---
+
+## Session 1 — Step 4 — My Team page + 11-Specialist roster + Step 3 refactor
+
+**Goal:** First Manager-only route lands. Full 11-Specialist roster locked in `team.ts`. All `TODO(step-4)` sites in dashboard mock data refactored to use canonical `spec-*` IDs. Sidebar TEAM MANAGEMENT "My Team" item flips from disabled to active. Route guard primitive established for Steps 5-11 reuse.
+
+### Files added (9)
+
+| File | Role | Notes |
+|---|---|---|
+| `src/app/(specialist)/specialist/team/page.tsx` | Server | Manager-only page. Wraps `<MyTeamApp />` in `<ManagerRouteGuard>`. |
+| `src/components/manager/shell/manager-route-guard.tsx` | Client | Reusable dual-gate guard. `useSessionRole()` + `useManagerMode()` both required. Renders centered "Redirecting…" message during unauthorized state per Q8 lock. Steps 5-11 reuse. |
+| `src/components/manager/shell/mgr-avatar.tsx` | Server | 10-gradient avatar primitive (`av-1` to `av-10` + `av-you`). Gradient stops ported from prototype CSS lines 14291-14301. Two sizes (sm/md). Step 5+ reuses. |
+| `src/lib/utils/country-flag.ts` | — | ISO-2 → emoji helper via Unicode regional-indicator formula. No lookup table. |
+| `src/components/manager/team/my-team-app.tsx` | Client | Orchestrator. Owns cohort + search + sort state. Computes filter pipeline + reset. |
+| `src/components/manager/team/my-team-header.tsx` | Client | Eyebrow + title + dynamic subtitle (counts from team.ts) + 2 header buttons (Export → step 10 modal; Team meeting → step 14 "coming soon" modal). |
+| `src/components/manager/team/my-team-attention-strip.tsx` | Server | 3-card priority strip (Priya / Diego / Aisha). Each card is a `TODO(step-5)` disabled wrapper — Step 5 flips to `<Link>`. |
+| `src/components/manager/team/my-team-filters.tsx` | Client | Cohort chips (5) + search input + sort select + result count. Pure controlled component. |
+| `src/components/manager/team/my-team-grid.tsx` | Client | 11-card grid + empty state. Inlined `SpecialistCard`, `DailyActivityValue`, `PerformanceBar` per Step 3 Q6. Owns 1:1 modal state. |
+
+### Files modified (7)
+
+| File | Diff shape |
+|---|---|
+| `src/lib/mock-data/manager/team.ts` | **MAJOR EDIT.** Type union changes: `SpecialistRole` expanded to prototype's 10 categories (6 of 10 entries renamed/added). `SpecialistId` strict literal-string union added. `AvatarSlot` extracted as own type. `DailyActivityState` discriminated union added. Records expanded from 1 stub to 11 canonical entries. New helpers: `formatFirstAndInitial`, `getSpecialistByName`, `countSpecialistsByCohort`. Performance score banding rule documented in file header. |
+| `src/lib/mock-data/manager/manager-nav-items.ts` | Flipped `disabled: true` → removed (default) on `my-team` item. `/specialist/team` now active. |
+| `src/lib/mock-data/manager/manager-urgent-items.ts` | 5 inline specialist-name strings → `getSpecialist("spec-…")?.fullName` lookups (resolved at module load). |
+| `src/lib/mock-data/manager/manager-active-items.ts` | `ActiveSpecialistRow`s built via new `buildSpecialistRow()` helper that derives `initials` / `fullName` / `countryFlag` from canonical Specialist records. Dispute owner names + activity feed body strings also pull from team.ts. Aaliyah Kone (candidate, not specialist) stays inline. |
+| `src/lib/mock-data/manager/manager-snapshot.ts` | "Olena K." → `formatFirstAndInitial("spec-olena-kovalenko")` helper call. Specialists-active card's `disabledRoute` removed — `/specialist/team` is now live so the dashboard snapshot card auto-upgrades to a real `<Link>` (the snapshot section component reads `disabledRoute` to fork between span and link). |
+| `src/lib/mock-data/manager/manager-rail.ts` | `ManagerActionStep` union extended to include `14` (Help) for "coming soon" actions whose target never lands as a dedicated step (Team meeting). |
+| `src/components/manager/dashboard/manager-action-placeholder-modal.tsx` | `STEP_FEATURES` map: added `14: "Help & resources"` entry. |
+| `src/components/manager/shell/manager-sidebar-section.tsx` | Wired active-state. `usePathname()` import. Each non-disabled item now resolves `isActive` via `pathname === item.href \|\| pathname.startsWith(item.href + "/")`. Active visual matches Specialist `SidebarNavItem` exactly (`bg-ink text-paper` + `text-lime` icon). `aria-current="page"` set on active links. |
+| `docs/manager/CONVERSION_LOG.md` | This entry. |
+
+(Note: 7 source files modified + log = 8 lines in the table; the manager-rail.ts + modal.tsx were micro-edits to support the Team meeting step-14 routing per the user's Q2 refinement.)
+
+### 11 spec-* IDs — locked canonical roster
+
+| # | ID | Display name | Role | Status | Cohort | Country | Avatar | Perf |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `spec-mateo-vargas` | Mateo Vargas | Virtual Assistants | active | senior | 🇲🇽 MX | you | 94 |
+| 2 | `spec-priya-mehra` | Priya Mehra | Tech Support | flag | mid | 🇮🇳 IN | 3 | 76 |
+| 3 | `spec-diego-cabrera` | Diego Cabrera | Bookkeeping | flag | senior | 🇲🇽 MX | 1 | 85 |
+| 4 | `spec-aisha-bello` | Aisha Bello | Customer Support | capacity | mid | 🇳🇬 NG | 4 | 88 |
+| 5 | `spec-lucas-andersen` | Lucas Andersen | Marketing Ops | capacity | mid | 🇸🇪 SE | 5 | 90 |
+| 6 | `spec-felipe-santos` | Felipe Santos | Sales Development | active | senior | 🇧🇷 BR | 6 | 92 |
+| 7 | `spec-yara-khalil` | Yara Khalil | Project Management | active | senior | 🇪🇬 EG | 7 | 95 |
+| 8 | `spec-min-jun-park` | Min-Jun Park | Data Operations | active | senior | 🇰🇷 KR | 8 | 91 |
+| 9 | `spec-olena-kovalenko` | Olena Kovalenko | Bookkeeping | vacation | senior | 🇺🇦 UA | 9 | 87 |
+| 10 | `spec-kavi-rajan` | Kavi Rajan | Recruiting Coordinators | active | mid | 🇮🇳 IN | 10 | 89 |
+| 11 | `spec-naomi-adebayo` | Naomi Adebayo | Designers | active | senior | 🇳🇬 NG | 2 | 93 |
+
+Cohort counts: 11 all · 10 active (non-vacation) · 1 vacation · 2 flag · 2 capacity. Matches prototype chip counts.
+
+### Locked decisions (Step 4)
+
+| | |
+|---|---|
+| **Mateo dual identity (Decision A)** | `spec-mateo-vargas` Specialist record with `isManager: true` + `managerId: "mgr-001-v8b2c4"` cross-link to `currentManager`. Namespace uniformity won — all 11 cards under `spec-*`. |
+| **Min-Jun naming (Decision B)** | `spec-min-jun-park` (kebab-cased, departs from prototype's `data-mt-id="minjun-park"`). DOM-attribute names from prototype are artifact. |
+| **Lucas Sweden** | Step 3's stub-correction comment + the SE country code carry forward into the full record. |
+| **Role union** | 10 prototype-faithful entries (`Tech Support`, `Marketing Ops`, `Designers`, `Project Management`, `Data Operations`, `Recruiting Coordinators` added; `Engineering`, `Content & Writing`, `Operations`, `Design`, `Data & Analytics`, `Marketing` removed/renamed from Step 1's stub union). |
+| **Cohort field** | Kept on the type (per scope MD requirement that fields stay canonical). Values are INFERRED from tenure + role complexity — documented in file header. Not surfaced in Step 4 UI (chips filter on `status`, not `cohort`). |
+| **Avatar slot mapping** | 10 numbered slots used uniquely (no duplicates) + Mateo on `av-you`. Prototype assignments preserved literally. |
+| **Performance banding** | 3-band visual: ≥85 = high (success bar), 75-84 = mid (amber bar), <75 = low (danger bar). Value text tone: success at ≥95 (Yara only), attn at mid-band (Diego only), neutral otherwise. Documented in `team.ts` header so Steps 5/10/11 use the same logic. |
+| **CTA pattern (Q1)** | Mateo card → 2 REAL Links (View dashboard → `/specialist/dashboard`, Performance → `/specialist/performance`). Other 10 cards → View profile + Message as disabled spans (Steps 5 / 13). 1:1 as modal trigger (`landsInStep: 5`). Vacation specialists skip the 1:1 button. Attention strip cards = `TODO(step-5)` disabled wrappers — grep target. |
+| **Header CTAs (Q2)** | Export → `landsInStep: 10` (Team Reports — closest fit). Team meeting → `landsInStep: 14` with description override "Team meeting scheduling — coming soon." (no step delivers a Team Meeting scheduler — honest "coming soon" beats a misleading step promise). |
+| **Sort + cohort defaults (Q4)** | cohort = "all"; sort = "name" (A-Z). |
+| **Search semantics (Q5)** | Case-insensitive substring against fullName / role / countryName / **initials** (per Q5 addition — scanning for "MV" or "PM" finds Mateo/Priya). Empty query = no filtering. |
+| **Filter composition (Q6)** | Cohort AND search compose, then sort, then count. |
+| **Sidebar active state (Q7)** | Matches Specialist `SidebarNavItem` exactly: `bg-ink text-paper` background + `text-lime` icon. Detail-route prefix match so Step 5's `/specialist/team/[id]` will also highlight My Team. |
+| **Route guard (Q8)** | `<ManagerRouteGuard>` reusable primitive. Renders centered "Redirecting…" message (NOT null) during unauthorized state — avoids flash-of-empty-page during useEffect-to-navigation gap. Steps 5-11 reuse this exact primitive. |
+| **Step 3 cross-step cleanup** | All 14 `TODO(step-4)` hits resolved. Canary `grep -rn "TODO(step-4)" src/` returns zero. |
+
+### Step 3 refactor — what changed
+
+Resolving the 14 `TODO(step-4)` hits:
+
+- `manager-urgent-items.ts` (5 inline sites): names sourced via `getSpecialist("spec-…")?.fullName` at module load. Defensive `?? "<literal>"` fallback preserved.
+- `manager-active-items.ts` (4 sites in `activeSpecialistsNeedingAttention` + 4 sites in dispute owners + 5 sites in activity feed): `buildSpecialistRow()` helper for the attention list; inline lookups for disputes + feed. Aaliyah Kone (candidate) stays as literal string.
+- `manager-snapshot.ts` (1 site): "Olena K." → `formatFirstAndInitial("spec-olena-kovalenko")` helper. Specialists-active card's `disabledRoute` removed (Step 4 enables the route → card auto-upgrades to Link via the existing `disabledRoute` fork in the snapshot section component).
+
+### Known friction (Step 4)
+
+- **Attention strip cards are disabled wrappers in Step 4.** Per the two-tier CTA pattern, navigation to Specialist Detail (Step 5) renders as `cursor-not-allowed`. Three cards affected. `TODO(step-5)` grep target for the un-disable refactor.
+- **`max-md:hidden` sidebar items unreachable on mobile.** The "My Team" item carries the sidebar's standard mobile-hide convention. Manager users on `<768px` viewports can still hit `/specialist/team` by URL but the sidebar nav doesn't surface it. Consistent with the other Specialist sidebar items that hide on mobile (Daily activity, Reviews, Performance, Help).
+- **Search input loses focus during cohort chip change.** React re-renders the filter component on cohort change, which preserves form-input state via React's controlled-component reconciliation — no actual focus loss in practice. Tested manually; documented in case future ref-based interventions are needed.
+
+### Step 4 verification (a-p — all green)
+
+| | | |
+|---|---|---|
+| (a) | `/specialist/team` renders the My Team page when role+mode = manager | ✓ |
+| (b) | `/specialist/team` redirects to `/specialist/dashboard` when mode toggled to specialist | ✓ |
+| (c) | Cohort chip click filters grid (all → 11; active → 10; vacation → 1; flag → 2; capacity → 2) | ✓ |
+| (d) | Search input filters grid (name / role / country / initials all match case-insensitively) | ✓ |
+| (e) | Sort dropdown re-orders grid (name A-Z, role, perf high-low, workload high-low) | ✓ |
+| (f) | Empty state appears when filters yield 0 matches | ✓ |
+| (g) | "Reset filters" button restores defaults (cohort=all, query="", sort=name) | ✓ |
+| (h) | Mateo card shows is-you treatment: av-you avatar + "You" tag + lime ring + 2 buttons (View dashboard / Performance) | ✓ |
+| (i) | Other 10 cards show 3 buttons (View profile + Message disabled spans; 1:1 modal trigger). Olena (vacation) shows only 2 (no 1:1) | ✓ |
+| (j) | View dashboard + Performance buttons navigate to existing Specialist routes | ✓ |
+| (k) | Sidebar My Team item active with `bg-ink text-paper` + `text-lime` icon when on `/specialist/team` | ✓ |
+| (l) | Sidebar TEAM MANAGEMENT section visible (Step 2 verification still passes) | ✓ |
+| (m) | `pnpm typecheck`, `pnpm lint`, `pnpm build` all clean. 166 routes prerender (+1 from Step 3's 165) | ✓ |
+| (n) | Other Specialist routes unchanged. Dashboard's Specialists-active snapshot card now upgrades to a real Link | ✓ |
+| (o) | Temporarily flipped `useSessionRole()` to "specialist" → `/specialist/team` redirects to `/specialist/dashboard`. Flipped back before commit | ✓ |
+| (p) | `grep -rn "TODO(step-4)" src/` returns zero hits (cross-step cleanup canary) | ✓ |
+
+### Up next
+
+- Step 5 — Specialist Detail. `/specialist/team/[id]` route with 7-tab layout, 30-day calendar, coaching tab. SSG via `generateStaticParams` from `ALL_SPECIALIST_IDS`. Un-disables the Attention strip cards + the SpecialistCard "View profile" buttons (grep `TODO(step-5)`). Also un-disables the "Schedule a 1:1" / View performance / View profile / Open profile / 1:1 CTAs across the dashboard's urgent cards + the rail quick actions (cross-step cleanup pass).
 
 ---

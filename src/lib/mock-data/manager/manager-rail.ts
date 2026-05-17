@@ -29,8 +29,10 @@
  * lock — single file changes if step numbering shifts.
  */
 
-/** Step numbers Manager-extension CTAs can land in. */
-export type ManagerActionStep = 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+/** Step numbers Manager-extension CTAs can land in.
+ *  Step 14 (Help) is included for "coming soon" actions whose target
+ *  never lands as a dedicated step (e.g. team meeting scheduling). */
+export type ManagerActionStep = 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 14;
 
 export type ManagerActionCTA = {
   label: string;
