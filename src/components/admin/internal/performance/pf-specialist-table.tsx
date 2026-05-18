@@ -70,7 +70,7 @@ function MetricCellSimple({ cell }: { cell: PfMetricCellSimple }) {
 
 function SpecRow({ row }: { row: PfSpecialistRow }) {
   const router = useRouter();
-  const navigate = () => router.push(`/admin/internal/performance/specialists/${row.id}`);
+  const navigate = () => router.push(`/admin/users/specialists/${row.id}`);
   const rowBg =
     row.rowVariant === 'featured'
       ? 'bg-[var(--success-bg)] relative cursor-pointer transition-colors hover:bg-[var(--paper-deep)]'
