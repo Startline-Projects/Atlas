@@ -10,6 +10,12 @@ import {
 } from "@/lib/mock-data/specialist/nav-items";
 import { SidebarNavItem } from "./sidebar-nav-item";
 import { SidebarProfile } from "./sidebar-profile";
+/* Manager-extension surface (ADR 0001 — Path C).
+   The section component itself owns both render gates
+   (useSessionRole() === "manager" AND useManagerMode() === "manager")
+   and returns null when either fails. See its file header for the
+   full contract. */
+import { ManagerSidebarSection } from "@/components/manager/shell/manager-sidebar-section";
 
 const SECTIONS: ReadonlyArray<NavSection> = ["Workspace", "Operations"];
 
@@ -80,6 +86,16 @@ export function Sidebar() {
             ))}
           </div>
         ))}
+        {/* ============================================================
+            Manager-extension surface (ADR 0001 — Path C).
+            Renders the TEAM MANAGEMENT section conditionally on
+            useSessionRole() === "manager" AND useManagerMode() ===
+            "manager". Returns null for non-Managers and for Managers
+            currently in Specialist Mode. Added in Manager-conversion
+            Session 1 / Step 2. The section is the cross-route mode
+            indicator (the ModeToggle is dashboard-only).
+            ============================================================ */}
+        <ManagerSidebarSection />
       </nav>
       <SidebarProfile
         category={currentUser.category}
