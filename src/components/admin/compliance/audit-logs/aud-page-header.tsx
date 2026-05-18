@@ -1,4 +1,7 @@
+'use client';
+
 import { AudLiveIndicator } from './aud-live-indicator';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 
 interface AudPageHeaderProps {
   title: string;
@@ -6,6 +9,7 @@ interface AudPageHeaderProps {
 }
 
 export function AudPageHeader({ title, subtitle }: AudPageHeaderProps) {
+  const { showAction } = useAdminActionToast();
   return (
     <div className="mb-[18px]">
       <h1 className="font-display text-[28px] font-medium tracking-[-0.025em] text-[var(--ink)] m-0 leading-[1.1] mb-[6px]">
@@ -18,6 +22,7 @@ export function AudPageHeader({ title, subtitle }: AudPageHeaderProps) {
       <div className="inline-flex gap-[8px] flex-wrap items-center">
         <button
           type="button"
+          onClick={() => showAction('Export audit log')}
           className="inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase bg-[var(--paper)] border border-[var(--line)] rounded-full text-[var(--ink-soft)] cursor-pointer transition-all hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] whitespace-nowrap"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,6 +34,7 @@ export function AudPageHeader({ title, subtitle }: AudPageHeaderProps) {
         </button>
         <button
           type="button"
+          onClick={() => showAction('Encrypted backup — schedule download')}
           className="inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase bg-[var(--paper)] border border-[var(--line)] rounded-full text-[var(--ink-soft)] cursor-pointer transition-all hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] whitespace-nowrap"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,6 +45,7 @@ export function AudPageHeader({ title, subtitle }: AudPageHeaderProps) {
         </button>
         <button
           type="button"
+          onClick={() => showAction('Open audit log API access docs')}
           className="inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase bg-[var(--paper)] border border-[var(--line)] rounded-full text-[var(--ink-soft)] cursor-pointer transition-all hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] whitespace-nowrap"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

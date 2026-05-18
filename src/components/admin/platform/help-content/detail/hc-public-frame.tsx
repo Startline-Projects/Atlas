@@ -1,5 +1,8 @@
+'use client';
+
 /* admin.html lines 63888-63930: full public-site mock frame — topbar (logo + search pill) + breadcrumb + title + meta + body + helpful footer */
 
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 import type { HcPublicPreviewData } from '@/lib/mock-data/admin/help-content-data';
 
 interface HcPublicFrameProps {
@@ -7,6 +10,7 @@ interface HcPublicFrameProps {
 }
 
 export function HcPublicFrame({ preview }: HcPublicFrameProps) {
+  const { showAction } = useAdminActionToast();
   return (
     <div className="max-w-[680px] mx-auto bg-[var(--paper)] font-body text-[var(--ink)]">
       {/* Topbar */}
@@ -53,12 +57,14 @@ export function HcPublicFrame({ preview }: HcPublicFrameProps) {
         <div className="inline-flex gap-[8px]">
           <button
             type="button"
+            onClick={() => showAction(`Recorded vote: ${preview.helpfulYes}`)}
             className="py-[6px] px-[18px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-mono text-[11px] font-bold tracking-[0.04em] text-[var(--ink-soft)] cursor-pointer hover:bg-[var(--paper-deep)] hover:text-[var(--ink)] transition-colors"
           >
             {preview.helpfulYes}
           </button>
           <button
             type="button"
+            onClick={() => showAction(`Recorded vote: ${preview.helpfulNo}`)}
             className="py-[6px] px-[18px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-mono text-[11px] font-bold tracking-[0.04em] text-[var(--ink-soft)] cursor-pointer hover:bg-[var(--paper-deep)] hover:text-[var(--ink)] transition-colors"
           >
             {preview.helpfulNo}

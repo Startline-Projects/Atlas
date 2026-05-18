@@ -288,7 +288,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'performance',
           label: 'Performance',
-          pathname: '#performance',
+          pathname: '/admin/internal/performance',
           icon: PerformanceNavIcon,
         },
         {

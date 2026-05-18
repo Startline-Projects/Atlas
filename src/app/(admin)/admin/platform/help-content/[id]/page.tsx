@@ -1,4 +1,8 @@
-import { hcCategorySections, hcVettingCallDetail } from '@/lib/mock-data/admin/help-content-data';
+import {
+  hcCategorySections,
+  buildHcDetailFromArticle,
+  findHcArticleSection,
+} from '@/lib/mock-data/admin/help-content-data';
 import { HcDetailShell } from '@/components/admin/platform/help-content/detail/hc-detail-shell';
 
 const allArticles = hcCategorySections.flatMap((s) => s.articles);
@@ -23,22 +27,22 @@ export default async function HelpContentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const article = allArticles.find((a) => a.id === id);
 
-  if (id === 'hc-vetting-call') {
-    return <HcDetailShell detail={hcVettingCallDetail} />;
+  const article = allArticles.find((a) => a.id === id);
+  const section = findHcArticleSection(id);
+
+  if (!article || !section) {
+    return (
+      <div className="max-w-[1320px] mx-auto pt-[22px] px-[32px] pb-[64px] max-[720px]:pt-[18px] max-[720px]:px-[18px] max-[720px]:pb-[48px]">
+        <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] py-[28px] px-[22px] text-center">
+          <h2 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em]">
+            Article not found
+          </h2>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <div className="max-w-[1320px] mx-auto pt-[22px] px-[32px] pb-[64px] max-[720px]:pt-[18px] max-[720px]:px-[18px] max-[720px]:pb-[48px]">
-      <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] py-[28px] px-[22px] text-center">
-        <h2 className="font-display text-[17px] font-medium text-[var(--ink)] tracking-[-0.01em] mb-[6px]">
-          {article?.title ?? 'Article'} · detail
-        </h2>
-        <p className="font-mono text-[11.5px] text-[var(--ink-mute)] tracking-[0.02em] leading-[1.6] max-w-[480px] mx-auto">
-          Detail content available for &quot;How to schedule your vetting call&quot; canonical only in admin.html. Other articles follow the same frontmatter + markdown editor pattern.
-        </p>
-      </div>
-    </div>
-  );
+  const detail = buildHcDetailFromArticle(article, section);
+  return <HcDetailShell detail={detail} />;
 }

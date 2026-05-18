@@ -1,6 +1,9 @@
+'use client';
+
 /* admin.html lines 60509-60533: fr-page-head pattern with title + meta + restriction + search + 2 action buttons */
 
 import { PsRestrictionBanner } from '../settings/ps-restriction-banner';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 
 interface CsPageHeaderProps {
   title: string;

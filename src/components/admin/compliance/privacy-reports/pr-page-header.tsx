@@ -1,4 +1,7 @@
+'use client';
+
 import { PrPeriodSelector } from './pr-period-selector';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 import type { PrPageMeta, PrPeriodOption } from '@/lib/mock-data/admin/privacy-reports-data';
 
 interface PrPageHeaderProps {
@@ -14,6 +17,7 @@ export function PrPageHeader({
   selectedPeriod,
   headerActions,
 }: PrPageHeaderProps) {
+  const { showAction } = useAdminActionToast();
   return (
     <div className="flex items-start justify-between gap-[20px] mb-[18px] flex-wrap">
       <div className="flex-1 min-w-0">
@@ -32,6 +36,8 @@ export function PrPageHeader({
         {headerActions.map((action, idx) => (
           <button
             key={idx}
+            type="button"
+            onClick={() => showAction(action.label)}
             className={`inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase rounded-full cursor-pointer transition-all whitespace-nowrap ${
               action.isPrimary
                 ? 'bg-[var(--ink)] border border-[var(--ink)] text-[var(--paper)] hover:bg-[var(--ink-soft)]'

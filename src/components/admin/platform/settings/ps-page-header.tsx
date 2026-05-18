@@ -1,4 +1,7 @@
+'use client';
+
 import { PsRestrictionBanner } from './ps-restriction-banner';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 
 interface PsPageHeaderProps {
   title: string;
@@ -23,6 +26,7 @@ export function PsPageHeader({
   searchPlaceholder,
   actions,
 }: PsPageHeaderProps) {
+  const { showAction } = useAdminActionToast();
   return (
     <div className="mb-[18px]">
       <h1 className="font-display text-[28px] font-medium tracking-[-0.025em] text-[var(--ink)] m-0 leading-[1.1] mb-[4px]">
@@ -53,6 +57,7 @@ export function PsPageHeader({
             <button
               key={action.label}
               type="button"
+              onClick={() => showAction(action.label)}
               className="inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase rounded-full bg-[var(--paper)] border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] transition-all whitespace-nowrap cursor-pointer"
             >
               <svg

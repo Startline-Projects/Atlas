@@ -1,7 +1,10 @@
+'use client';
+
 /* admin.html lines 63676-63726: hero — mono key + status pill + env meta + h1 title + subtitle + 6 locale tabs (reused from Step 32) + 2 actions */
 
 import { HcStatusPill } from '../hc-status-pill';
 import { TmLocaleTabs } from '@/components/admin/platform/templates/detail/tm-locale-tabs';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 import type { HcDetailHero } from '@/lib/mock-data/admin/help-content-data';
 
 interface HcDetailHeroProps {
@@ -9,6 +12,14 @@ interface HcDetailHeroProps {
 }
 
 export function HcDetailHero({ hero }: HcDetailHeroProps) {
+  const { showAction } = useAdminActionToast();
+
+  const handleActionClick = (label: string) => {
+    if (label === 'View public') showAction('Open public preview');
+    else if (label.startsWith('Save & publish')) showAction(`${label} — audit logged`);
+    else showAction(label);
+  };
+
   return (
     <div className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-md)] mb-[18px] py-[22px] px-[26px]">
       <div className="flex items-start gap-[18px] flex-wrap">
@@ -44,6 +55,7 @@ export function HcDetailHero({ hero }: HcDetailHeroProps) {
               <button
                 key={idx}
                 type="button"
+                onClick={() => handleActionClick(action.label)}
                 className={`inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase rounded-full border cursor-pointer transition-all whitespace-nowrap ${btnClasses}`}
               >
                 {action.icon === 'external' && (

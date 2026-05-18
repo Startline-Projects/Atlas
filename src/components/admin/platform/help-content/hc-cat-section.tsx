@@ -1,6 +1,9 @@
+'use client';
+
 /* admin.html lines 63263-63378 (etc): category section — head (eyebrow + h2 + actions) with dashed bottom-border + article list */
 
 import { HcArticleRowComponent } from './hc-article-row';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 import type { HcCategorySection } from '@/lib/mock-data/admin/help-content-data';
 
 interface HcCatSectionProps {
@@ -8,6 +11,7 @@ interface HcCatSectionProps {
 }
 
 export function HcCatSection({ section }: HcCatSectionProps) {
+  const { showAction } = useAdminActionToast();
   return (
     <section className="mb-[28px] last:mb-0">
       {/* Head */}
@@ -26,6 +30,7 @@ export function HcCatSection({ section }: HcCatSectionProps) {
               <button
                 key={idx}
                 type="button"
+                onClick={() => showAction(`${action.label} · ${section.title}`)}
                 className="inline-flex items-center gap-[6px] py-[6px] px-[11px] font-mono text-[10.5px] font-bold tracking-[0.04em] uppercase rounded-full bg-[var(--paper)] border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] cursor-pointer transition-all whitespace-nowrap"
               >
                 {action.label}

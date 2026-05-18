@@ -199,6 +199,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/platform/help-content' || pathname.startsWith('/admin/platform/help-content/');
     }
 
+    // Performance (Internal): list + any future descendant routes
+    if (itemPathname === '/admin/internal/performance') {
+      return pathname === '/admin/internal/performance' || pathname.startsWith('/admin/internal/performance/');
+    }
+
     return pathname === itemPathname;
   };
 

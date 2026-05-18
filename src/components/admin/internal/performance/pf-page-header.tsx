@@ -1,59 +1,57 @@
 'use client';
 
-/* admin.html lines 63129-63155: fr-page-head pattern — title + meta with meta-pulse + search + 3 actions */
+/* admin.html lines 64005-64030: fr-page-head pattern — title + meta with meta-pulse + period selector + 2 actions (no search) */
 
-import { HcMetaPulse } from './hc-meta-pulse';
+import { PfMetaPulse } from './pf-meta-pulse';
+import { PfPeriodSelector } from './pf-period-selector';
 import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
-import type { HcHeaderAction } from '@/lib/mock-data/admin/help-content-data';
+import type {
+  PfHeaderAction,
+  PfPeriodTab,
+  PfPeriodValue,
+} from '@/lib/mock-data/admin/performance-data';
 
-interface HcPageHeaderProps {
+interface PfPageHeaderProps {
   title: string;
   metaText: string;
   metaPulseHtml: string;
-  searchPlaceholder: string;
-  actions: HcHeaderAction[];
+  periodTabs: PfPeriodTab[];
+  activePeriod: PfPeriodValue;
+  onPeriodChange: (value: PfPeriodValue) => void;
+  actions: PfHeaderAction[];
 }
 
-export function HcPageHeader({
+export function PfPageHeader({
   title,
   metaText,
   metaPulseHtml,
-  searchPlaceholder,
+  periodTabs,
+  activePeriod,
+  onPeriodChange,
   actions,
-}: HcPageHeaderProps) {
+}: PfPageHeaderProps) {
   const { showAction } = useAdminActionToast();
-
   const handleAction = (label: string) => {
-    if (label === 'Audit') showAction('Open audit log filtered to help-content');
-    else if (label === 'View public site') showAction('Open public Help Center');
-    else if (label === 'New article') showAction('New article editor');
+    if (label === 'Schedule 1:1s') showAction('Open 1:1 scheduling drawer');
+    else if (label === 'Export PDF') showAction('Generate performance PDF — audit logged');
     else showAction(label);
   };
-
   return (
     <div className="flex items-start justify-between gap-[20px] mb-[18px] flex-wrap">
+      {/* Left: title + meta line + meta-pulse */}
       <div className="flex-1 min-w-0">
         <h1 className="font-display text-[28px] font-medium tracking-[-0.025em] text-[var(--ink)] m-0 leading-[1.1] mb-[4px]">
           {title}
         </h1>
         <div className="font-mono text-[11px] text-[var(--ink-mute)] tracking-[0.02em] leading-[1.5] flex items-center flex-wrap">
           <span>{metaText}</span>
-          <HcMetaPulse html={metaPulseHtml} />
+          <PfMetaPulse html={metaPulseHtml} />
         </div>
       </div>
 
+      {/* Right: period selector + 2 actions */}
       <div className="inline-flex gap-[8px] flex-wrap items-center flex-shrink-0">
-        <div className="max-w-[220px] inline-flex items-center gap-[8px] py-[8px] px-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            className="bg-transparent border-0 outline-none text-[13px] w-full placeholder:text-[var(--ink-mute)]"
-          />
-        </div>
+        <PfPeriodSelector tabs={periodTabs} active={activePeriod} onChange={onPeriodChange} />
 
         {actions.map((action, idx) => {
           const isPrimary = action.isPrimary;
@@ -68,23 +66,19 @@ export function HcPageHeader({
               onClick={() => handleAction(action.label)}
               className={`inline-flex items-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase rounded-full border cursor-pointer transition-all whitespace-nowrap ${btnClasses}`}
             >
-              {action.icon === 'audit' && (
+              {action.icon === 'calendar' && (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 4 4 20 20 20" />
-                  <polyline points="4 12 12 4 16 8 20 4" />
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
                 </svg>
               )}
-              {action.icon === 'external' && (
+              {action.icon === 'download' && (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              )}
-              {action.icon === 'plus' && (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
               )}
               {action.label}

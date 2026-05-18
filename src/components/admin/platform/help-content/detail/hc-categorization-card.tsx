@@ -1,6 +1,9 @@
+'use client';
+
 /* admin.html lines 63935-63985: categorization sidecar — 4 blocks (Related articles / Linked from / Compliance links / Revision history) */
 
 import Link from 'next/link';
+import { useAdminActionToast } from '@/components/admin/shared/admin-action-toast';
 import type { HcCategorizationData, HcCategorizationBlock } from '@/lib/mock-data/admin/help-content-data';
 
 interface HcCategorizationCardProps {
@@ -18,6 +21,7 @@ export function HcCategorizationCard({ categorization }: HcCategorizationCardPro
 }
 
 function Block({ block }: { block: HcCategorizationBlock }) {
+  const { showAction } = useAdminActionToast();
   return (
     <div className="py-[12px] px-[16px] border-b border-b-[var(--line-soft)] last:border-b-0">
       <div className="font-mono text-[9px] tracking-[0.16em] uppercase text-[var(--ink-mute)] font-bold mb-[8px]">
@@ -51,6 +55,7 @@ function Block({ block }: { block: HcCategorizationBlock }) {
       {block.actionLabel && (
         <button
           type="button"
+          onClick={() => block.actionLabel && showAction(block.actionLabel)}
           className="mt-[10px] w-full inline-flex items-center justify-center gap-[6px] py-[7px] px-[12px] font-mono text-[11px] font-bold tracking-[0.04em] uppercase rounded-full bg-[var(--paper)] border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--paper-deep)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] cursor-pointer transition-all whitespace-nowrap"
         >
           {block.actionLabel}

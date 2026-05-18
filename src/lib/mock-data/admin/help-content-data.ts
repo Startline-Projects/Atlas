@@ -658,3 +658,147 @@ export const hcVettingCallDetail: HcDetailData = {
     ],
   },
 };
+
+// ============================================================
+// HELPERS — build full HcDetailData for ANY article using its own
+// metadata + reuse canonical template body / categorization blocks.
+// admin.html only provides one canonical fixture (hc-vetting-call);
+// all other articles render the same body wrapped with their own
+// breadcrumb / hero / stats / frontmatter / preview header.
+// ============================================================
+
+const HC_DEFAULT_LOCALE_TABS = hcVettingCallDetail.hero.localeTabs;
+
+/** Find the parent category section that owns the given article id. */
+export function findHcArticleSection(articleId: string): HcCategorySection | null {
+  for (const section of hcCategorySections) {
+    if (section.articles.some((a) => a.id === articleId)) {
+      return section;
+    }
+  }
+  return null;
+}
+
+/** Construct a populated HcDetailData for any article + its section. */
+export function buildHcDetailFromArticle(
+  article: HcArticleRow,
+  section: HcCategorySection
+): HcDetailData {
+  // Canonical: return the exact verbatim fixture
+  if (article.id === 'hc-vetting-call') {
+    return hcVettingCallDetail;
+  }
+
+  // Extract just the URL path (before " · " separator) from compound slug
+  const slugPath = article.slug.split(' · ')[0] ?? article.slug;
+
+  // Build a mono key from article id (hc-foo-bar → help.<section>.foo_bar)
+  const keyTail = article.id.replace(/^hc-/, '').replace(/-/g, '_');
+  const heroKey = `help.${section.id}.${keyTail}`;
+
+  // Trend direction inferred from views meta arrows
+  const trendDirection: 'up' | 'down' | undefined =
+    article.views.meta.includes('↑') ? 'up' : article.views.meta.includes('↓') ? 'down' : undefined;
+
+  // Helpfulness variant → value variant mapping (for stat tint)
+  const helpfulValueVariant: 'success' | 'warn' | 'danger' | undefined =
+    article.helpful.variant === 'high'
+      ? 'success'
+      : article.helpful.variant === 'medium'
+      ? 'warn'
+      : article.helpful.variant === 'low'
+      ? 'danger'
+      : undefined;
+
+  const isStale = article.modified.author.includes('stale');
+  const editorPhrase = isStale
+    ? `Last touched on <strong>${article.modified.date}</strong> — ${article.modified.author}.`
+    : `Last edited by <strong>${article.modified.author}</strong> on ${article.modified.date}.`;
+
+  return {
+    id: article.id,
+    breadcrumb: [
+      { label: 'Help Center', href: '/admin/platform/help-content' },
+      { label: section.title },
+      { label: `${article.title} · v1`, isCurrent: true },
+    ],
+    hero: {
+      key: heroKey,
+      status: article.status,
+      statusLabel: article.statusLabel,
+      envMetaText: `6 locales · ${article.views.value} views/30d · ${article.helpful.label} helpful`,
+      title: article.title,
+      subtitleHtml: `Help center article in <strong>${section.title}</strong>. Linked from the in-app help system via the <code>{{ help.url }}</code> variable. ${editorPhrase} ${article.helpful.meta ? `<em>${article.helpful.meta}</em>.` : ''}`,
+      localeTabs: HC_DEFAULT_LOCALE_TABS,
+      actions: [
+        { label: 'View public', icon: 'external' },
+        { label: 'Save & publish', icon: 'save', isPrimary: true },
+      ],
+    },
+    detailStats: [
+      {
+        label: 'Views · 30d',
+        value: article.views.value,
+        meta: article.views.meta,
+        ...(trendDirection ? { valueVariant: trendDirection === 'up' ? 'success' : 'danger' } : {}),
+      },
+      {
+        label: 'Helpfulness',
+        value: String(article.helpful.percent),
+        valueSuffix: '%',
+        ...(helpfulValueVariant ? { valueVariant: helpfulValueVariant } : {}),
+        meta: article.helpful.meta || 'no ratings yet',
+      },
+      {
+        label: 'Avg time on page',
+        value: '2:14',
+        meta: 'estimated read time',
+      },
+      {
+        label: 'Search rank',
+        value: '—',
+        meta: 'no ranking data yet',
+      },
+    ],
+    frontmatter: {
+      sectionHead: {
+        num: '01',
+        title: 'Article frontmatter',
+        meta: 'title · slug · category · tags · locale · search keywords',
+      },
+      rows: [
+        { key: 'TITLE', valueKind: 'input', valueHtml: article.title },
+        { key: 'SLUG', valueKind: 'input', valueHtml: slugPath },
+        {
+          key: 'CATEGORY',
+          valueKind: 'text',
+          valueHtml: `${section.title} · <span data-hc-muted-soft>(${section.articles.length} articles)</span>`,
+        },
+        {
+          key: 'TAGS',
+          valueKind: 'tags',
+          valueHtml:
+            (article.tags || [])
+              .map((t) => `<span data-hc-tag-chip>${t.label}</span>`)
+              .join('') + '<span data-hc-tag-chip data-hc-tag-add>+ add tag</span>',
+        },
+        { key: 'LOCALE', valueKind: 'text', valueHtml: 'EN · canonical' },
+        { key: 'SEARCH KEYWORDS', valueKind: 'input', valueHtml: '' },
+        {
+          key: 'PUBLISHED',
+          valueKind: 'text',
+          valueHtml: `${article.statusLabel} · modified ${article.modified.date} by ${article.modified.author}`,
+        },
+      ],
+    },
+    markdown: hcVettingCallDetail.markdown,
+    preview: {
+      ...hcVettingCallDetail.preview,
+      headMeta: `EN · ${slugPath}`,
+      publicCrumbHtml: `<a>Help</a> › <a>${section.title}</a> › ${article.title}`,
+      publicTitle: article.title,
+      publicMeta: `Updated ${article.modified.date} · ${article.views.value} views · ${article.helpful.label} found helpful`,
+    },
+    categorization: hcVettingCallDetail.categorization,
+  };
+}
