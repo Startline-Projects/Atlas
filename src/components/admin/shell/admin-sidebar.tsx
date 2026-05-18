@@ -204,6 +204,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/internal/performance' || pathname.startsWith('/admin/internal/performance/');
     }
 
+    // Internal Incident Reports: list + detail descendant routes
+    if (itemPathname === '/admin/internal/incidents') {
+      return pathname === '/admin/internal/incidents' || pathname.startsWith('/admin/internal/incidents/');
+    }
+
     return pathname === itemPathname;
   };
 

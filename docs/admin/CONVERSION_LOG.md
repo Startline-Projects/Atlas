@@ -569,6 +569,81 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Public preview mock** renders full Help Center public-site chrome (topbar with logo + search pill / breadcrumb / display title / locale meta line / 6-section body with h2/p/strong/em/code/ol/ul/li/a styling + `data-hc-video` placeholder block for the video embed / helpful footer with thumbs Yes/No)
   - **PART 7 PLATFORM CONFIGURATION COMPLETE: 5/5 pages shipped** (Step 29 Settings + Step 30 Categories & Skills + Step 31 Integrations + Step 32 Email & SMS Templates + Step 33 Help Center Content)
 
+### Step 35 — Internal Incident Reports
+
+- **Status:** ✅ Done — **PART 8 INTERNAL OPS: 2 of 4 pages complete (Steps 34–35)**
+- **Session:** 4
+- **Routes:** `/admin/internal/incidents` (LIST) + `/admin/internal/incidents/[id]` (DETAIL, 9 static params)
+- **HTML lines:** 64857–65492 (LIST 64857-65123, DETAIL 65129-65492)
+- **CSS lines:** 30254–30831 (577 lines)
+- **Files added:**
+  - Mock data: `src/lib/mock-data/admin/internal-incidents-data.ts` (LIST: 5 top stats / 7 filter chips / active SEV-3 callout INC-2026-058 with 4 inner stats / 8 verbatim resolved rows + canonical INC-2026-042 amber-tinted. DETAIL: breadcrumb / hero / 4 detail stats / timeline 8 events / postmortem 3 sections incl. blameless / action items 4 rows / commander card / 3 responders / 6 related links / 5 SLO snapshot rows.)
+    - Filename `internal-incidents-data.ts` to avoid collision with Step 16 `incidents-data.ts` (external security SI-*)
+  - LIST components: `src/components/admin/internal/incidents/ic-*.tsx`
+    - `ic-meta-pulse.tsx` — danger pulse-fr inline alert (reused pattern from Step 32/33/34)
+    - `ic-sev-badge.tsx` — 4 variants (sev-0 with pulse-fr / sev-1 danger / sev-2 amber / sev-3 super-tinted). Dot is `currentColor`.
+    - `ic-status-pill.tsx` — 4 variants (open pulse / mitigated pulse / monitoring / resolved). Only open + resolved used in markup; mitigated/monitoring are reserve variants.
+    - `ic-active-stat.tsx` — single 4-up callout stat cell with responsive 4→2 collapse at 720px
+    - `ic-active-callout.tsx` — `'use client'` UNIQUE widget: 2px danger border + danger-tinted 135° gradient bg + absolute pulsing "ACTIVE INCIDENT" eyebrow (replaces ::before with explicit span since Tailwind can't generate ::before content) + head row + 4-stat grid + foot with meta + 2 actions
+    - `ic-table-row.tsx` — `'use client'` with `useRouter().push()` whole-row navigation + keyboard accessibility (tabIndex/role=link/Enter+Space onKeyDown). Canonical row gets amber-tinted bg + 3px amber left border on first cell.
+    - `ic-table.tsx` — 7-col header (12/9/36/11/14/11/7 percent widths via Tailwind `w-[N%]`) + body. Sticky header styling reused.
+    - `ic-filter-chips.tsx` — `'use client'` controlled 7-chip toolbar with inline chip-count
+    - `ic-page-header.tsx` — `'use client'` fr-page-head pattern with meta-pulse + search input + 3 actions (Audit / Runbooks / Declare incident primary with triangle-alert icon)
+    - `ic-shell.tsx` — `'use client'` orchestrator with `useState` for active filter chip
+  - DETAIL components: `src/components/admin/internal/incidents/detail/ic-*.tsx`
+    - `ic-breadcrumb.tsx` — 3-segment fr-breadcrumb pattern with Next Link for href entries, current text-ink bold
+    - `ic-detail-hero.tsx` — `'use client'`, reuses IcSevBadge + IcStatusPill, 3 hero actions with copy/download/external SVG icons, rich-HTML subtitle ([&_a]/[&_strong]/[&_code] styling)
+    - `ic-detail-stat.tsx` — single in-detail-stat cell with success/warn variants + 4→2→1 responsive collapse at 980/480
+    - `ic-detail-stats.tsx` — 4-col grid wrapper
+    - `ic-section-head.tsx` — sh-num cream-deep chip + h2 + sh-meta + dashed separator
+    - `ic-timeline-event.tsx` — 90/18/1fr grid with time + elapsed mono stack / 12px dot with phase-variant bg (4 of 6 used) + 2px vertical spine via `after:` pseudo conditionally appended based on isLast prop / text block with action + dangerouslySetInnerHTML detail + actor chip. Pulse-fr on detect dot.
+    - `ic-timeline-card.tsx` — outer card with internal head ("Apr 18, 2026 · 14:42–14:54 UTC") + 8 event rows
+    - `ic-pm-section.tsx` — single PM section card with default/blameless variants. Blameless gets `!border-[rgba(110,63,224,0.3)]` override + horizontal purple gradient head.
+    - `ic-postmortem-card.tsx` — wraps 3 PM section cards
+    - `ic-action-item.tsx` — 28/1fr/130/90 grid with iai-num colored circle (3 status colors: success/amber/ink) + title (complete = line-through + ink-soft) + owner + status text-right. Responsive 4→2 collapse at 720px (hides owner + status).
+    - `ic-action-items-card.tsx` — outer table-wrap card with 4 action item rows
+    - `ic-commander-card.tsx` — reuses Step 26 DSR pattern: dsr-subject-card header (avatar + name + sub) + 5 dsm-rows (Role / Severity / Resolution[success] / PM author / Reviewer)
+    - `ic-responder-row.tsx` — 30/1fr grid with circular avatar (gradient via inline `style` per responder) + uppercase role eyebrow + name
+    - `ic-responders-card.tsx` — fr-quickstats wrapper with 3 responder rows separated by dashed borders
+    - `ic-quickstats-row.tsx` — single qs-label/qs-value row with optional success/warn variant
+    - `ic-quickstats-card.tsx` — generic fr-quickstats card with head + N rows (reused for Related links + SLO snapshot)
+    - `ic-detail-rail.tsx` — sticky aside (`top-22 self-start gap-14` NO max-h NO overflow per .fr-rail rule from Step 32/33 lesson); unstacks above main column at `max-[1080px]` via `static` + `order-[-1]`
+    - `ic-detail-shell.tsx` — orchestrator: breadcrumb + hero + stats + fr-body 2-col (main = 3 fr-section cards stacked: timeline / postmortem / action items; rail = IcDetailRail with commander + responders + related + SLO)
+  - Routes:
+    - `src/app/(admin)/admin/internal/incidents/page.tsx` (LIST, server)
+    - `src/app/(admin)/admin/internal/incidents/[id]/page.tsx` (DETAIL with `generateStaticParams` for 9 ids: inc-2026-058 active + 8 resolved; only inc-2026-042 canonical renders full IcDetailShell, other 8 render minimal placeholder card)
+  - Sidebar integration: `sidebar-nav-data.ts` Incident Reports pathname `#incident-reports` → `/admin/internal/incidents` (counter "2" preserved); `admin-sidebar.tsx` active-state matcher handles list + descendant routes
+- **Passes:**
+  - Pass A: LIST view (page header with meta-pulse + 5-stat strip + 7 filter chips + active SEV-3 callout + 8-row resolved table with canonical INC-2026-042 amber-tinted + footer + sidebar wire-up)
+  - Pass B: DETAIL route + breadcrumb + hero (ic-sev SEV-2 + ic-status resolved + 3 actions) + 4-stat strip + fr-body 2-col stubs
+  - Pass C: fr-main with 3 fr-section cards (Timeline 8 events with 4 phase variants + Post-mortem 3 sections incl. blameless + Action items 4 rows with 3 status variants)
+  - Pass D: fr-rail with 4 cards (Incident commander + Responders + Related links + SLO snapshot)
+- **Data model:**
+  - `IcIncidentRow`: id + displayId + sev (4 variants) + title + metaHtml + duration + resolvedDate + resolvedRel + pmStatus (3 variants) + pmText + isCanonical?
+  - `IcActiveCallout`: id + sev + status + statusLabel + ageText + title + summaryHtml + 4 IcActiveStat + footMetaHtml + 2 IcCalloutAction
+  - `IcDetailData`: breadcrumb + hero + 4 detailStats + timeline (sectionHead + headerTitle + headerMeta + 8 IcTimelineEvent) + postmortem (sectionHead + 3 IcPmSection) + actionItems (sectionHead + 4 IcActionItem) + rail (commander IcCommander + 3 IcResponder + 6 IcQuickstatsRow related + 5 IcQuickstatsRow SLO)
+  - All fixture content extracted **verbatim** from admin.html lines 64857-65492
+- **CSS/Design tokens:**
+  - 19 tokens (all existing in globals.css from prior steps)
+  - **ZERO globals.css additions** this step (pulse-fr already shipped from Step 32; sev/status/active-callout colors all literal `rgba(...)` matching prior Step 34 canonical-row pattern)
+  - Sev pill variants: sev-0 = danger-bg + pulse-fr dot, sev-1 = danger-bg, sev-2 = amber-bg, sev-3 = super-tinted (rgba 110,63,224,0.10)
+  - Status pill variants: open = danger-bg + pulse-fr dot, mitigated = amber-bg + pulse-fr dot, monitoring = super-tinted, resolved = success-bg
+  - Active-callout: 2px solid danger border + 135° gradient bg using literal `rgba(194,65,43,0.08)` + absolute "ACTIVE INCIDENT" eyebrow chip with pulse-fr 1.5s
+  - PM section blameless variant: `!border-[rgba(110,63,224,0.3)]` override + horizontal purple gradient on head
+  - Timeline event phase dots: detect = danger + pulse-fr 1.4s, escalate/mitigate = amber, investigate = super, resolve = success, review = ink-soft. Vertical 2px spine via `after:` pseudo, suppressed on last event via isLast prop.
+  - Action item num circle: complete = success, in-progress = amber, todo = ink. Complete title = line-through + ink-soft.
+  - Canonical row tint: `bg-[rgba(232,118,58,0.04)]` + 3px amber left border on first cell (same pattern as Step 34 canonical specialist row)
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/internal/incidents` (static) + `/admin/internal/incidents/[id]` (SSG, 9 paths)
+- **Tailwind-only:** ✅ Inline styles limited to per-responder avatar gradient backgrounds (literal `linear-gradient(...)` values from admin.html responder colors that don't map to existing tokens — same pattern as Step 26 DSR/admin avatars); zero other inline styles across all 4 passes
+- **Forbidden classNames:** ✅ Zero matches (no ic-, iah-, ias-, iaf-, iai-, icr-, ite-, ith-, iph-, ict-, icw-, col-ic-, fr-, cd-, pf-, hc-, in-, ids-, etc. in any className string)
+- **Notes:**
+  - **Cross-step component reuse:** `PrStatStrip` + `PrStat` type from Step 27 reused for LIST 5-stat strip (same as Step 33/34); `AdminActionToastProvider` from Step 34 powers all button feedback toasts; `IcSevBadge` + `IcStatusPill` reused inside DETAIL hero
+  - **Filename collision:** `incidents-data.ts` already taken by Step 16 external security incidents (SI-*); this step's fixture lives at `internal-incidents-data.ts` to keep the two domains separate without changing Step 16
+  - **Row navigation:** entire `<tr>` is clickable via `useRouter().push()` + keyboard-accessible (`tabIndex={0}`, `role="link"`, Enter/Space `onKeyDown`); chevron button calls `e.stopPropagation()` then `navigate()` to support both click points
+  - **Cache invalidation lesson (repeated):** after Pass B added the `[id]` route, dev server held stale route map; user had to `Remove-Item -Recurse -Force .next` + restart `pnpm dev` + hard-refresh browser before row clicks worked. Same lesson as Step 34 specialist row navigation.
+  - **2 of 4 PART 8 INTERNAL OPS pages shipped** (Step 34 Performance + Step 35 Incident Reports). Remaining: Step 36 Internal Communications + Step 37 Knowledge Base.
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -644,12 +719,12 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | 32 | Email & SMS Templates | ✅ Done |
 | 33 | Help Center Content | ✅ Done |
 
-### Internal group (4 entities, all deferred)
+### Internal group (4 entities, 2 shipped)
 
 | Step | Title | Status |
 |---|---|---|
-| 34 | Performance Dashboards | ⏸ pending HTML |
-| 35 | Incident Reports | ⏸ pending HTML |
+| 34 | Performance Dashboards | ✅ Done |
+| 35 | Incident Reports | ✅ Done |
 | 36 | Internal Communications | ⏸ pending HTML |
 | 37 | Knowledge Base | ⏸ pending HTML |
 

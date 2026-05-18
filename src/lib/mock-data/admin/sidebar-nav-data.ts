@@ -294,7 +294,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'incidents',
           label: 'Incident Reports',
-          pathname: '#incident-reports',
+          pathname: '/admin/internal/incidents',
           icon: IncidentReportsNavIcon,
           count: '2',
         },
