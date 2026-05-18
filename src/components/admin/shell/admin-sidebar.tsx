@@ -194,6 +194,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/platform/templates' || pathname.startsWith('/admin/platform/templates/');
     }
 
+    // Help Center: list + detail descendant routes
+    if (itemPathname === '/admin/platform/help-content') {
+      return pathname === '/admin/platform/help-content' || pathname.startsWith('/admin/platform/help-content/');
+    }
+
     return pathname === itemPathname;
   };
 

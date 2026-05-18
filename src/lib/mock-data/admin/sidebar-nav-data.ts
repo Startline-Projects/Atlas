@@ -275,7 +275,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'help-content',
           label: 'Help Content',
-          pathname: '#help-content',
+          pathname: '/admin/platform/help-content',
           icon: HelpContentNavIcon,
         },
       ],

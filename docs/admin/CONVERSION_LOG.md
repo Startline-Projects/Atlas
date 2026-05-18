@@ -505,6 +505,70 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Row navigation:** entire `<tr>` is clickable via `useRouter().push()` + keyboard-accessible (`tabIndex={0}`, `role="link"`, Enter/Space `onKeyDown`); chevron is a plain `<span>` SVG affordance with no Link wrapper
   - **Sample-data preview** renders variables resolved to concrete values (e.g. "Hi Adesuwa", "Software Engineering", 24 hours) rather than `{{var}}` template syntax — this is the rendered mock, distinct from the editor source
 
+### Step 33 — Help Center Content
+
+- **Status:** ✅ Done — **closes PART 7 Platform Configuration (5/5 pages)**
+- **Session:** 3
+- **Routes:** `/admin/platform/help-content` (LIST) + `/admin/platform/help-content/[id]` (DETAIL, 13 static params)
+- **HTML lines:** 63125–63992 (LIST 63125-63658, DETAIL 63663-63992)
+- **Files added:**
+  - Mock data: `src/lib/mock-data/admin/help-content-data.ts` (LIST types + 13 verbatim articles across 4 categories + 9 sidebar categories + DETAIL types + Vetting-call canonical: breadcrumb / hero with 6 locale flag tabs / 4 detail stats / 7-row frontmatter / 9-section markdown body with 7-class syntax / public-site preview mock / 4-block categorization rail)
+  - LIST components: `src/components/admin/platform/help-content/hc-*.tsx`
+    - `hc-page-header.tsx` — fr-page-head pattern with meta-pulse inline + search + 3 actions (Audit / View public site / New article primary)
+    - `hc-meta-pulse.tsx` — danger-tinted inline pulse alert with pulse-fr animated dot (reused from Step 32 pattern)
+    - `hc-cat-side.tsx` — `'use client'` sticky sidebar (`top-12`, static at 980px) with head + 9 category buttons; inline SVG per icon key (square / bolt / user / building / star / dollar / alert-circle / lock / shield)
+    - `hc-cat-section.tsx` — section head (eyebrow + h2 + 2 action buttons) with dashed bottom-border + article list
+    - `hc-status-pill.tsx` — 4 variants: published (success) / draft (amber + pulse-fr dot) / review-needed (super) / archived (cream)
+    - `hc-tag-chip.tsx` — 6 variants: default / featured (inverted ink/paper) / video (amber) / payment (success) / policy (danger) / compliance (super)
+    - `hc-helpful-bar.tsx` — 8px pill bar with 3 fill variants (high/medium/low) + matching label + meta. Width via inline `style`.
+    - `hc-article-row.tsx` — `'use client'` 5-col grid row with `useRouter()` whole-row navigation + keyboard accessibility; 3 row-tint variants (draft / review-needed / archived); collapses to 2-col at 980px
+    - `hc-shell.tsx` — `'use client'` orchestrator with `useState` for active category + `useMemo` section filtering
+  - DETAIL components: `src/components/admin/platform/help-content/detail/hc-*.tsx`
+    - `hc-breadcrumb.tsx` — Help Center › For candidates › current article
+    - `hc-detail-hero.tsx` — mono key + status pill + env meta + h1 + subtitle with cross-link to Step 31 + inline `<code>` for `{{ help.url }}` + **reuses `TmLocaleTabs` from Step 32** for 6 EN/ES/PT/FR/DE/ID flag tabs + 2 actions (View public + Save & publish v5)
+    - `hc-detail-stats.tsx` — 4-col grid hand-translated from Step 31 in-detail-stats pattern: Views 30d 8,247 (↑ +12%) / Avg time 2:38 / Helpfulness 94% (success) / Search rank #1
+    - `hc-section-head.tsx` — sh-num cream-deep badge + h2 + sh-meta with dashed separator + optional right-action button
+    - `hc-frontmatter-card.tsx` — 7 rows: 3 text-inputs (title/slug/search keywords) + 3 text rows (category/locale/published) + 1 tag-chip row (Featured/Includes video/Setup/Vetting/+ add tag dashed)
+    - `hc-markdown-card.tsx` — head + pre-wrap body with 7 attribute-selector classes via `[&_[data-hc-md-heading-1]]:...` for syntax highlighting (heading-1/heading-2/bold/em/link/code/list)
+    - `hc-public-frame.tsx` — full mock public-site frame: topbar (Atlas Help logo + search pill) + breadcrumb + 26px display title + locale meta + body with h2/p/strong/em/code/ol/ul/li/a + `data-hc-video` placeholder block + helpful footer with thumbs Yes/No buttons
+    - `hc-preview-card.tsx` — outer card with head ("Public preview" + path meta) + cream-backdrop body wrapping `<HcPublicFrame />`
+    - `hc-categorization-card.tsx` — 4-block sidecar: Related articles (4 dashed-bottom Link rows to other hc-* ids) / Linked from (Step 31 cross-ref with `{{ help.url }}` sub-meta) / Compliance links (Step 26 + Step 24) / Revision history (v4/v3/v2/v1 with current ink-tinted) + "Full history & diff" button
+    - `hc-detail-rail.tsx` — sticky aside (`top-22 self-start gap-14` NO max-h NO overflow per admin.html .fr-rail rule); unstacks above main column at `max-[1080px]` via `static` + `order-[-1]`
+    - `hc-detail-shell.tsx` — orchestrator: breadcrumb + hero + stats + fr-body 2-col (main = 2 fr-section cards stacked, rail = HcDetailRail)
+  - Routes: `src/app/(admin)/admin/platform/help-content/page.tsx` (LIST) + `src/app/(admin)/admin/platform/help-content/[id]/page.tsx` (DETAIL with `generateStaticParams` for 13 article ids; only `hc-vetting-call` renders canonical, others render minimal placeholder)
+  - Sidebar integration: `sidebar-nav-data.ts` Help Content pathname `#help-content` → `/admin/platform/help-content`; `admin-sidebar.tsx` active-state matcher handles list + descendant routes
+- **Passes:**
+  - Pass A: LIST view (page header with meta-pulse + 5-stat strip + 2-col layout: sticky 9-category sidebar + 4 category sections with 13 verbatim article rows)
+  - Pass B: DETAIL route + breadcrumb + hero with **reused TmLocaleTabs from Step 32** + 4-stat strip
+  - Pass C: fr-main 2 fr-section cards — Frontmatter (7 rows) + Markdown editor with 7-class syntax highlighting via `data-hc-md-*` attribute selectors
+  - Pass D: fr-rail with Public preview mock (full public-site chrome) + Categorization (4 blocks), sticky positioning matching admin.html .fr-rail framework rule
+- **Data model:**
+  - `HcArticleRow`: id + title + tags[] (6 variants) + slug + views (value + meta) + helpful (percent + label + variant + meta) + modified (date + author) + status (4 variants) + rowVariant? (3 tint variants for draft / review-needed / archived)
+  - `HcDetailData`: breadcrumb + hero (key + status + envMeta + title + subtitleHtml + 6 localeTabs reused via TmLocaleTab type import + 2 actions) + 4 detailStats + frontmatter (7 rows) + markdown (sectionHead + bodyHtml with `data-hc-md-*` markers) + preview (full public-site mock) + categorization (4 blocks: related / linked / compliance / revision)
+  - All fixture content extracted **verbatim** from admin.html lines 63125-63992 (13 articles from 63278-63645, Vetting-call canonical from 63663-63992)
+- **CSS/Design tokens:**
+  - 20 tokens (all existing in globals.css from prior steps)
+  - **ZERO globals.css additions** this step (pulse-fr already shipped from Step 32)
+  - Status pill variants: published = success-bg/success, draft = amber-bg/amber + pulse-fr dot, review-needed = super tint, archived = cream-deep/ink-mute
+  - Tag variants: featured = inverted ink/paper, video = amber, payment = success, policy = danger tint, compliance = super tint, default = cream-deep
+  - Helpfulness bar: high = success, medium = amber, low = danger; matching colored labels
+  - Row tints: draft = amber-tinted bg + border, review-needed = super-tinted bg + border, archived = opacity-60
+  - Markdown syntax: heading-1/heading-2/bold = ink+bold, link = super, em = ink-soft italic, code = ink-bg/paper-text inline chip, list = ink-soft
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ 247 routes (1 LIST + 13 DETAIL static)
+- **Tailwind-only:** ✅ Inline styles limited to **1 occurrence** = helpfulness bar width (`style={{ width: ${percent}% }}` in hc-helpful-bar.tsx used 13× via map across all article rows); zero other inline styles in Pass A/B/C/D
+- **Forbidden classNames:** ✅ Zero matches (no hc-, hca-, hci-, hcsh-, hcf-, hmh-, hcrl-, hph-, hpt-, tm-, fr-, cd-, in-, ids-, etc. in any className string; all hc-* semantics live in `data-*` attributes for `dangerouslySetInnerHTML` rendering)
+- **Notes:**
+  - **Cross-step component reuse:** `TmLocaleTabs` from Step 32 imported directly into `hc-detail-hero.tsx` — same 6 EN/ES/PT/FR/DE/ID flag gradients, no duplication. `TmLocaleTab` type also imported into help-content-data.ts to type the hero's locale tabs.
+  - **Reuses `PrStatStrip` + `PrStatCell` + `PrStat` type** (Privacy Reports / Step 27) for both the LIST 5-card top stats strip (hand-translated detail-stats via fr-section + sh-num pattern instead of importing Step 31 IntDetailStats per forbidden prefix rule)
+  - **No PsRestrictionBanner** in page header (admin.html doesn't have one — uses meta-pulse amber alert inline in meta line instead)
+  - **Row navigation:** entire article row clickable via `useRouter().push()` + keyboard-accessible (`tabIndex={0}`, `role="link"`, Enter/Space `onKeyDown`)
+  - **Markdown syntax highlighting via `data-hc-md-*` attribute selectors** instead of `class="hc-md-*"` (hc- classes are forbidden prefix); arbitrary-attribute Tailwind selectors `[&_[data-hc-md-heading-1]]:...` apply 7 styled markdown classes (heading-1/heading-2/bold/em/link/code/list)
+  - **Tag chips via `data-hc-tag-chip` attribute** with `data-hc-tag-add` variant for dashed "+ add tag" pseudo-button; revision history uses `data-hc-rev-current` for v4 ink-tinted vs subsequent revisions
+  - **fr-rail sticky** uses `top-[22px] self-start gap-[14px]` with **NO max-h and NO overflow-y-auto** per admin.html .fr-rail framework rule (line 15970-15979) — same lesson learned from Step 32 Pass D
+  - **Public preview mock** renders full Help Center public-site chrome (topbar with logo + search pill / breadcrumb / display title / locale meta line / 6-section body with h2/p/strong/em/code/ol/ul/li/a styling + `data-hc-video` placeholder block for the video embed / helpful footer with thumbs Yes/No)
+  - **PART 7 PLATFORM CONFIGURATION COMPLETE: 5/5 pages shipped** (Step 29 Settings + Step 30 Categories & Skills + Step 31 Integrations + Step 32 Email & SMS Templates + Step 33 Help Center Content)
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -578,7 +642,7 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | 30 | Categories & Skills | ✅ Done |
 | 31 | Integrations | ✅ Done |
 | 32 | Email & SMS Templates | ✅ Done |
-| 33 | Help Center Content | ⏸ pending HTML |
+| 33 | Help Center Content | ✅ Done |
 
 ### Internal group (4 entities, all deferred)
 
