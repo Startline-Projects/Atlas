@@ -26,7 +26,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 6   | Daily Activity Audit — submission overview + audit rows + timing | ✅ done (channels section dropped per trim a) |
 | 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ✅ done (full scope — patterns section retained; canonical dispute domain locked) |
 | 8   | Pool Coordination — 10-category grid + opportunities + sprint priorities | ✅ done (full scope; Step 6 log backfilled in same commit) |
-| 9   | Recruitment Sprints — goal banner + 4 active sprints + analytics + history | ❌ not started |
+| 9   | Recruitment Sprints — goal banner + 4 active sprints + analytics + history | ✅ done (trim a — channels + geo only; budget + resource sharing dropped) |
 | 10  | Team Reports — overview + 5-tab comparisons + 11×14 heatmap + hire success | ❌ not started |
 | 11  | Manager Daily Activity — submission form + stepper + lock-on-submit + 14-day calendar | ❌ not started |
 | 12  | Notifications enhancement — context tags + filter + smart routing + full page | ❌ not started |
@@ -896,6 +896,118 @@ If any of these surface in Steps 6-11 once we build them, address as a one-off S
 ### Up next
 
 - **Step 9 — Recruitment Sprints.** `/specialist/recruitment-sprints` Manager-only route. Goal banner ($30-candidate weekly target) + 4-tile totals + 4 active sprint cards (Aisha behind, Yara on-track, Naomi ahead, Lucas — 4th from prototype) + sprint history. Un-disables: dashboard urgent card 3 primary "Run sprint" + card 6 primary "Start sprint" + sidebar "Recruitment Sprints" + Pool Coordination card actions ("Run sprint", "⚡ Redirect", "Launch sprint" from sprint priorities). Big un-disable pass — all sprint-launching CTAs across Steps 7 + 8 flip to real Links.
+
+---
+
+## Session 1 — Step 9 — Recruitment Sprints + cross-sprint coordination
+
+**Goal:** Fourth Manager-only ops route. `/specialist/recruitment-sprints` — weekly goal banner + 4 active sprints with progress rings + cross-sprint channels-overlap matrix + geographic overlap + 6-row sprint history. All 8 `landsInStep: 9` sites (5 external + 3 component) flipped — sprint-launching is now end-to-end navigable.
+
+### Files added (10)
+
+| File | Role | Notes |
+|---|---|---|
+| `src/app/(specialist)/specialist/recruitment-sprints/page.tsx` | Server | `ManagerRouteGuard` + `Suspense` for `?launch=` deep-link. |
+| `src/components/manager/recruitment-sprints/recruitment-sprints-app.tsx` | Client | Orchestrator. Owns `focusedSprintId` (deep-link target). Reads `?launch=<category-id>` ONCE on mount via `findSprintByCategoryId()`. **Q3 refinement:** silently clears `?launch=` URL via `router.replace(pathname)` when no matching active sprint exists (e.g. `?launch=virtual-assistants`). Scrolls focused card into center + lime ring for 2s. |
+| `src/components/manager/recruitment-sprints/rs-header.tsx` | Client | Eyebrow + title + dynamic subtitle (computed from sprint statuses) + Export + Launch new sprint (modal step 14 per Q2). |
+| `src/components/manager/recruitment-sprints/rs-goal-banner.tsx` | Server | Dark-bg banner. Weekly candidate target + progress bar (lime fill) + days-remaining caption + big "21/30" stat. Pure display from `weeklyGoal`. |
+| `src/components/manager/recruitment-sprints/rs-totals-strip.tsx` | Server | 4 tiles: Active sprints / On track + ahead (with name list) / ⚠ Behind pace (with name list) / Total budget (with spent% caption). All computed live. |
+| `src/components/manager/recruitment-sprints/rs-sprints-grid.tsx` | Server | 2-col grid wrapper. Forwards `focusedSprintId` + `registerCardRef`. |
+| `src/components/manager/recruitment-sprints/rs-sprint-card.tsx` | Client | Single active sprint card. 3-status fork. Inlined progress ring SVG (rotated -90° so 12 o'clock = start; dashoffset math). 4-row stat block (Progress / Time left / Pace / Started). Channel chips. Actions vary by status: BEHIND = ⚡ Boost + Message + View → · ON-TRACK = Message + View → · AHEAD = Redirect surplus + View → · ~340 LOC. |
+| `src/components/manager/recruitment-sprints/rs-cross-sprint-section.tsx` | Server | Wrapper + 2 inlined sub-cards: ChannelsOverlapMatrix (6 channels × 4 active sprint owners; intensity dots heavy/using/none) + GeographicOverlapList (4 regions with conflict/OK tone). Per trim a: budget + resource sharing cards DROPPED. |
+| `src/components/manager/recruitment-sprints/rs-sprint-history.tsx` | Server | Single card with 6 history rows + insight footer. Outcome pills (5 variants: ★ Beat goal / ★ Goal met / Close / Missed / + override "★ Beat 2.5×"). Mateo's row carries "You" tag. Non-clickable per Q4. |
+
+### Files added — mock data (1)
+
+| File | Purpose |
+|---|---|
+| `src/lib/mock-data/manager/manager-recruitment-sprints-data.ts` | **Canonical sprint domain.** Type defs (`Sprint`, `SprintId`, `SprintStatus`, `SprintPaceTone`, `SprintOutcome`, `SprintHistoryEntry`, `WeeklyGoal`, `ChannelOverlap`, `ChannelOverlapIntensity`, `GeoOverlap`) + 4 active sprints + weekly goal + 6 history entries + channels matrix (6 channels × 11 specialists, sparse with explicit "none") + geo overlap data + 2 insight strings + lookups (`getSprint`, `findSprintByCategoryId`) + 4 display helpers (`sprintStatusLabel`, `progressPercent`, `outcomeLabel`, `outcomeTone`). **Two module-load assertions** per Q8 + Q9y: (1) every sprint + history `categoryId` resolves via `getCategory()` from pool data; (2) every channel matrix usage map contains entries for all 4 active sprint owners. |
+
+### Files modified (6)
+
+| File | Diff |
+|---|---|
+| `src/lib/mock-data/manager/manager-nav-items.ts` | "Recruitment Sprints" item: `disabled: true` removed. Badge `value: 4` TODO note updated. |
+| `src/lib/mock-data/manager/manager-urgent-items.ts` | Card 3 primary "Run sprint": `href: ".../recruitment-sprints?launch=customer-support"`; drop `landsInStep: 9`. Card 6 primary "Start sprint": `href: ".../recruitment-sprints?launch=bookkeeping"`; drop `landsInStep`. (Note: bookkeeping has NO active sprint yet, so orchestrator will silently clear `?launch=` per Q3 refinement.) |
+| `src/lib/mock-data/manager/manager-rail.ts` | `qa-run-sprint` quick action: `href: "/specialist/recruitment-sprints"`; drop `landsInStep: 9`. |
+| `src/lib/mock-data/manager/manager-snapshot.ts` | Snapshot card 6 (Sprints active): `disabledRoute` removed — auto-upgrades to real Link. |
+| `src/components/manager/pool-coordination/pc-sprint-priorities.tsx` | **Step 9 un-disable.** 3 "Launch sprint →" row buttons + "Open sprint coordination →" footer button: `<button>` → `<Link>`. Drops `COORDINATE_CTA` const + entire `useState`/`ManagerActionPlaceholderModal` plumbing. File converts from Client → Server-renderable. |
+| `src/components/manager/pool-coordination/pc-category-card.tsx` | **Step 9 un-disable.** "Run sprint" (depleted) + "⚡ Redirect" (overflowing): `<button>` → new inlined `<LaunchSprintLink>` component rendering `<Link href=".../recruitment-sprints?launch={c.id}">`. Drops `RUN_SPRINT_CTA` + `REDIRECT_CTA` consts. |
+| `docs/manager/CONVERSION_LOG.md` | This entry |
+
+### Locked decisions (Step 9)
+
+| | |
+|---|---|
+| **Trim (a)** | Dropped budget allocation + resource sharing cards from cross-sprint section. Saved ~300 LOC. Kept channels matrix + geographic overlap (the visualization-heavy cards with genuinely novel content). |
+| **Static cards (Q1)** | No expand/collapse — action buttons live directly on each card. Matches Step 8 pattern + matches prototype. |
+| **Launch new sprint header CTA (Q2)** | Modal step 14 placeholder ("Sprint launch flow — coming soon"). No dedicated launch route in any step. |
+| **`?launch=<category-id>` semantics (Q3 + refinement)** | Matching active sprint found → scroll-to-card + lime ring (2s). No matching sprint → `router.replace(pathname)` silently clears the param to prevent shareable URL confusion. Same `block: "center"` scroll pattern as Step 6/8. |
+| **Sprint history rows non-clickable (Q4)** | Meta caption reads "Last 8 weeks · most recent first" instead of prototype's "click any row for details" (drill-in deferred — no detail page exists). |
+| **Mateo treatment (Q6)** | Mateo appears in **history only** (Mar 17–21 VAs sprint, Close outcome). Sprint card component has NO self-suppression logic — documented in data file header. If a future maintainer adds Mateo as an active sprint owner, the message button needs hiding. |
+| **Sprint card action targets** | ⚡ Boost / Redirect surplus / Launch new sprint → modal step 14. Message {owner} → modal step 13. View → real Link to `/specialist/team/{ownerSpecialistId}?tab=performance`. |
+| **Pace tones (Q7)** | `paceTone: "urgent" \| "success" \| "neutral"` field on Sprint record. Behind sprints → urgent. On-track / Ahead → success. |
+| **Channel matrix shape (Q8)** | `Record<SpecialistId, ChannelOverlapIntensity>` — type-safe + module-load assertion ensures all 4 active sprint owners have explicit entries. Sparse coverage with explicit `"none"` for non-owners (allows TypeScript to enforce completeness via the Record type). |
+| **Q9y safety net** | Verified by deliberately breaking 2 values (a) typo'd categoryId → runtime assertion `Sprint sprint-2026-04-aisha-cs references unknown categoryId "customer-suppor"` at prerender; (b) omitted channel matrix key → TypeScript caught at typecheck (`Property '"spec-lucas-andersen"' is missing in type ... but required in type 'Record<SpecialistId, ChannelOverlapIntensity>'`). Safety net is **doubly-redundant** (type-level + module-load). Reverted both. |
+
+### Un-disable pass — all `landsInStep: 9` sites resolved (8 total — 5 external + 3 in components)
+
+| Site | Before | After |
+|---|---|---|
+| Sidebar "Recruitment Sprints" item | disabled span | active Link |
+| Dashboard urgent card 3 primary "Run sprint" | modal trigger | `<Link>` to `.../recruitment-sprints?launch=customer-support` |
+| Dashboard urgent card 6 primary "Start sprint" | modal trigger | `<Link>` to `.../recruitment-sprints?launch=bookkeeping` |
+| Dashboard rail "Run a recruitment sprint" quick action | modal trigger | `<Link>` to `.../recruitment-sprints` |
+| Dashboard snapshot card 6 (Sprints active) | disabled wrapper | real `<Link>` |
+| Pool Coordination "Run sprint" (depleted cards) | modal trigger | `<Link>` with `?launch=<cat-id>` |
+| Pool Coordination "⚡ Redirect" (overflowing cards) | modal trigger | `<Link>` with `?launch=<cat-id>` |
+| Sprint priorities "Launch sprint →" (3 rows) | modal trigger | `<Link>` with `?launch=<cat-id>` |
+| Sprint priorities "Open sprint coordination →" footer | modal trigger | `<Link>` to `.../recruitment-sprints` |
+
+### Known friction (Step 9)
+
+- **Launch new sprint header CTA + Boost + Redirect surplus + Sprint launch flow** are all modal step 14 placeholders. The actual launch / boost / surplus-redirect flows don't have dedicated routes; ergonomic UX for these would need future investment.
+- **Bookkeeping `?launch=` lands silently.** No active Bookkeeping sprint exists (Diego's category is overflowing, not under-resourced). `?launch=bookkeeping` from dashboard urgent card 6 triggers `router.replace` to clean URL, then page renders normally. Acceptable trade-off; if we ever want Bookkeeping deep-link to highlight the related history row, that's a future enhancement.
+- **Sprint history rows non-clickable.** "Last 8 weeks · most recent first" caption is honest about deferred drill-in.
+- **Budget allocation + resource sharing cards dropped per trim a.** Budget data still lives on Sprint records (for future resurfacing); resource sharing entries would need new data type.
+- **Cross-sprint matrix is 6 channels × 11 specialist columns** in the data shape (sparse with explicit `"none"`), but renders only 4 columns (active sprint owners). Update both `ACTIVE_SPRINT_OWNERS` const + the records when sprint owners change.
+
+### Step 9 verification (a-y — all green)
+
+| | | |
+|---|---|---|
+| (a)-(b) | Route renders for Managers; redirects on role/mode fail | ✓ |
+| (c) | Header subtitle: "4 active sprints · 1 on track · 2 behind · 1 ahead" (Yara=on-track, Aisha+Lucas=behind, Naomi=ahead) | ✓ |
+| (d) | Goal banner: 21/30 candidates + 70% progress + 5 days remaining | ✓ |
+| (e) | Totals: 4 / 2 (Yara · Naomi) / 2 (Aisha · Lucas) / $2.4k (58% spent) | ✓ |
+| (f) | 4 sprint cards in canonical order (Aisha · Yara · Naomi · Lucas) | ✓ |
+| (g) | Progress ring SVGs render with correct % (33 / 63 / 117 / 50) | ✓ |
+| (h) | Pace tones: urgent for behind (Aisha 2/day · Lucas 1/day), success for on-track + ahead (Yara on pace · Naomi ahead) | ✓ |
+| (i) | Channel chips render per sprint | ✓ |
+| (j) | Cross-sprint section: channels matrix 6 channels × 4 owners + geographic overlap 4 rows | ✓ |
+| (k) | Sprint history 6 rows with correct outcome pills (5 variants) | ✓ |
+| (l) | Mateo's history row "You" tag rendered | ✓ |
+| (m) | `?launch=customer-support` scrolls + rings Aisha's sprint card | ✓ |
+| (n) | `?launch=virtual-assistants` (no matching sprint) silently clears URL via `router.replace`; page renders normally | ✓ |
+| (o) | Sidebar "Recruitment Sprints" active when on route | ✓ |
+| (p)-(s) | All 4 external un-disable sites → real Links | ✓ |
+| (t) | Step 8 "Run sprint" / "⚡ Redirect" / "Launch sprint →" / "Open sprint coordination →" all → real Links to `?launch=<cat-id>` | ✓ |
+| (u) | typecheck + lint + build clean. **181 routes** (180 + 1) | ✓ |
+| (v) | `useSessionRole()` flip → redirects (specialist build also clean at 181 routes) | ✓ |
+| (w) | `grep "TODO(step-9)" src/` returns 0 | ✓ |
+| (x) | `grep "landsInStep: 9" src/` returns 0 | ✓ |
+| (y) | Module-load assertions verified by deliberate breakage: (1) typo'd `categoryId: "customer-suppor"` → runtime assertion fired at prerender with exact message; (2) omitted channel matrix key for Lucas → TypeScript caught at typecheck via `Record<SpecialistId, ...>` enforcement. Both reverted. Safety net doubly-redundant (compile-time + runtime). | ✓ |
+
+### Architectural primitives introduced
+
+- **Doubly-redundant data integrity** — `Record<SpecialistId, ...>` Type for compile-time completeness + module-load assertion for runtime cross-collection ID resolution. Use for any future data shapes where multiple sources of truth must agree.
+- **`router.replace(pathname)` for silent URL cleanup** — when a deep-link param doesn't resolve, clear it without page navigation. Pattern reusable for any `?<key>=` deep-links that may not have matching data.
+- **3-status fork with progress ring** — `behind / on-track / ahead` pattern + SVG ring with dasharray math. Reusable for any progress-toward-goal visualization (Step 11 daily activity could use the same primitive).
+- **Sprint-launching is end-to-end navigable.** Step 9 closes the loop — dashboard "Run sprint" → recruitment-sprints page with scroll-to-active-sprint. Pool category "Run sprint" → same. Sprint priorities "Launch sprint →" → same. All paths converge.
+
+### Up next
+
+- **Step 10 — Team Reports.** `/specialist/team-reports` Manager-only route. Performance snapshot (6 KPI cards with sparklines + trend %) + per-Specialist comparison (5-tab chart switcher: reviews / dispute time / sourcing / hires / SLA) + 11×14 daily activity heatmap + hire success breakdown + role category bars. **No new un-disable sites** (Team Reports is referenced by sidebar disabled flag only). Will reference Step 9's sprint history for hire-source attribution. Likely the largest single step in the initiative (~2,000+ LOC) — propose trims aggressively.
 
 ---
 

@@ -129,11 +129,11 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
   },
   {
     key: "recruitment-sprints",
+    /* Step 9: enabled — /specialist/recruitment-sprints now exists. */
     label: "Recruitment Sprints",
     href: "/specialist/recruitment-sprints",
     iconKey: "recruitment-sprints",
-    badge: { value: 4, tone: "lime" }, // Step 9: replace with derived count
-    disabled: true, // Step 9: flip to false
+    badge: { value: 4, tone: "lime" }, // TODO: replace with activeSprints.length
   },
   {
     key: "team-reports",

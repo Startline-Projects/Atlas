@@ -117,9 +117,11 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "text", value: " (threshold 15). Owning Specialist: " },
       { kind: "text", value: `${aishaName}.` },
     ],
-    primary: { label: "Run sprint", landsInStep: 9 },
-    /* Step 8 un-disable: route exists. Deep-link via `?focus=` to
-       scroll-and-ring the Customer Support card on entry. */
+    /* Step 9 un-disable: Recruitment Sprints route exists. Deep-link
+       via `?launch=` scrolls to + rings Aisha's Customer Support sprint. */
+    primary: { label: "Run sprint", href: "/specialist/recruitment-sprints?launch=customer-support" },
+    /* Step 8 un-disable: Pool Coordination route. Deep-link via
+       `?focus=` to scroll-and-ring the Customer Support card on entry. */
     ghost: { label: "Pool coordination", href: "/specialist/pool-coordination?focus=customer-support" },
   },
 
@@ -173,9 +175,14 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "em", value: "5 days" },
       { kind: "text", value: " at current burn rate. Sprint recommended." },
     ],
-    primary: { label: "Start sprint", landsInStep: 9 },
-    /* Step 8 un-disable: route exists. Deep-link to Bookkeeping
-       card (the overflowing category triggering the forecast). */
+    /* Step 9 un-disable: Recruitment Sprints route exists. Deep-link
+       to Bookkeeping — note no ACTIVE sprint for Bookkeeping yet,
+       so orchestrator will silently clear `?launch=` and land on
+       the sprints page normally. */
+    primary: { label: "Start sprint", href: "/specialist/recruitment-sprints?launch=bookkeeping" },
+    /* Step 8 un-disable: Pool Coordination route. Deep-link to
+       Bookkeeping card (the overflowing category triggering the
+       forecast). */
     ghost: { label: "View forecast", href: "/specialist/pool-coordination?focus=bookkeeping" },
   },
 ];

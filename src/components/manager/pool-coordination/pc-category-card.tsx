@@ -78,15 +78,9 @@ const TREND_CLASS: Record<PoolTrend, string> = {
    Action CTAs
    ============================================================ */
 
-const RUN_SPRINT_CTA: ManagerActionCTA = {
-  label: "Run sprint",
-  landsInStep: 9,
-};
-const REDIRECT_CTA: ManagerActionCTA = {
-  label: "⚡ Redirect",
-  landsInStep: 9,
-  description: "Redirect sprint flow — coming soon.",
-};
+/* Step 9 un-disable: "Run sprint" + "⚡ Redirect" flipped from modal
+   triggers to real Links pointing to /specialist/recruitment-sprints
+   with `?launch=<category-id>` deep-link. Modal CTAs removed. */
 const VIEW_HEALTH_CTA: ManagerActionCTA = {
   label: "View health",
   landsInStep: 14,
@@ -320,9 +314,7 @@ function CardActions({
   if (c.status === "depleted") {
     return (
       <>
-        <SmallButton tone="primary" onClick={() => onAction(RUN_SPRINT_CTA)}>
-          Run sprint
-        </SmallButton>
+        <LaunchSprintLink categoryId={c.id} variant="run-sprint" />
         <SmallButton tone="neutral" onClick={() => onAction(VIEW_HEALTH_CTA)}>
           View health
         </SmallButton>
@@ -336,9 +328,7 @@ function CardActions({
   if (c.status === "overflowing") {
     return (
       <>
-        <SmallButton tone="warn" onClick={() => onAction(REDIRECT_CTA)}>
-          ⚡ Redirect
-        </SmallButton>
+        <LaunchSprintLink categoryId={c.id} variant="redirect" />
         <SmallButton tone="neutral" onClick={() => onAction(VIEW_HEALTH_CTA)}>
           View health
         </SmallButton>
@@ -392,6 +382,35 @@ function SmallButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Step 9 un-disable: "Run sprint" (depleted) / "⚡ Redirect"
+ *  (overflowing) → real Link to Recruitment Sprints with `?launch=`
+ *  deep-link. Same visual treatment as the original SmallButton
+ *  primary/warn tones. */
+function LaunchSprintLink({
+  categoryId,
+  variant,
+}: {
+  categoryId: string;
+  variant: "run-sprint" | "redirect";
+}) {
+  const className =
+    variant === "run-sprint"
+      ? "bg-ink text-paper hover:bg-ink-soft border-ink"
+      : "bg-amber-bg text-amber hover:bg-amber-bg/80 border-amber/40";
+  const label = variant === "run-sprint" ? "Run sprint" : "⚡ Redirect";
+  return (
+    <Link
+      href={`/specialist/recruitment-sprints?launch=${categoryId}`}
+      className={cn(
+        "inline-flex items-center rounded-md border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors",
+        className,
+      )}
+    >
+      {label}
+    </Link>
   );
 }
 

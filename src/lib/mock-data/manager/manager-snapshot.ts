@@ -139,6 +139,7 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
       { kind: "text", value: "2 on track · " },
       { kind: "strong", value: "2 behind" },
     ],
-    disabledRoute: { href: "/specialist/recruitment-sprints", landsInStep: 9 },
+    /* Step 9 un-disable: route exists — snapshot card auto-upgrades
+       to real Link via the existing disabledRoute removal pattern. */
   },
 ];

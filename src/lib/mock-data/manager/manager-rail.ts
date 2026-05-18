@@ -100,7 +100,8 @@ export const managerQuickActions: ReadonlyArray<ManagerQuickAction> = [
     id: "qa-run-sprint",
     label: "Run a recruitment sprint",
     iconKey: "run-sprint",
-    landsInStep: 9,
+    /* Step 9 un-disable: route exists. `href` set → Link. */
+    href: "/specialist/recruitment-sprints",
   },
 ];
 
