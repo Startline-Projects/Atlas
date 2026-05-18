@@ -8,8 +8,11 @@
  *   2. Disputes need oversight    (4 rows)
  *   3. Recent team activity        (6 feed items)
  *
- * Column footer links render as disabled spans (per Q2 lock) since
- * their target routes 404 until Steps 4 / 7 / 10.
+ * Column header/footer links fork on the link spec — `href` set →
+ * real `<Link>`; `landsInStep` set → disabled span with tooltip.
+ * Step 4 (column 1) and Step 7 (column 2) both flipped to real
+ * Links once their target routes shipped. Column 3 footer
+ * ("Full activity feed →") stays disabled until Step 10.
  *
  * Inlined `SpecialistRow`, `DisputeRow`, `FeedItem` sub-components
  * per Step 3 Q6.
@@ -17,6 +20,7 @@
  * Ported from `reference/manager.html` lines 19710-19854.
  */
 
+import Link from "next/link";
 import {
   activeColumnCounts,
   activeDisputesNeedingOversight,
@@ -62,8 +66,8 @@ export function ManagerActiveItemsSection() {
         <Column
           title="Specialists need attention"
           count={activeColumnCounts.specialistsNeedAttention}
-          headerLink={{ label: "View team", landsInStep: 4 }}
-          footerLink={{ label: "Open team directory →", landsInStep: 4 }}
+          headerLink={{ label: "View team", href: "/specialist/team" }}
+          footerLink={{ label: "Open team directory →", href: "/specialist/team" }}
         >
           <ul className="flex flex-col gap-0">
             {activeSpecialistsNeedingAttention.map((row) => (
@@ -76,8 +80,8 @@ export function ManagerActiveItemsSection() {
         <Column
           title="Disputes need oversight"
           count={activeColumnCounts.disputesNeedOversight}
-          headerLink={{ label: "View all", landsInStep: 7 }}
-          footerLink={{ label: "Open team disputes →", landsInStep: 7 }}
+          headerLink={{ label: "View all", href: "/specialist/team-disputes" }}
+          footerLink={{ label: "Open team disputes →", href: "/specialist/team-disputes" }}
         >
           <ul className="flex flex-col gap-0">
             {activeDisputesNeedingOversight.map((row) => (
@@ -107,6 +111,13 @@ export function ManagerActiveItemsSection() {
    Column wrapper — title + count + disabled "view all" + footer
    ============================================================ */
 
+/* Link variant: `href` set → real Link; `landsInStep` set →
+   disabled span with "Lands in Step N" tooltip. Mirror of the
+   urgent-section / quick-action fork pattern. */
+type ColumnLinkSpec =
+  | { label: string; href: string }
+  | { label: string; landsInStep: number };
+
 function Column({
   title,
   count,
@@ -117,9 +128,9 @@ function Column({
 }: {
   title: string;
   count?: number;
-  headerLink?: { label: string; landsInStep: number };
+  headerLink?: ColumnLinkSpec;
   headerLabel?: string;
-  footerLink: { label: string; landsInStep: number };
+  footerLink: ColumnLinkSpec;
   children: React.ReactNode;
 }) {
   return (
@@ -134,13 +145,22 @@ function Column({
           ) : null}
         </h3>
         {headerLink ? (
-          <span
-            aria-disabled="true"
-            className="text-ink-mute cursor-not-allowed text-[11.5px] font-medium opacity-60"
-            title={`Lands in Step ${headerLink.landsInStep}`}
-          >
-            {headerLink.label}
-          </span>
+          "href" in headerLink ? (
+            <Link
+              href={headerLink.href}
+              className="text-ink-soft hover:text-ink text-[11.5px] font-medium transition-colors"
+            >
+              {headerLink.label}
+            </Link>
+          ) : (
+            <span
+              aria-disabled="true"
+              className="text-ink-mute cursor-not-allowed text-[11.5px] font-medium opacity-60"
+              title={`Lands in Step ${headerLink.landsInStep}`}
+            >
+              {headerLink.label}
+            </span>
+          )
         ) : headerLabel ? (
           <span className="text-ink-mute flex items-center gap-1.5 text-[11.5px] font-medium">
             <span
@@ -153,13 +173,22 @@ function Column({
       </div>
       <div className="flex-1 px-4 py-2">{children}</div>
       <div className="border-line-soft border-t px-4 py-3">
-        <span
-          aria-disabled="true"
-          className="text-ink-mute cursor-not-allowed text-[12px] font-medium opacity-60"
-          title={`Lands in Step ${footerLink.landsInStep}`}
-        >
-          {footerLink.label}
-        </span>
+        {"href" in footerLink ? (
+          <Link
+            href={footerLink.href}
+            className="text-ink-soft hover:text-ink text-[12px] font-medium transition-colors"
+          >
+            {footerLink.label}
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="text-ink-mute cursor-not-allowed text-[12px] font-medium opacity-60"
+            title={`Lands in Step ${footerLink.landsInStep}`}
+          >
+            {footerLink.label}
+          </span>
+        )}
       </div>
     </div>
   );
