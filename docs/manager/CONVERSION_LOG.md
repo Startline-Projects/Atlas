@@ -24,7 +24,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 4   | My Team — 11-specialist grid | ✅ done |
 | 5   | Specialist Detail — 7-tab layout + coaching tab | ✅ done (calendar deferred to Step 11 per trim) |
 | 6   | Daily Activity Audit — submission overview + audit rows + timing | ✅ done (channels section dropped per trim a) |
-| 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ❌ not started |
+| 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ✅ done (full scope — patterns section retained; canonical dispute domain locked) |
 | 8   | Pool Coordination — 10-category grid + opportunities + sprint priorities | ❌ not started |
 | 9   | Recruitment Sprints — goal banner + 4 active sprints + analytics + history | ❌ not started |
 | 10  | Team Reports — overview + 5-tab comparisons + 11×14 heatmap + hire success | ❌ not started |
@@ -715,5 +715,111 @@ This is a breadcrumb for whoever lands real auth, not a Step 6 concern.
 - **Hire success metrics breakdown** — Team aggregates only in Step 10; per-specialist breakdown not in any 6-11 surface.
 
 If any of these surface in Steps 6-11 once we build them, address as a one-off Specialist extension (small) rather than another audit pass.
+
+---
+
+> **Note on log gap:** A detailed entry for Step 6 (commit `a55ba3c`) was intended for this log but the doc-edit didn't land — only the table-row status flip was applied. The Step 6 entry's intended contents are recoverable from commit message + chat transcript. Backfill in a future doc-cleanup pass; not blocking.
+
+---
+
+## Session 1 — Step 7 — Team Disputes + canonical dispute domain
+
+**Goal:** Second Manager-only ops route. `/specialist/team-disputes` — 12 open dispute rows + 6-chip filter bar + 4-tile status overview + 3-card patterns section. All 4 `landsInStep: 7` un-disable sites flipped. Both `TODO(step-7)` markers in `manager-active-items.ts` cleared via canonical-dispute-domain refactor. **Bonus** Step 4 leftover dead-disable on active-items column 1 also flipped.
+
+### Files added (9)
+
+| File | Role | Notes |
+|---|---|---|
+| `src/app/(specialist)/specialist/team-disputes/page.tsx` | Server | Wraps `<TeamDisputesApp />` in `<ManagerRouteGuard>` + `<Suspense>` (required for `useSearchParams` reading `?filter=` deep-link). |
+| `src/components/manager/team-disputes/team-disputes-app.tsx` | Client | Orchestrator. Owns filter + sort + expandedRowId state. Reads `?filter=` searchParam ONCE on mount via `isFilterKey()` type-guard. Resets expanded row on filter change. |
+| `src/components/manager/team-disputes/td-header.tsx` | Client | Eyebrow + title + dynamic subtitle (computed from disputes) + Export (modal step 14) + Message owners (modal step 13). |
+| `src/components/manager/team-disputes/td-status-overview.tsx` | Server | 4 tiles: Total open · ⚠ SLA at risk · In progress · Escalated. "Across N Specialists" caption from unique owner count. |
+| `src/components/manager/team-disputes/td-filter-bar.tsx` | Client | 6 single-select chips with derived counts. Exports `matchesFilter()` predicate + `isFilterKey()` type-guard (shared with orchestrator). SLA-risk chip danger-tinted. |
+| `src/components/manager/team-disputes/td-dispute-list.tsx` | Client | Toolbar (meta + sort) + filtered+sorted rows + empty state with reset button. Default sort `sla` ascending, severity desc + age desc tiebreaks. |
+| `src/components/manager/team-disputes/td-dispute-row.tsx` | Client | Single row with collapsible quick-actions. 5-way action fork (Mateo / Escalated / SLA-urgent / First / Default+contested). ~380 LOC (under 400 watch). |
+| `src/components/manager/team-disputes/td-patterns-section.tsx` | Server | 3 cards (Volume / Category / Resolution time). Sub-components inlined. |
+
+### Files added — mock data (2)
+
+| File | Purpose |
+|---|---|
+| `src/lib/mock-data/manager/manager-team-disputes-data.ts` | **Canonical dispute domain.** Type defs (`Dispute`, `DisputeId`, `DisputeStatus`, `DisputeReason`, `DisputeInitiator`, `SlaBand`) + 12 dispute records + lookups (`getDispute`, `getDisputeStrict`) + 9 display helpers (`disputeTitleParts`, `disputeReasonLabel`, `disputeInitiatorLabel`, `disputeInitiatorIsBold`, `slaBand`, `slaLabelSuffix`, `slaHoursLabel`, `disputeAgeLabel`, `isOwnedByManager`). **DSP-2026-04-12 is THE canonical dispute** — Sofia × Quill, owned by `MANAGER_SPECIALIST_ID`. File header documents this lock. |
+| `src/lib/mock-data/manager/manager-team-disputes-patterns.ts` | Team-wide 30-day historical aggregates (NOT derived from 12 currently-open). 3 datasets: `disputeVolumePerSpecialist` (8 rows) · `disputesByRoleCategory` (8 rows) · `avgResolutionTimePerSpecialist` (7 rows) + 2 insight strings. |
+
+### Files modified (7)
+
+| File | Diff |
+|---|---|
+| `src/lib/mock-data/manager/team.ts` | **New const:** `MANAGER_SPECIALIST_ID = "spec-mateo-vargas" as const`. Header doc-block explains the lock. All future "is this Mateo?" checks reference this constant. |
+| `src/lib/mock-data/manager/manager-nav-items.ts` | `team-disputes` item: `disabled: true` flag removed. Badge TODO note updated. |
+| `src/lib/mock-data/manager/manager-urgent-items.ts` | Card 2 primary: `href` added, `landsInStep: 7` dropped. Card 2 ghost: `href` with `?filter=sla-risk` deep-link added, `landsInStep` + `description` dropped. |
+| `src/lib/mock-data/manager/manager-snapshot.ts` | Snapshot card 3 (Open disputes): `disabledRoute` removed — auto-upgrades to real Link via existing fork. |
+| `src/lib/mock-data/manager/manager-active-items.ts` | **TODO(step-7) refactor.** `ActiveDisputeRow` extended with `disputeId: DisputeId`. New `buildDisputeRow()` helper derives title/SLA-tag/owner from canonical dispute. 4 dispute rows shrink to 5 LOC each. `isOwnedByManager()` replaces inline string compare. Both TODO markers removed. |
+| `src/components/manager/dashboard/manager-active-items-section.tsx` | **Step 4 + Step 7 active-items un-disable.** `ColumnLinkSpec` discriminated union (`{ href }` → `<Link>`; `{ landsInStep }` → disabled span). Column 1 (Specialists) + Column 2 (Disputes) both flip. Column 3 (Activity feed) stays at `landsInStep: 10`. 4 links flipped from disabled span → real Link. |
+| `docs/manager/CONVERSION_LOG.md` | This entry |
+
+### Locked decisions (Step 7)
+
+| | |
+|---|---|
+| **Dispute record shape (Q8)** | Type `Dispute` carries `client`, `candidate`, `ownerSpecialistId`, `status`, `reason`, `initiator`, `severity`, `ageHours`, `slaHours`, `isFirstForOwner?`. Candidates inline strings (NOT in team.ts). Sofia × Quill = `DSP-2026-04-12`, owned by `MANAGER_SPECIALIST_ID`. |
+| **Title convention (Q8 + Q11x)** | `disputeTitleParts(d)` returns ordered fragments. Candidate-initiated → candidate first (italicized). Client-initiated → client first (candidate italicized). Contested → client first (default). Verified: Sofia × Quill candidate-first; Lumio × Felipe client-first; Quill × Min-Jun contested client-first. |
+| **SLA bands (Q4)** | `<24h` urgent · `<48h` warn · `>=48h` neutral · escalated → neutral (status badge owns urgency). Label suffix: "to SLA" for open/progress, "to admin" for escalated. |
+| **Filter semantics (Q2)** | Single-select. Predicate `matchesFilter()` exported (shared between filter bar + list). 6 keys: `all` / `sla-risk` / `contested` / `first` / `escalation` / `mine`. |
+| **Default sort (Q3)** | `sla` ascending, severity desc tiebreak, age desc tiebreak. |
+| **Row expansion (Q1)** | Inline expand, single-accordion. Filter change resets expansion. |
+| **Mateo's row (Q5 + Q6)** | DSP-2026-04-12 quick-actions: "Open dispute →" (modal 14) + "View as Specialist" → real Link to `/specialist/team/spec-mateo-vargas?tab=performance` (Performance tab houses dispute stats; no standalone Disputes tab in Step 5). |
+| **MANAGER_SPECIALIST_ID const (Q10)** | Exported from `team.ts`. Single source-of-truth. |
+| **Patterns section retained** | 30-day historicals in separate file. NOT derived from open disputes. Mateo at 3 disputes historical (Q9). |
+| **Active-items leftover** | Step 4 column 1 links (View team / Open team directory →) were still disabled because `Column` lacked href support. Step 7 fixes both columns. |
+
+### Un-disable pass — all `landsInStep: 7` sites resolved
+
+| Site | Before | After |
+|---|---|---|
+| Sidebar "Team Disputes" item | disabled span | active Link |
+| Dashboard urgent card 2 primary "Open team disputes" | modal trigger | `<Link>` to route |
+| Dashboard urgent card 2 ghost "Filter by SLA" | modal trigger | `<Link>` to route with `?filter=sla-risk` |
+| Snapshot card 3 (Open disputes) | disabled wrapper | real `<Link>` |
+| Active-items col 2 header "View all" | disabled span | `<Link>` |
+| Active-items col 2 footer "Open team disputes →" | disabled span | `<Link>` |
+| **Bonus** Active-items col 1 header "View team" | disabled (leftover Step 4) | `<Link>` to `/specialist/team` |
+| **Bonus** Active-items col 1 footer "Open team directory →" | disabled (leftover Step 4) | `<Link>` to `/specialist/team` |
+
+### Known friction (Step 7)
+
+- **Per-dispute detail page deferred.** "Open dispute →" triggers placeholder modal. Future step.
+- **Patterns section NOT computed from canonical 12 disputes** — 30-day historicals in separate file. Future: replace with derived rollups when historical records exist.
+- **Sort by Specialist sorts by id slug**, not display name. Adequate for Step 7.
+- **Empty state hard to reach** — every filter currently matches ≥1 row. State exists for safety + future filter composition.
+
+### Step 7 verification (a-w + x — all green)
+
+| | | |
+|---|---|---|
+| (a)-(b) | Route renders for Managers; redirects on role/mode fail | ✓ |
+| (c) | Status overview: 12 / 3 / 5 / 1 from canonical data | ✓ |
+| (d)-(g) | 12 rows render; chip filter works; sort dropdown works; single-accordion expand works | ✓ |
+| (h) | `?filter=sla-risk` deep-link pre-activates filter | ✓ |
+| (i) | Mateo's DSP-2026-04-12 row: "Open dispute →" + "View as Specialist" only (no Intervene / Message / Coach) | ✓ |
+| (j) | Empty state + reset button | ✓ |
+| (k)-(m) | Patterns section 3 cards correct; Mateo 3 disputes; Priya 70h urgent | ✓ |
+| (n)-(s) | All 6 un-disable sites + 2 bonus active-items links → real Links; "Disputes need oversight" still renders 4 rows via canonical refactor | ✓ |
+| (t) | typecheck + lint + build clean. **179 routes** (178 + 1 new) | ✓ |
+| (u) | `useSessionRole()` flip → redirects | ✓ |
+| (v) | `grep -rn "TODO(step-7)" src/` returns 0 | ✓ |
+| (w) | `grep -rn "landsInStep: 7" src/` returns 0 | ✓ |
+| (x) | Title convention spot-check (3 disputes) all correct | ✓ |
+
+### Architectural primitives introduced
+
+- **`MANAGER_SPECIALIST_ID` const** in team.ts — single source-of-truth for "is this Mateo?" checks. Future steps reference this rather than inline strings.
+- **`DisputeId` template-literal type** `DSP-${string}` — compile-time hint without locking date format.
+- **Canonical dispute domain pattern** — `getDispute` + `getDisputeStrict` lookups. Other steps reference `DSP-*` IDs without redefining records.
+- **`ColumnLinkSpec` discriminated union** — `{ href } | { landsInStep }`. Same fork pattern as `ManagerActionCTA` + `QuickActionButton`.
+
+### Up next
+
+- **Step 8 — Pool Coordination.** `/specialist/pool-coordination` Manager-only route. 10 role-category cards (depleted / steady / strong / overflowing) + 3 coordination opportunity cards + cross-category overview grid. Un-disables: sidebar "Pool Coordination" item + any pool-related dashboard CTAs. New canonical data domain `manager-pool-coordination-data.ts` for role categories.
 
 ---

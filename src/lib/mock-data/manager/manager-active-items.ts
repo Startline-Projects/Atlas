@@ -23,13 +23,15 @@
  * active-items avatar is `cl-2`. We preserve the prototype's
  * visual rhythm.)
  *
- * TODO(step-7): refactor dispute owner attribution (the "Owner:
- * Lucas Andersen" lines) to reference dispute records once Step 7
- * lands `manager-team-disputes-data.ts`. The "Owner: you" phrasing
- * means owned by the current Manager.
+ * ## Step 7 refactor — Dispute rows source from canonical domain
  *
- * Sofia Reyes × Quill & Co dispute is `DSP-2026-04-12` — the
- * canonical dispute locked at the start of the initiative.
+ * `activeDisputesNeedingOversight` no longer carries inline title /
+ * SLA tag / owner strings. Each row references a canonical
+ * `DisputeId` from `manager-team-disputes-data.ts` and the
+ * `buildDisputeRow()` helper resolves the display fields. The
+ * "Owner: you" treatment now derives from `isOwnedByManager()`
+ * (which compares against the `MANAGER_SPECIALIST_ID` constant
+ * from team.ts) — no more magic strings.
  *
  * Aaliyah Kone in the activity feed is a candidate (NOT a
  * specialist), so the name stays inline.
@@ -40,6 +42,12 @@ import {
   getSpecialist,
   type SpecialistId,
 } from "./team";
+import {
+  getDisputeStrict,
+  isOwnedByManager,
+  slaBand,
+  type DisputeId,
+} from "./manager-team-disputes-data";
 
 export type ActiveNeedTone = "urgent" | "attn" | "neutral";
 
@@ -63,18 +71,22 @@ export type ActiveSpecialistRow = {
   detail: string;
 };
 
-/** A row in the "Disputes need oversight" column. */
+/** A row in the "Disputes need oversight" column. Post-Step-7:
+ *  `disputeId` is the canonical reference; other fields are derived
+ *  by `buildDisputeRow()` from the dispute record. */
 export type ActiveDisputeRow = {
   id: string;
+  /** Canonical dispute id — Step 7 refactor. */
+  disputeId: DisputeId;
   initials: string;
   colorSlot: 1 | 2 | 3 | 4 | 5;
-  /** "Client × Candidate" or similar — rendered as the row title. */
+  /** "Client × Candidate" — rendered as the row title. Derived from
+   *  the dispute record. */
   title: string;
-  /** SLA tag. */
+  /** SLA tag derived from `slaHours` via `slaBand()`. */
   slaTag: { label: string; tone: ActiveNeedTone };
-  /** Owner attribution. `youOwn: true` renders the prototype's
-   *  "Owner: <em>you</em>" treatment. Otherwise renders the
-   *  attributed Specialist's name. */
+  /** Owner attribution. `youOwn: true` for Mateo-owned disputes
+   *  (renders the prototype's "Owner: <em>you</em>" treatment). */
   owner: { youOwn: true } | { youOwn: false; specialistName: string };
 };
 
@@ -118,12 +130,54 @@ function buildSpecialistRow(opts: {
   };
 }
 
-/* Resolve disputed-Specialist names from team.ts. */
+/* Resolve Specialist names referenced in the activity feed (Column
+   3). Dispute rows used to need these too; post-Step-7 refactor,
+   dispute owner names are derived inside `buildDisputeRow()`. */
 const lucasName = getSpecialist("spec-lucas-andersen")?.fullName ?? "Lucas Andersen";
 const diegoName = getSpecialist("spec-diego-cabrera")?.fullName ?? "Diego Cabrera";
 const yaraName = getSpecialist("spec-yara-khalil")?.fullName ?? "Yara Khalil";
 const felipeName = getSpecialist("spec-felipe-santos")?.fullName ?? "Felipe Santos";
 const minJunName = getSpecialist("spec-min-jun-park")?.fullName ?? "Min-Jun Park";
+
+/* ============================================================
+   Dispute row builder — derives display fields from canonical
+   dispute domain (manager-team-disputes-data.ts)
+   ============================================================ */
+
+/** SLA tone bucket → display tone for the row. */
+function slaToneForDispute(disputeId: DisputeId): ActiveNeedTone {
+  const d = getDisputeStrict(disputeId);
+  const band = slaBand(d);
+  if (band === "urgent") return "urgent";
+  if (band === "warn") return "attn";
+  return "neutral";
+}
+
+function buildDisputeRow(opts: {
+  disputeId: DisputeId;
+  colorSlot: 1 | 2 | 3 | 4 | 5;
+  /** Override the initials shown on the row's left avatar (the
+   *  active-items column uses the CLIENT's initials, not the
+   *  owner Specialist's — preserved from prototype). */
+  initials: string;
+}): ActiveDisputeRow {
+  const d = getDisputeStrict(opts.disputeId);
+  const owner = getSpecialist(d.ownerSpecialistId);
+  return {
+    id: `adn-${d.id.toLowerCase()}`,
+    disputeId: d.id,
+    initials: opts.initials,
+    colorSlot: opts.colorSlot,
+    title: `${d.client.name} × ${d.candidate.name}`,
+    slaTag: {
+      label: `${d.slaHours}h SLA`,
+      tone: slaToneForDispute(d.id),
+    },
+    owner: isOwnedByManager(d)
+      ? { youOwn: true }
+      : { youOwn: false, specialistName: owner?.fullName ?? "Unknown" },
+  };
+}
 
 /* ============================================================
    Column 1 — Specialists need attention
@@ -162,40 +216,17 @@ export const activeSpecialistsNeedingAttention: ReadonlyArray<ActiveSpecialistRo
    ============================================================ */
 
 export const activeDisputesNeedingOversight: ReadonlyArray<ActiveDisputeRow> = [
-  /* TODO(step-7): refactor to reference manager-team-disputes-data
-     records once Step 7 lands. Sofia × Quill is DSP-2026-04-12. */
-  {
-    id: "adn-quill-minjun",
-    initials: "QC",
-    colorSlot: 4,
-    title: "Quill & Co × Min-Jun Park",
-    slaTag: { label: "9h SLA", tone: "urgent" },
-    owner: { youOwn: false, specialistName: lucasName },
-  },
-  {
-    id: "adn-sofia-quill",
-    initials: "QC",
-    colorSlot: 1,
-    title: "Sofia Reyes × Quill & Co",
-    slaTag: { label: "14h SLA", tone: "urgent" },
-    owner: { youOwn: true },
-  },
-  {
-    id: "adn-mercer-hana",
-    initials: "M",
-    colorSlot: 1,
-    title: "Mercer Capital × Hana Tanaka",
-    slaTag: { label: "36h SLA", tone: "attn" },
-    owner: { youOwn: false, specialistName: diegoName },
-  },
-  {
-    id: "adn-lumio-felipe",
-    initials: "LH",
-    colorSlot: 3,
-    title: "Lumio Health × Felipe Santos",
-    slaTag: { label: "56h SLA", tone: "neutral" },
-    owner: { youOwn: false, specialistName: yaraName },
-  },
+  /* Step 7 refactor — rows reference canonical dispute records.
+     Each row's title / SLA tag / owner attribution is derived
+     from the dispute record by `buildDisputeRow()`. The `initials`
+     and `colorSlot` stay inline — they're context-specific render
+     hints (the active-items column uses CLIENT initials, not
+     owner Specialist initials; the colorSlot is the section's
+     own color cycle). */
+  buildDisputeRow({ disputeId: "DSP-2026-04-29", colorSlot: 4, initials: "QC" }),
+  buildDisputeRow({ disputeId: "DSP-2026-04-12", colorSlot: 1, initials: "QC" }),
+  buildDisputeRow({ disputeId: "DSP-2026-04-15", colorSlot: 1, initials: "M" }),
+  buildDisputeRow({ disputeId: "DSP-2026-04-17", colorSlot: 3, initials: "LH" }),
 ];
 
 /* ============================================================

@@ -89,7 +89,10 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
     ],
   },
 
-  /* 3. Open disputes */
+  /* 3. Open disputes.
+        Step 7: /specialist/team-disputes is now live —
+        disabledRoute removed; snapshot card auto-upgrades to
+        a real Link. */
   {
     id: "snap-open-disputes",
     label: "Open disputes",
@@ -98,7 +101,6 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
       { kind: "strong", value: "3 SLA at risk" },
       { kind: "text", value: " · across team" },
     ],
-    disabledRoute: { href: "/specialist/team-disputes", landsInStep: 7 },
   },
 
   /* 4. Reviews · today (non-clickable in prototype) */

@@ -114,11 +114,11 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
   },
   {
     key: "team-disputes",
+    /* Step 7: enabled — /specialist/team-disputes now exists. */
     label: "Team Disputes",
     href: "/specialist/team-disputes",
     iconKey: "team-disputes",
-    badge: { value: 3, tone: "urgent" }, // Step 7: replace with derived count
-    disabled: true, // Step 7: flip to false
+    badge: { value: 3, tone: "urgent" }, // TODO: replace with derived count from teamDisputes (SLA at risk count)
   },
   {
     key: "pool-coordination",
