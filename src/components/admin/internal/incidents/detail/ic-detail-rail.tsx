@@ -1,7 +1,6 @@
 /* admin.html lines 65417-65487: fr-rail sticky aside with 4 cards
-   Incident commander + Responders + Related links + SLO snapshot
-   Sticky pattern: top-22 self-start gap-14 NO max-h NO overflow (lesson from Step 32/33)
-   Mobile: static + order-[-1] above main column at max-[1080px] */
+   Aside sticks below topbar; commander stays pinned at top of rail; lower cards scroll
+   inside the rail (no overlap). Mobile: static stack, no inner scroll at max-[1080px]. */
 
 import { IcCommanderCard } from './ic-commander-card';
 import { IcRespondersCard } from './ic-responders-card';
@@ -26,11 +25,13 @@ export function IcDetailRail({
   sloSnapshot,
 }: IcDetailRailProps) {
   return (
-    <aside className="sticky top-[22px] self-start max-h-[calc(100vh-44px)] overflow-y-auto flex flex-col gap-[14px] max-[1080px]:static max-[1080px]:max-h-none max-[1080px]:overflow-visible max-[1080px]:order-[-1]">
+    <aside className="sticky top-[88px] self-start flex flex-col gap-[14px] max-h-[calc(100vh-88px)] max-[1080px]:static max-[1080px]:max-h-none max-[1080px]:order-[-1]">
       <IcCommanderCard data={commander} />
-      <IcRespondersCard data={responders} />
-      <IcQuickstatsCard data={relatedLinks} />
-      <IcQuickstatsCard data={sloSnapshot} />
+      <div className="flex min-h-0 flex-col gap-[14px] overflow-y-auto max-[1080px]:overflow-visible">
+        <IcRespondersCard data={responders} />
+        <IcQuickstatsCard data={relatedLinks} />
+        <IcQuickstatsCard data={sloSnapshot} />
+      </div>
     </aside>
   );
 }
