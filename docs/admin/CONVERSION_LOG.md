@@ -441,6 +441,70 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **dangerouslySetInnerHTML:** used for `aliasesHtml`, `metaHtml`, and `categoryMetaHtml` to preserve inline `<strong>` tags from reference HTML
   - **Responsive tool grid:** combined grid-cols-N + nth-child border-r modifiers handle border-r toggling across 4 breakpoints purely in Tailwind
 
+### Step 32 — Email & SMS Templates
+
+- **Status:** ✅ Done
+- **Session:** 3
+- **Routes:** `/admin/platform/templates` (LIST) + `/admin/platform/templates/[id]` (DETAIL, 14 static params)
+- **HTML lines:** 62388–63117 (LIST 62388-62722, DETAIL 62727-63117)
+- **Files added:**
+  - Mock data: `src/lib/mock-data/admin/templates-data.ts` (LIST types + 14 verbatim email templates + 3-tab channel + 5 filter chips + SMS/WhatsApp stub fixtures; DETAIL types + Vetting-invite canonical: breadcrumb / hero with 6 locale flag tabs / 4 detail stats / approval workflow / 4 editor fields / 12 variables / email preview mock / test-send / linked context)
+  - LIST components: `src/components/admin/platform/templates/tm-*.tsx`
+    - `tm-page-header.tsx` — fr-page-head with meta-pulse banner inline in meta line
+    - `tm-meta-pulse.tsx` — danger-tinted inline pulse alert with `pulse-fr` animated dot
+    - `tm-channel-tabs.tsx` — `'use client'` 3-tab pill bar (Email/SMS/WhatsApp) with inline icons + count badges
+    - `tm-status-filter.tsx` — `'use client'` 5-chip status filter (All/Active/Draft/In approval/Archived)
+    - `tm-status-pill.tsx` — 4 status variants; in-approval dot animates `pulse-fr`
+    - `tm-table-row.tsx` — `'use client'` with `useRouter()` for whole-row navigation; 7-column layout (name+key / flow / locales / modified / sends / status / chevron)
+    - `tm-table.tsx` — outer wrap + thead (7 cols) + tbody
+    - `tm-email-pane.tsx` — table + load-more footer
+    - `tm-stub-pane.tsx` — centered card for SMS/WhatsApp prose stubs
+    - `tm-shell.tsx` — `'use client'` orchestrator with `useState` for active channel + status filter, `useMemo` filtering
+  - DETAIL components: `src/components/admin/platform/templates/detail/tm-*.tsx`
+    - `tm-breadcrumb.tsx`, `tm-locale-tabs.tsx` (`'use client'` 6 flag-gradient tabs), `tm-detail-hero.tsx`
+    - `tm-detail-stats.tsx` (4-col grid hand-translated from Step 31 in-detail-stats per forbidden-prefix rule)
+    - `tm-approval-card.tsx` — amber-gradient outer + check icon + 3-step flow (complete/active/pending variants) + actions
+    - `tm-section-head.tsx` — sh-num cream-deep badge + h2 + sh-meta with dashed bottom separator
+    - `tm-editor-card.tsx` — head + 4 fields (real `<input>` for subject/preheader/from + `<div>` body-display with Liquid syntax highlighting via `data-tm-liquid` + `data-tm-tag` attribute selectors)
+    - `tm-variables-panel.tsx` — 12 variable rows with super-tinted mono name + description + type badge (Required → danger-bg, else cream-deep)
+    - `tm-preview-card.tsx` — centered 600px email mock with gradient header / 21px display subject / 14.5px body with strong + indented list + GDPR italic + dark CTA + paper-deep mono footer
+    - `tm-test-send-card.tsx` — paper-plane icon + email input + Send button + history footer
+    - `tm-linked-context.tsx` — fr-quickstats pattern hand-translated, 5 rows with super-tinted Step cross-links
+    - `tm-detail-rail.tsx` — sticky `top-22 self-start gap-14` aside (NO max-h, NO overflow-y-auto per admin.html .fr-rail framework rule); at `max-[1080px]` unstacks via `static` + `order-[-1]` above main column
+    - `tm-detail-shell.tsx` — orchestrator: breadcrumb + hero + stats + approval + fr-body 2-col (main = 2 fr-section cards stacked, rail = TmDetailRail)
+  - Routes: `src/app/(admin)/admin/platform/templates/page.tsx` (LIST) + `src/app/(admin)/admin/platform/templates/[id]/page.tsx` (DETAIL with `generateStaticParams` for 14 ids; only `tm-vetting-invite` renders canonical, others render minimal placeholder)
+  - Sidebar integration: `sidebar-nav-data.ts` Email & SMS pathname `#email-sms` → `/admin/platform/templates`; `admin-sidebar.tsx` active-state matcher handles list + descendant routes
+- **Passes:**
+  - Pass A: LIST view (page header with meta-pulse + 5-stat strip + 3 channel tabs + 5 filter chips + 14-row email table + SMS/WhatsApp stubs + footer + sidebar wiring + row-click navigation)
+  - Pass B: DETAIL route + breadcrumb + hero with 6 locale flag tabs + 4-stat strip + amber approval workflow card
+  - Pass C: fr-main 2 fr-section cards with sh-num heads, editor card with Liquid syntax + variables panel (12 vars)
+  - Pass D: fr-rail with email preview mock + test-send card + linked context, sticky positioning matching admin.html .fr-rail framework rule
+- **Data model:**
+  - `TmTemplate`: id + name + key + flowParts[] + locales (count + list) + modified (date + author) + sends (value + meta) + status (active/draft/in-approval/archived) + isInApproval/isArchived row tints
+  - `TmDetailData`: breadcrumb + hero (key + status + envMeta + title + subtitleHtml + 6 localeTabs + 2 actions) + 4 detailStats + approval (3 steps + actions) + editor (4 fields) + variables (12 vars) + preview (rendered email mock) + testSend + linked (5 cross-links)
+  - All fixture content extracted **verbatim** from admin.html lines 62388-63117 (14 templates from 62496-62691, Vetting-invite canonical from 62727-63117)
+- **CSS/Design tokens:**
+  - 21 tokens (all existing in globals.css)
+  - **ONE globals.css addition** this step: `@keyframes pulse-fr { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }` (user-approved, verbatim from admin.html line 15458) — used by meta-pulse banner + in-approval status pill dot
+  - Status pill variants: active = success-bg/success, draft = cream-deep/ink-soft, in-approval = amber-bg/amber + pulse-fr dot, archived = paper-deep/ink-mute
+  - Approval step variants: complete = success-bg + success num badge, active = amber-bg + amber num, pending = paper-deep + opacity-60 + line-tinted num
+  - Variable type badges: Required = danger-bg/danger; Array/Number/String/Logic = cream-deep/ink-soft
+  - 6 verbatim locale flag gradients (EN/ES/PT/FR/DE/ID country colors)
+  - Liquid syntax highlighter: `data-tm-liquid` spans → super-tinted variable chips, `data-tm-tag` spans → danger-tinted Liquid tags
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ 233 routes (1 LIST + 14 DETAIL static)
+- **Tailwind-only:** ✅ Inline styles limited to 7 table column widths + 1 locale-flag-gradient (used 6× via map) = 8 source occurrences; no other inline styles
+- **Forbidden classNames:** ✅ Zero matches (no tm-, tcn-, tcf-, tcl-, tcm-, tcs-, tah-, taa-, tas-, teh-, tvh-, tph-, tts-, col-tm-, meta-pulse, fr-, cd-, head-, in-, ids-, dsr-, etc.)
+- **Notes:**
+  - **`<input>` for editor fields** matches admin.html line 62886 verbatim (real text input with `defaultValue`, not a styled `<div>`)
+  - **fr-section wrappers** for each main-column card with `sh-num` 01/02 section heads (matches admin.html lines 62867/62926 nested-card pattern from Step 31)
+  - **Liquid syntax highlighting** via `data-tm-liquid` + `data-tm-tag` attribute selectors instead of `class="tm-liquid"` (tm- classes are forbidden prefix); arbitrary-attribute Tailwind selectors `[&_[data-tm-liquid]]:...` apply super-tinted chips + `[&_[data-tm-tag]]:...` apply danger-tinted tags
+  - **fr-rail sticky** uses `top-[22px] self-start gap-[14px]` with **NO max-h and NO overflow-y-auto** per admin.html .fr-rail framework rule (line 15970-15979). Previous max-h-[calc(100vh-44px)] + overflow-y-auto was clipping the email mock; corrected to flow naturally.
+  - **No PsRestrictionBanner** in page header (admin.html doesn't have one for templates — uses meta-pulse amber alert inline in meta line instead)
+  - **Reuses `PrStatStrip` + `PrStatCell` + `PrStat` type** (Privacy Reports / Step 27) for the 5-card top stats strip
+  - **Row navigation:** entire `<tr>` is clickable via `useRouter().push()` + keyboard-accessible (`tabIndex={0}`, `role="link"`, Enter/Space `onKeyDown`); chevron is a plain `<span>` SVG affordance with no Link wrapper
+  - **Sample-data preview** renders variables resolved to concrete values (e.g. "Hi Adesuwa", "Software Engineering", 24 hours) rather than `{{var}}` template syntax — this is the rendered mock, distinct from the editor source
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -512,8 +576,8 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 |---|---|---|
 | 29 | Settings Configuration | ✅ Done |
 | 30 | Categories & Skills | ✅ Done |
-| 31 | Integrations | ⏸ pending HTML |
-| 32 | Email & SMS Templates | ⏸ pending HTML |
+| 31 | Integrations | ✅ Done |
+| 32 | Email & SMS Templates | ✅ Done |
 | 33 | Help Center Content | ⏸ pending HTML |
 
 ### Internal group (4 entities, all deferred)

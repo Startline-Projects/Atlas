@@ -269,7 +269,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'email-sms',
           label: 'Email & SMS',
-          pathname: '#email-sms',
+          pathname: '/admin/platform/templates',
           icon: EmailSmsNavIcon,
         },
         {

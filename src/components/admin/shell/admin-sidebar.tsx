@@ -189,6 +189,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/platform/integrations' || pathname.startsWith('/admin/platform/integrations/');
     }
 
+    // Templates (Email & SMS): list + detail descendant routes
+    if (itemPathname === '/admin/platform/templates') {
+      return pathname === '/admin/platform/templates' || pathname.startsWith('/admin/platform/templates/');
+    }
+
     return pathname === itemPathname;
   };
 

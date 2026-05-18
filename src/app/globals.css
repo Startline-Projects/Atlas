@@ -554,3 +554,13 @@
     opacity: 0;
   }
 }
+/* Step 32 Templates meta-pulse + in-approval status pill — opacity fade (verbatim from admin.html line 15458) */
+@keyframes pulse-fr {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
