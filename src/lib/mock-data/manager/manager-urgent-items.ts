@@ -95,12 +95,12 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "em", value: "Quill & Co × Min-Jun Park" },
       { kind: "text", value: ` at 9h (${lucasFirstName}).` },
     ],
-    primary: { label: "Open team disputes", landsInStep: 7 },
+    /* Step 7 un-disable: route exists. Primary jumps to default
+       view; ghost jumps with `?filter=sla-risk` deep-link. */
+    primary: { label: "Open team disputes", href: "/specialist/team-disputes" },
     ghost: {
       label: "Filter by SLA",
-      landsInStep: 7,
-      description:
-        "Filter-by-SLA jumps into Team Disputes filtered to SLA-at-risk only. Lands in Step 7.",
+      href: "/specialist/team-disputes?filter=sla-risk",
     },
   },
 
@@ -118,7 +118,9 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "text", value: `${aishaName}.` },
     ],
     primary: { label: "Run sprint", landsInStep: 9 },
-    ghost: { label: "Pool coordination", landsInStep: 8 },
+    /* Step 8 un-disable: route exists. Deep-link via `?focus=` to
+       scroll-and-ring the Customer Support card on entry. */
+    ghost: { label: "Pool coordination", href: "/specialist/pool-coordination?focus=customer-support" },
   },
 
   /* Card 4 — ORANGE — Review SLA drop */
@@ -172,7 +174,9 @@ export const managerUrgentItems: ReadonlyArray<ManagerUrgentItem> = [
       { kind: "text", value: " at current burn rate. Sprint recommended." },
     ],
     primary: { label: "Start sprint", landsInStep: 9 },
-    ghost: { label: "View forecast", landsInStep: 8 },
+    /* Step 8 un-disable: route exists. Deep-link to Bookkeeping
+       card (the overflowing category triggering the forecast). */
+    ghost: { label: "View forecast", href: "/specialist/pool-coordination?focus=bookkeeping" },
   },
 ];
 

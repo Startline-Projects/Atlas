@@ -80,6 +80,13 @@ import { currentManager } from "./manager-identity";
    Types
    ============================================================ */
 
+/** **Canonical** id for the current Manager (Mateo Vargas). Use this
+ *  constant for every "is this the Manager?" check across the
+ *  codebase. Never hard-code the string literal in consumers.
+ *  Step 7 introduced this — prior step un-disable passes used
+ *  inline strings, now centralized. */
+export const MANAGER_SPECIALIST_ID = "spec-mateo-vargas" as const;
+
 /** Canonical Specialist IDs. Strict union — getSpecialist() takes
  *  only these. Adds compile-time safety against typos. */
 export type SpecialistId =
