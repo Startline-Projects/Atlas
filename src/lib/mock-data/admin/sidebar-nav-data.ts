@@ -257,7 +257,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'categories',
           label: 'Categories & Skills',
-          pathname: '#categories',
+          pathname: '/admin/platform/categories-skills',
           icon: CategoriesNavIcon,
         },
         {

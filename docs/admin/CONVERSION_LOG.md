@@ -388,6 +388,59 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - All settings rows interactive (Modify/Upload buttons) — click handlers deferred to runtime integration
   - Pattern reusable: every "Modify" button will open real modal with same structure
 
+### Step 30 — Categories & Skills
+
+- **Status:** ✅ Done
+- **Session:** 3
+- **Routes:** `/admin/platform/categories-skills`
+- **HTML lines:** 60506–61468
+- **Files added:**
+  - Mock data: `src/lib/mock-data/admin/categories-skills-data.ts` (type defs + Pass A/B/C fixtures: 10 role families, 15 skill rows, 3 tool sections × 7 tools)
+  - Components: `src/components/admin/platform/categories-skills/cs-*.tsx`
+    - `cs-page-header.tsx` — title + meta + restriction banner + search + 2 action buttons (reuses `PsRestrictionBanner` from Step 29)
+    - `cs-tab-nav.tsx` — `'use client'` 3-tab pill nav (Categories 10 / Skills 847 / Tools 156) with SVG icons + count badges
+    - `cs-cat-card.tsx` — role family card with gradient icon + stats grid + sub chips + audit footer
+    - `cs-cat-add-card.tsx` — dashed "Add role category" card
+    - `cs-consolidation-alert.tsx` — amber gradient banner with "View all" + "Run consolidation" actions
+    - `cs-skill-toolbar.tsx` — `'use client'` search + 5 filter chips with `activeFilter` state
+    - `cs-skill-filter-chip.tsx` — single filter chip with active/inactive variants + count badge
+    - `cs-skill-row.tsx` — 6-column skill table row (name+aliases / categories / count+meta / trend / flag / action)
+    - `cs-skill-flag.tsx` — merge (amber) / archive (cream) status badge with dot indicator
+    - `cs-tool-card.tsx` — 32px gradient logo + name + meta, responsive `nth-child` border-r toggling (4n→3n→2n→1n)
+    - `cs-tool-add-card.tsx` — dashed "Add tool" cell with plus SVG
+    - `cs-tools-section.tsx` — section card with gradient head (title + meta + "View all N") + 4-col responsive grid
+    - `cs-shell.tsx` — `'use client'` orchestrator: header → tab nav → conditional pane (categories / skills / tools)
+  - Section panes: `sections/cs-categories-pane.tsx`, `sections/cs-skills-pane.tsx`, `sections/cs-tools-pane.tsx`, `sections/cs-pane-stub.tsx`
+  - Route: `src/app/(admin)/admin/platform/categories-skills/page.tsx`
+  - Sidebar integration: `sidebar-nav-data.ts` pathname updated + `admin-sidebar.tsx` active-state matcher added
+- **Passes:**
+  - Pass A: Page header + 3-tab nav + Categories pane (10 role family cards + add card)
+  - Pass B: Skills pane (consolidation alert + filter toolbar + 6-column table with 15 sample rows + footer "Load more skills →")
+  - Pass C: Tools pane (3 sections × 7 tool cards each + "Add tool" cell + footer "View remaining 7 categories →")
+- **Data model:**
+  - `CsCategoryCard`: icon gradient + name/owner/stats(3) + sub-categories[] + footer audit text
+  - `CsSkillRow`: name + aliasesHtml + categoryChips[] + count + trend (up/down/flat) + optional flag (merge/archive) + optional action
+  - `CsToolSection`: title + metaHtml + viewAllLabel + tools[] (initials + logoGradient + name + metaHtml)
+  - All fixture content extracted **verbatim** from admin.html (10 categories from 60563–61000, 15 skills from 61065–61219, 21 tools from 61246–61450)
+- **CSS/Design tokens:**
+  - 10 unique category icon gradients (super / success / amber / branding / danger / ink variants)
+  - 21 unique tool logo gradients (verbatim brand colors: GitHub #2D2D2D→#000000, Figma #F24E1E→#A23314, Pandas #150458→#0A0230, etc.)
+  - Consolidation alert: `bg-gradient-to-br from-amber-bg to-paper` + amber info icon
+  - Duplicate-warn rows: `bg-[rgba(232,118,58,0.04)]` + 3px amber `border-l`
+  - Skill flag variants: merge = amber-bg/amber, archive = cream-deep/ink-mute (overridable via style prop)
+  - Tool grid responsive: 4 cols (1081+) → 3 cols (720-1080) → 2 cols (480-720) → 1 col (<480), with `nth-child` border-r toggling per breakpoint
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ 207 routes preserved
+- **Tailwind-only:** ✅ Zero new globals.css mutations; inline styles limited to icon/logo gradient backgrounds and table column widths (legitimate)
+- **Forbidden classNames:** ✅ Zero matches (no cs-, ccan-, ccs-, ccsc-, ccss-, csc-, csch-, cstl-, ctsh-, col-skill-, fr-, cd-, etc.)
+- **Notes:**
+  - **3-tab pane switching:** `'use client'` orchestrator (`cs-shell.tsx`) holds `activeTab` state with `useState<CsTab>`
+  - **Reuses `PsRestrictionBanner`** from Step 29 for restriction chip in page header
+  - **Inline styles total: 8 source occurrences** = 1 category gradient (× 10 via map) + 6 table column widths (skills th) + 1 tool gradient (× 21 via map)
+  - **Filter state:** `cs-skill-toolbar.tsx` manages `activeFilter` locally; chip click updates state and visual variant
+  - **dangerouslySetInnerHTML:** used for `aliasesHtml`, `metaHtml`, and `categoryMetaHtml` to preserve inline `<strong>` tags from reference HTML
+  - **Responsive tool grid:** combined `grid-cols-N` + `[&:nth-child(Nn)]:border-r-0` modifiers handle border-r toggling across 4 breakpoints purely in Tailwind
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -458,7 +511,7 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | Step | Title | Status |
 |---|---|---|
 | 29 | Settings Configuration | ✅ Done |
-| 30 | Categories & Skills | ⏸ pending HTML |
+| 30 | Categories & Skills | ✅ Done |
 | 31 | Integrations | ⏸ pending HTML |
 | 32 | Email & SMS Templates | ⏸ pending HTML |
 | 33 | Help Center Content | ⏸ pending HTML |

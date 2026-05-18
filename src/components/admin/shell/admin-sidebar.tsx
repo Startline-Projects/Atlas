@@ -179,6 +179,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/platform/settings';
     }
 
+    // Categories & Skills: single flat route
+    if (itemPathname === '/admin/platform/categories-skills') {
+      return pathname === '/admin/platform/categories-skills';
+    }
+
     return pathname === itemPathname;
   };
 
