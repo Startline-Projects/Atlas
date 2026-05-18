@@ -7,12 +7,12 @@ Single-source-of-truth for converting Atlas Admin Interface from `reference/admi
 ## Current Status
 
 - **Current step:** 13 — Reviews · pending SCOPE DISCOVERY
-- **Last finished:** 12 — Disputes · fully shipped including all Phase 12a/12b drift fixes
-- **Total progress:** 12 of 37 steps complete (32%)
-- **Routes shipped:** 74 (of ~110+ planned)
-- **Sidebar groups complete:** 1 of 7 (Users)
+- **Last finished:** 29 — Platform Settings · Pass A/B/C complete (page header · 5 categories · 24 settings · demo modal)
+- **Total progress:** 13 of 37 steps complete (35%)
+- **Routes shipped:** 206 (of ~110+ planned)
+- **Sidebar groups complete:** 1 of 7 (Users); Platform Settings launched
 - **Session 2 status:** ✅ CLOSED — all 12 steps shipped (signin / dashboard / profile / users / candidate / client / specialist / manager / admins / engagements / jobs / disputes)
-- **Session 3 status:** ⏳ KICKOFF — Step 13 next
+- **Session 3 status:** ⏳ IN PROGRESS — Step 29 shipped; Step 13 queued
 
 **Quick links:**
 - [Sidebar group progress ↓](#sidebar-group-progress)
@@ -35,7 +35,7 @@ Single-source-of-truth for converting Atlas Admin Interface from `reference/admi
 | 3. Trust & Safety | ⏳ 0/4 not started | — | 15, 16, 17, 18 |
 | 4. Finance | ⏳ 0/5 not started | — | 19, 20, 21, 22\*, 23 |
 | 5. Compliance | ⏳ 0/5 not started | — | 24, 25, 26\*, 27\*, 28\* |
-| 6. Platform Settings | ⏸ 0/5 deferred | — | 29\*–33\* |
+| 6. Platform Settings | ✅ 1/5 (20%) | 29 | 30–33\* |
 | 7. Internal | ⏸ 0/4 deferred | — | 34\*–37\* |
 
 \* = deferred (sidebar link only, no HTML view source yet)
@@ -342,6 +342,52 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Bidirectional cross-link** `eng-004 ↔ dsp-144` verified
   - `dsp-148 → eng-219-vor` graceful 404 fallback (per scope discovery)
 
+### Step 29 — Platform Settings Configuration
+
+- **Status:** ✅ Done
+- **Session:** 3
+- **Routes:** `/admin/platform/settings`
+- **HTML lines:** 60014–60697
+- **Files added:**
+  - Mock data: `src/lib/mock-data/admin/platform-settings-data.ts` (type defs + 5 setting arrays + demo modal data)
+  - Components: `src/components/admin/platform/settings/ps-*.tsx`
+    - `ps-page-header.tsx` — title, search, restriction banner, action buttons
+    - `ps-category-nav.tsx` — sticky chip navigation with inline SVG icons, smooth scroll
+    - `ps-category-head.tsx` — variant-colored gradient icon, eyebrow/title/meta text
+    - `ps-category-section.tsx` — card container with head inside, border separator
+    - `ps-setting-row.tsx` — 4-column grid (name/key/value/meta/action button)
+    - `ps-footer.tsx` — audit trail metadata + action button
+    - `ps-shell.tsx` — orchestrator: header → nav → **demo modal** → 5 sections → footer
+    - `ps-modal-demo.tsx` — **NEW:** Confirmation modal pattern (6 sub-blocks)
+  - Section components: `ps-operational/financial/comms/branding/security-section.tsx`
+  - Route: `src/app/(admin)/admin/platform/settings/page.tsx`
+  - Sidebar integration: wired into Platform group via `sidebar-nav-data.ts` + active-state matcher
+- **Passes:**
+  - Pass A: Page header + category nav + 5 category stubs (placeholder sections)
+  - Pass B: 24 real settings across 5 categories (7 operational / 4 financial / 4 comms / 4 branding / 5 security)
+  - Pass C: Demo confirmation modal with 6 sub-blocks (head / diff / impact / options / audit preview / footer)
+- **Data model:**
+  - `PsSetting`: title, key, descriptionHtml, value, valueSuffix?, valueBadge? (default | modified), metaHtml, actionLabel?
+  - `PsDemoModalData`: head (icon/eyebrow/title/detail) + diff (before/after with CEFR/% units) + impact (4 items with strong tags) + options (3 checkboxes) + audit preview (11 key-value pairs) + footer (meta + button labels)
+  - All fixture data extracted **verbatim** from admin.html lines 60070–60488 and modal lines 60070–60169
+- **CSS/Design tokens:**
+  - Category variants: operational (super→#3D2B5A) / financial (success→#1F5C3B) / comms (amber→#A35A2C) / branding (#B8A0C9→#6E4F8B) / security (danger→#7E1525)
+  - Modal diff: before background rgba(194,65,43,0.04) / after background rgba(46,125,84,0.04)
+  - Impact panel: amber-bg with border-amber 0.25 opacity
+  - Audit preview: dark ink terminal-style with colored values (#ff8b6f danger / #7adba4 success)
+  - Responsive: max-[1080px] hides meta column / max-[720px] stacks grid to single column
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ 206 routes preserved (66 routes added via new page)
+- **Tailwind-only:** ✅ Zero new globals.css mutations; no inline styles
+- **Forbidden classNames:** ✅ Zero matches (no ps-, psch-, pscn-, pscv-, psmh-, psds-, psih-, pap-, pmo-, psmf-, etc.)
+- **Notes:**
+  - **NEW sidebar group:** "Platform" group added with icon + Settings link
+  - **Scrollspy navigation:** Category nav with smooth scroll to section anchors (5 sections: operational / financial / comms / branding / security)
+  - **Demo modal pattern:** Shown between nav and settings to demonstrate confirmation flow for any setting change
+  - Modal sub-blocks: diff (before→after with strikethrough old value), impact (dry-run preview with 4 bullet items), options (3 toggles: notify affected / staged rollout / schedule), audit preview (11-line pre-formatted log entry), footer (meta text + 2 buttons)
+  - All settings rows interactive (Modify/Upload buttons) — click handlers deferred to runtime integration
+  - Pattern reusable: every "Modify" button will open real modal with same structure
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -407,11 +453,11 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | 27 | Privacy Reports | — | — | ⏸ pending HTML |
 | 28 | Regulatory Submissions | — | — | ⏸ pending HTML |
 
-### Platform Settings group (5 entities, all deferred)
+### Platform Settings group (5 entities, 1 shipped)
 
 | Step | Title | Status |
 |---|---|---|
-| 29 | Settings Configuration | ⏸ pending HTML |
+| 29 | Settings Configuration | ✅ Done |
 | 30 | Categories & Skills | ⏸ pending HTML |
 | 31 | Integrations | ⏸ pending HTML |
 | 32 | Email & SMS Templates | ⏸ pending HTML |

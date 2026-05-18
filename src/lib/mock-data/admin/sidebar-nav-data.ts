@@ -251,7 +251,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'settings',
           label: 'Settings',
-          pathname: '#settings',
+          pathname: '/admin/platform/settings',
           icon: SettingsIcon,
         },
         {

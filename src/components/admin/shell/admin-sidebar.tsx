@@ -174,6 +174,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/compliance/privacy-reports';
     }
 
+    // Platform Settings: single flat route
+    if (itemPathname === '/admin/platform/settings') {
+      return pathname === '/admin/platform/settings';
+    }
+
     return pathname === itemPathname;
   };
 
