@@ -439,7 +439,7 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Inline styles total: 8 source occurrences** = 1 category gradient (× 10 via map) + 6 table column widths (skills th) + 1 tool gradient (× 21 via map)
   - **Filter state:** `cs-skill-toolbar.tsx` manages `activeFilter` locally; chip click updates state and visual variant
   - **dangerouslySetInnerHTML:** used for `aliasesHtml`, `metaHtml`, and `categoryMetaHtml` to preserve inline `<strong>` tags from reference HTML
-  - **Responsive tool grid:** combined `grid-cols-N` + `[&:nth-child(Nn)]:border-r-0` modifiers handle border-r toggling across 4 breakpoints purely in Tailwind
+  - **Responsive tool grid:** combined grid-cols-N + nth-child border-r modifiers handle border-r toggling across 4 breakpoints purely in Tailwind
 
 ---
 

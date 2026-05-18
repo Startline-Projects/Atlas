@@ -263,7 +263,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'integrations',
           label: 'Integrations',
-          pathname: '#integrations',
+          pathname: '/admin/platform/integrations',
           icon: IntegrationsNavIcon,
         },
         {

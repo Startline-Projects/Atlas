@@ -184,6 +184,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/platform/categories-skills';
     }
 
+    // Integrations: list + detail descendant routes
+    if (itemPathname === '/admin/platform/integrations') {
+      return pathname === '/admin/platform/integrations' || pathname.startsWith('/admin/platform/integrations/');
+    }
+
     return pathname === itemPathname;
   };
 

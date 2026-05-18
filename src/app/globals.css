@@ -542,3 +542,15 @@
 .animate-pulse-amber {
   animation: pulse-amber 2s ease-in-out infinite;
 }
+/* Step 31 Integrations status dot — radial ping (verbatim from admin.html line 24476) */
+@keyframes pulse-live {
+  0%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
