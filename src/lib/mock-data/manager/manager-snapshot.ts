@@ -126,7 +126,8 @@ export const managerSnapshotItems: ReadonlyArray<ManagerSnapshotItem> = [
       { kind: "strong", value: "1" },
       { kind: "text", value: " depleted" },
     ],
-    disabledRoute: { href: "/specialist/pool-coordination", landsInStep: 8 },
+    /* Step 8 un-disable: route exists — snapshot card auto-upgrades
+       to real Link via the existing disabledRoute removal pattern. */
   },
 
   /* 6. Active sprints (lime status pill) */

@@ -122,10 +122,10 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
   },
   {
     key: "pool-coordination",
+    /* Step 8: enabled — /specialist/pool-coordination now exists. */
     label: "Pool Coordination",
     href: "/specialist/pool-coordination",
     iconKey: "pool-coordination",
-    disabled: true, // Step 8: flip to false
   },
   {
     key: "recruitment-sprints",
