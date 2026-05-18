@@ -4,21 +4,19 @@
  * MyTeamHeader — eyebrow + "My team" title + subtitle + 2 header
  * action buttons (Export ghost / Team meeting primary).
  *
- * Both action buttons trigger the placeholder modal per Step 3's
- * two-tier CTA pattern:
+ * Action buttons:
  *
- *   - Export        → `landsInStep: 10` (Team Reports — closest fit
- *                                        for "export team data")
- *   - Team meeting  → `landsInStep: 14` (Help — explicit "coming
- *                                        soon" since no step builds
- *                                        a Team Meeting scheduler;
- *                                        override description so the
- *                                        modal reads "Team meeting
- *                                        scheduling — coming soon."
- *                                        rather than auto-deriving
- *                                        a misleading feature name)
+ *   - **Export → real `<Link>` to `/specialist/team-reports`**
+ *     (un-disabled in Step 10 — Team Reports is the closest fit
+ *     for "export team data"; per-roster CSV exports remain Step
+ *     14 territory)
+ *   - Team meeting → modal `landsInStep: 14` (Help — explicit
+ *     "coming soon" since no step builds a Team Meeting scheduler;
+ *     description override so the modal reads "Team meeting
+ *     scheduling — coming soon." rather than auto-deriving a
+ *     misleading feature name)
  *
- * Owns the placeholder modal state for the 2 header buttons.
+ * Owns the placeholder modal state for the Team meeting button.
  *
  * Subtitle is dynamic: reads cohort counts from `team.ts` so it
  * stays in sync with the canonical roster.
@@ -27,15 +25,14 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { countSpecialistsByCohort } from "@/lib/mock-data/manager/team";
 import type { ManagerActionCTA } from "@/lib/mock-data/manager/manager-rail";
 import { ManagerActionPlaceholderModal } from "@/components/manager/dashboard/manager-action-placeholder-modal";
 
-const EXPORT_CTA: ManagerActionCTA = {
-  label: "Export",
-  landsInStep: 10,
-  description: "Team-data export lands in Step 10 — Team Reports.",
-};
+/* Step 10 un-disable: Export ghost flips from modal to real Link
+   to Team Reports (closest fit for "export team data"; per-roster
+   CSV exports remain Step-14 territory). EXPORT_CTA const dropped. */
 
 const TEAM_MEETING_CTA: ManagerActionCTA = {
   label: "Team meeting",
@@ -73,9 +70,8 @@ export function MyTeamHeader() {
         <p className="text-ink-soft mt-2 m-0 text-[13.5px]">{subtitle}</p>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveCta(EXPORT_CTA)}
+        <Link
+          href="/specialist/team-reports"
           className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center gap-2 rounded-md border px-3.5 py-2 text-[13px] font-medium transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -88,7 +84,7 @@ export function MyTeamHeader() {
             />
           </svg>
           Export
-        </button>
+        </Link>
         <button
           type="button"
           onClick={() => setActiveCta(TEAM_MEETING_CTA)}

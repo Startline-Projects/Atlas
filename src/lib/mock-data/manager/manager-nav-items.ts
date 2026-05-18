@@ -137,10 +137,10 @@ export const managerNavItems: ReadonlyArray<ManagerNavItem> = [
   },
   {
     key: "team-reports",
+    /* Step 10: enabled — /specialist/team-reports now exists. */
     label: "Team Reports",
     href: "/specialist/team-reports",
     iconKey: "team-reports",
-    disabled: true, // Step 10: flip to false
   },
   {
     key: "manager-daily-activity",

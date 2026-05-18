@@ -94,7 +94,8 @@ export const managerQuickActions: ReadonlyArray<ManagerQuickAction> = [
     id: "qa-team-analytics",
     label: "View team analytics",
     iconKey: "team-analytics",
-    landsInStep: 10,
+    /* Step 10 un-disable: route exists. `href` set → Link. */
+    href: "/specialist/team-reports",
   },
   {
     id: "qa-run-sprint",

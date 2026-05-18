@@ -16,7 +16,7 @@
  *   - **Keep** Audit daily (auditing own daily activity is
  *     legitimate — Mateo IS a Specialist with submissions)
  *   - Keep View dashboard (real Link to /specialist/dashboard)
- *   - Keep Performance review (action button — landsInStep: 10)
+ *   - Keep Performance review (real Link, un-disabled in Step 10)
  *   - Keep Log coaching note (switches active tab to coaching)
  *
  * ## CTAs (Step 5)
@@ -27,7 +27,9 @@
  *   - View dashboard (Mateo only) → real Link `/specialist/dashboard`
  *   - **Audit daily → real Link `/specialist/daily-audit?row={id}`**
  *     (un-disabled in Step 6 with deep-link to the specialist's row)
- *   - Performance review → modal `landsInStep: 10` (Team Reports)
+ *   - **Performance review → real Link `/specialist/team-reports?spec={id}`**
+ *     (un-disabled in Step 10 with deep-link to the specialist's
+ *     heatmap row + chart bar)
  *   - Log coaching note → callback (switches active tab to "coaching")
  */
 
@@ -63,10 +65,9 @@ const SCHEDULE_CTA: ManagerActionCTA = {
 };
 /* Audit daily — Step 6 un-disabled. Real Link with ?row= deep-link
    so the audit page expands this specialist's row on entry. */
-const PERFORMANCE_REVIEW_CTA: ManagerActionCTA = {
-  label: "Performance review",
-  landsInStep: 10,
-};
+/* Performance review — Step 10 un-disabled. Real Link with
+   ?spec= deep-link so Team Reports rings + scrolls to this
+   Specialist's heatmap row on entry. */
 
 export function SdHero({ specialist: s, onSetTab }: SdHeroProps) {
   const [activeCta, setActiveCta] = useState<ManagerActionCTA | null>(null);
@@ -139,13 +140,12 @@ export function SdHero({ specialist: s, onSetTab }: SdHeroProps) {
         >
           Audit daily
         </Link>
-        <button
-          type="button"
-          onClick={() => setActiveCta(PERFORMANCE_REVIEW_CTA)}
+        <Link
+          href={`/specialist/team-reports?spec=${s.id}`}
           className="border-line text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center rounded-md border px-3 py-1.5 text-[12.5px] font-medium transition-colors"
         >
           Performance review
-        </button>
+        </Link>
         <button
           type="button"
           onClick={() => onSetTab("coaching")}

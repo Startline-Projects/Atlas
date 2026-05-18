@@ -27,7 +27,7 @@ The Manager is the only Atlas user who is simultaneously a Talent Specialist (wi
 | 7   | Team Disputes — list + filters + Sofia × Quill canonical case | ✅ done (full scope — patterns section retained; canonical dispute domain locked) |
 | 8   | Pool Coordination — 10-category grid + opportunities + sprint priorities | ✅ done (full scope; Step 6 log backfilled in same commit) |
 | 9   | Recruitment Sprints — goal banner + 4 active sprints + analytics + history | ✅ done (trim a — channels + geo only; budget + resource sharing dropped) |
-| 10  | Team Reports — overview + 5-tab comparisons + 11×14 heatmap + hire success | ❌ not started |
+| 10  | Team Reports — overview + 5-tab comparisons + 11×14 heatmap + hire success | ✅ done (trims a + b — no sparklines, no Section 6) |
 | 11  | Manager Daily Activity — submission form + stepper + lock-on-submit + 14-day calendar | ❌ not started |
 | 12  | Notifications enhancement — context tags + filter + smart routing + full page | ❌ not started |
 | 13  | Messages + Specialist Chat — type tags + filter + peer chat composer + coaching notes | ❌ not started |
@@ -1008,6 +1008,133 @@ If any of these surface in Steps 6-11 once we build them, address as a one-off S
 ### Up next
 
 - **Step 10 — Team Reports.** `/specialist/team-reports` Manager-only route. Performance snapshot (6 KPI cards with sparklines + trend %) + per-Specialist comparison (5-tab chart switcher: reviews / dispute time / sourcing / hires / SLA) + 11×14 daily activity heatmap + hire success breakdown + role category bars. **No new un-disable sites** (Team Reports is referenced by sidebar disabled flag only). Will reference Step 9's sprint history for hire-source attribution. Likely the largest single step in the initiative (~2,000+ LOC) — propose trims aggressively.
+
+---
+
+## Session 1 — Step 10 — Team Reports + cross-domain analytics
+
+**Goal:** Fifth Manager-only ops route + LARGEST step. `/specialist/team-reports` — Section 1 overview (6 metric cards) + Section 2 5-tab per-Specialist comparison + Section 4 11×14 submission heatmap + Section 3 pool analytics + Section 5 hire success. Cross-domain consumer pulling from team.ts kpis + Step 7 patterns + Step 8 pool + Step 10's own aggregates. 5 `landsInStep: 10` sites flipped. Section 6 (Custom reports) dropped per trim b; sparklines dropped per trim a.
+
+### Audit-pass dividend discovered at Step 10
+
+The Step 5/6 audit-pass pre-locked **all 5 comparison chart KPIs** on `Specialist.kpis` (reviewsMonth / reviewsMonthSLAPct / disputeAvgResolutionHours / sourcingProspectsMonth / hiresPlacedMonth). The Step 10 plan's "NEW per-spec data needed" turned out to be ZERO — every chart reads from canonical fields. Mock data file shrank ~130 LOC. **The audit-pass investment paid off here** — Step 10 is the largest cross-domain consumer and benefited most.
+
+### Files added (9)
+
+| File | Role | Notes |
+|---|---|---|
+| `src/app/(specialist)/specialist/team-reports/page.tsx` | Server | `ManagerRouteGuard` + `Suspense` for `?spec=` deep-link. |
+| `src/components/manager/team-reports/team-reports-app.tsx` | Client | Orchestrator. Owns `dateRange` + `chartTab` + `focusedSpecialistId`. Reads `?spec=` ONCE on mount; if invalid, silently `router.replace(pathname)` per Q2 refinement. Scrolls heatmap row into center + lime ring for 2s. Same ring also applies to Section 2 chart row (via `focusedSpecialistId` prop, no separate scroll). |
+| `src/components/manager/team-reports/tr-header.tsx` | Client | Eyebrow + title + dynamic subtitle + 5 date-range tabs (Month active; 4 disabled) + Export + Schedule report (both modal step 14). |
+| `src/components/manager/team-reports/tr-overview-section.tsx` | Server | Section 1 — 6 metric cards. NO sparklines per trim (a). Each card: label + big num + signed trend pill + foot caption with inline strong markers. |
+| `src/components/manager/team-reports/tr-comparison-section.tsx` | Client | Section 2 — 5-tab switcher with inlined `<TrBarChart>` primitive used 5x. Datasets pulled directly from canonical `Specialist.kpis` (5 different keys). Tone fork per bar: top performer = success, bottom = danger, others neutral (high-direction) or 4-band fork (low-direction for Dispute time). Mateo's bar gets lime tint + "You" tag in all 5 charts. |
+| `src/components/manager/team-reports/tr-heatmap-section.tsx` | Client | Section 4 — 11 spec rows × 14 weekday cells. Header row uses canonical `dailyHistory[i].weekdayLetter` from first specialist. Cell state IS the canonical `intensity` field (s0-s4) — no derivation needed. Tooltip per cell shows state name ("submitted on time" / "missed" / "excused" / etc.). Row ref forwarded to orchestrator for `?spec=` deep-link scroll. Mateo's row label reads "Mateo" not "Miguel". |
+| `src/components/manager/team-reports/tr-pool-analytics-section.tsx` | Server | Section 3 — 2 cards. Pool size change (reuses Step 8 `PoolCategory.trendPct`) sorted descending by signed value. Depletion incidents (Step 10 data) with insight footer. |
+| `src/components/manager/team-reports/tr-hire-success-section.tsx` | Server | Section 5 — 2 cards. Hires per role (DERIVED at render: for each pool category, sum `hiresPlacedMonth` of primary owner specialist). Speed metrics (Step 10 data + cross-resolution to category labels + owner names). |
+
+### Files added — mock data (1)
+
+| File | Purpose |
+|---|---|
+| `src/lib/mock-data/manager/manager-team-reports-data.ts` | Step-10-specific team-wide aggregates: 6 overview metric records + 4 depletion incidents + 1 speed metrics object + 3 insight constants. **NO per-spec data** (canonical kpis cover it). Module-load assertions: (1) depletion incident categoryId resolution, (2) depletion incident specialistId resolution, (3) speed metrics category/specialist ID resolution, (4) heatmap cell state exhaustiveness (TypeScript Record type + audit-pass DailyHistoryIntensity union), (5) **cross-step regression catch** — Step 7's `avgResolutionTimePerSpecialist` keys all resolve via `getSpecialist()` (Step 10 doesn't consume those values but catches future Step 7 drift). |
+
+### Files modified (6)
+
+| File | Diff |
+|---|---|
+| `src/lib/mock-data/manager/manager-identity.ts` | **2-line addition per Step 10 instruction** documenting the Specialist-side data-layer scope rule (don't touch `src/lib/mock-data/specialist/`). |
+| `src/lib/mock-data/manager/manager-nav-items.ts` | "Team Reports" item: `disabled: true` removed. |
+| `src/lib/mock-data/manager/manager-rail.ts` | `qa-team-analytics` quick action: `href: "/specialist/team-reports"`; drop `landsInStep: 10`. |
+| `src/components/manager/team/my-team-header.tsx` | Export ghost: `<button>` → `<Link href="/specialist/team-reports">`. Drop `EXPORT_CTA` const. Update header doc comment. |
+| `src/components/manager/specialist-detail/sd-hero.tsx` | "Performance review" hero button: `<button>` → `<Link href="/specialist/team-reports?spec={s.id}">`. Drop `PERFORMANCE_REVIEW_CTA` const. Update header doc. |
+| `src/components/manager/dashboard/manager-active-items-section.tsx` | Column 3 footer "Full activity feed →": `landsInStep: 10` → `href: "/specialist/team-reports"`. |
+| `docs/manager/CONVERSION_LOG.md` | This entry |
+
+### Locked decisions (Step 10)
+
+| | |
+|---|---|
+| **Trims (a) + (b)** | Dropped sparklines from overview cards (Section 2 charts already show trend) + dropped Section 6 Custom Reports placeholder (pure step-14 modal noise). Saved ~160 LOC. Final code estimate ~1,940 LOC. |
+| **`?spec=<spec-id>` deep-link (Q2)** | Valid id → scroll-into-view heatmap row + lime outline + ring same id's bar in active chart (both fade after 2s). Invalid id → `router.replace(pathname)` silently clears the param. Same pattern as Step 9. |
+| **Section 2 default tab (Q3)** | `reviews` — matches prototype. 5 tabs in canonical order: Reviews / Dispute time / Sourcing / Hires / SLA. |
+| **Heatmap interaction (Q4)** | Static cells with `title` tooltip carrying user-meaningful state name ("submitted on time" / "missed" / etc.) — not raw discriminator. No click, no hover-card. |
+| **Mateo treatment (Q5)** | Lime bar + "You" tag in all 5 comparison charts. Section 1 foot caption stays prototype-static ("Below target: Priya (78%) — performance flag"); future refactor would derive dynamically from `kpis.dailyAdherencePct`. |
+| **Heatmap label format (Q6)** | First-name + flag. Canonical "Mateo" not prototype's "Miguel". Order matches `specialists` array (Mateo first). |
+| **Schedule report (Q7)** | Modal step 14 placeholder. |
+| **Q9 cross-domain assertions (5 total)** | (1) depletion categoryId resolves, (2) depletion specialistId resolves, (3) speed metrics IDs resolve, (4) heatmap cell-state exhaustiveness via Record<DailyHistoryIntensity, ...>, (5) **Step 7 patterns cross-step regression catch** — Step 10 imports `avgResolutionTimePerSpecialist` ONLY for assertion, not for chart data. |
+
+### Un-disable pass — all 5 sites resolved
+
+| Site | Before | After |
+|---|---|---|
+| Sidebar "Team Reports" item | disabled span | active Link |
+| Dashboard rail `qa-team-analytics` "View team analytics" | modal trigger | `<Link>` to `/specialist/team-reports` |
+| My Team header Export ghost | modal trigger | `<Link>` to `/specialist/team-reports` |
+| Specialist Detail hero "Performance review" | modal trigger | `<Link>` to `/specialist/team-reports?spec={id}` |
+| Active items column 3 footer "Full activity feed →" | disabled span | `<Link>` to `/specialist/team-reports` |
+
+### Cross-domain consumption — audit-pass discipline verified
+
+| Step 10 surface | Source | Type |
+|---|---|---|
+| All 5 comparison chart datasets | `Specialist.kpis` (5 different keys) | reuse (canonical) |
+| Heatmap cell colors + weekday letters | `Specialist.dailyHistory` | reuse (canonical) |
+| Pool size change chart | `manager-pool-coordination-data.ts` `PoolCategory.trendPct` | reuse (Step 8) |
+| Hires per role card | derived from `Specialist.kpis.hiresPlacedMonth` × `PoolCategory.primaryOwnerSpecialistId` mapping | reuse + derive |
+| Section 1 overview metrics | NEW in Step 10 | step-specific |
+| Depletion incidents | NEW in Step 10 | step-specific |
+| Speed metrics | NEW in Step 10 | step-specific |
+| Cross-step regression catch | imports `avgResolutionTimePerSpecialist` from Step 7 ONLY for assertion | safety net |
+
+### Known friction (Step 10)
+
+- **Section 1 foot caption is prototype-static.** "Below target: Priya (78%) — performance flag" hard-coded. Future refactor would derive the laggard from `kpis.dailyAdherencePct` so the caption auto-updates.
+- **Hires per role derives at render** rather than from a precomputed array. For 10 categories × N specialists this is fine; if it grows to 50+ categories, memoize or precompute.
+- **Bar chart tone heuristic is simple thresholds** (>=90% → success, <=30% → danger for high-direction; 4-band fork for low-direction). A more nuanced approach would consider variance / cohort baselines; deferred.
+- **No mid-month vs end-month context** — overview metrics are static team totals. Future surfaces could add "X / target Y" progress tracking.
+- **5 date-range tabs all disabled except Month** — same visible-but-disabled pattern as Steps 6/7/8/9. Historical / forward-looking ranges defer.
+- **Custom reports section (Section 6) dropped per trim b.** Pure placeholder; placeholder routes to step 14 anyway.
+
+### Step 10 verification (a-ab + ac — all green)
+
+| | | |
+|---|---|---|
+| (a)-(b) | Route renders for Managers; redirects on role/mode fail | ✓ |
+| (c) | Header subtitle "Performance snapshot · April 2026 · all 11 Specialists" | ✓ |
+| (d) | Section 1: 6 cards with values 214 / 28 / 84 / 19 / $48.2k / 94% + correct trend % | ✓ |
+| (e) | Section 2: 5 tabs render, Reviews default, Mateo's bar lime + "You" tag in all 5 | ✓ |
+| (f) | Section 4: 11 rows × 14 cells, 5 cell states (s0-s4), legend with 5 swatches | ✓ |
+| (g) | Section 3: pool size 10 rows sorted by trendPct desc + depletion 4 rows | ✓ |
+| (h) | Section 5: hires per role 10 rows derived from kpis × pool ownership + speed metrics object | ✓ |
+| (i) | Section 6 dropped per trim b | ✓ |
+| (j) | Date-range tabs: Month active, 4 others disabled with cursor-not-allowed | ✓ |
+| (k) | `?spec=spec-priya-mehra` URL highlights Priya's heatmap row + bar in active chart | ✓ |
+| (l) | Sidebar "Team Reports" active when on route | ✓ |
+| (m)-(p) | All 4 external un-disable sites → real Links | ✓ |
+| (q) | `manager-identity.ts` 2-line addition present | ✓ |
+| (r) | typecheck + lint + build clean. **182 routes** (181 + 1 new) | ✓ |
+| (s) | Role flip redirects (specialist build also clean at 182 routes) | ✓ |
+| (t) | `grep "TODO(step-10)" src/` returns 0 | ✓ |
+| (u) | `grep "landsInStep: 10" src/` returns 0 (initially 3 stale doc-comment hits — all cleaned to reflect un-disabled state) | ✓ |
+| (v) | Modal a11y unchanged | ✓ |
+| (w) | Mateo's heatmap row label reads "Mateo" (not "Miguel") | ✓ |
+| (x) | Heatmap row order matches `specialists` array (Mateo first) | ✓ |
+| (y) | Cross-domain assertions verified by deliberate break: typo'd `categoryId: "customer-suport"` → runtime assertion fired at prerender with `"DepletionIncident dep-2026-04-22 references unknown categoryId "customer-suport"."` Reverted. | ✓ |
+| (z) | Step 7's `avgResolutionTimePerSpecialist` imported as data source for assertion 5 (verified by checking the import statement; removing it would trigger compile error since it's referenced) | ✓ |
+| (aa) | Step 8's `PoolCategory.trendPct` reused for pool size chart (verified in `tr-pool-analytics-section.tsx`) | ✓ |
+| (ab) | Mateo data flows correctly into all 5 charts (canonical KPIs include his entry; comparison renders him with lime tone + "You" tag) | ✓ |
+| (ac) | Sidebar active state drift check: on `/specialist/team-reports`, "Team Reports" item active; after role flip and redirect, no stuck-active state | ✓ |
+
+### Architectural primitives introduced
+
+- **Shared `<TrBarChart>` primitive** — single bar-chart component used 5× across the comparison switcher. Configurable via `TabDef` (direction high/low, unit suffix, kpiKey). Pattern reusable for any "N specialists ranked by metric" visualization.
+- **Cross-step regression assertion pattern** — Step 10's data file imports Step 7's `avgResolutionTimePerSpecialist` ONLY for assertion 5. Future steps that consume multiple prior steps' data can use this pattern to catch upstream drift.
+- **`router.replace(pathname)` silent URL cleanup** — same pattern as Step 9's `?launch=`. Now applied to `?spec=`. Both deep-link param shapes converge on the same fallback behavior.
+- **Audit-pass payoff** — Step 10 (largest consumer) added 0 per-spec fields. Future steps can verify they're consuming canonical data by checking whether they had to extend any Specialist fields.
+
+### Up next
+
+- **Step 11 — Manager Daily Activity.** `/specialist/manager-daily-activity` Manager-only route. Submission form + stepper + lock-on-submit + 14-day calendar. Mateo submits HIS OWN daily activity here (matching what every specialist submits via Step 5's Daily Activity tab). Un-disables: Daily Activity Audit header "Submit Manager daily" button (Step 6 left as disabled span); Specialist Detail hero "Edit my submission" disabled span (Step 6). Cross-domain: writes into `Specialist.dailyActivity` + `todayActivity` for Mateo's record (mutation surface — first WRITE in the Manager initiative). Lock canonical submission shape carefully.
 
 ---
 

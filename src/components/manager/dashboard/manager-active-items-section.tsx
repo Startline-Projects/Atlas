@@ -94,7 +94,10 @@ export function ManagerActiveItemsSection() {
         <Column
           title="Recent team activity"
           headerLabel="Live"
-          footerLink={{ label: "Full activity feed →", landsInStep: 10 }}
+          /* Step 10 un-disable: Team Reports is the closest fit for
+             "team-wide activity feed" — there's no dedicated activity
+             feed route. */
+          footerLink={{ label: "Full activity feed →", href: "/specialist/team-reports" }}
         >
           <ul className="flex flex-col gap-0">
             {recentTeamActivity.map((item) => (

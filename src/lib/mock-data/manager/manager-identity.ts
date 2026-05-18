@@ -16,6 +16,10 @@
  * from Step 1 even though no UI consumes it yet — locking the
  * canonical record from day one.
  *
+ * The Specialist-side data layer (`src/lib/mock-data/specialist/`)
+ * may still reference "Miguel Ramos" — that's pre-existing Specialist
+ * app state, out of scope for the Manager initiative. Do not touch.
+ *
  * ## Future shape
  *
  * If product decisions add multiple Managers, this file graduates
