@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useEffect, useState, useMemo, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { TOPBAR } from '@/lib/mock-data/admin/topbar-data';
@@ -199,7 +200,8 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
         </a>
 
         {/* Notifications Bell */}
-        <button
+        <Link
+          href="/admin/notifications"
           className="relative w-[38px] h-[38px] rounded-full flex items-center justify-center text-[var(--color-ink-soft)] hover:bg-[var(--color-cream-deep)] hover:text-[var(--color-ink)] transition-colors"
           aria-label={`Notifications, ${TOPBAR.notifications.badge} unread`}
           title="Notifications"
@@ -208,7 +210,7 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
           <span className="absolute top-[6px] right-[6px] min-w-4 h-4 px-1 bg-[var(--color-danger)] text-white rounded-full text-[9.5px] font-bold font-mono grid place-items-center border-2 border-[var(--color-cream)]">
             {TOPBAR.notifications.badge}
           </span>
-        </button>
+        </Link>
 
         {/* Avatar Button + Dropdown */}
         <div className="relative" ref={dropdownRef}>

@@ -748,6 +748,62 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 
 ---
 
+## PART 9 — CROSS-CUTTING ELEMENTS
+
+The original 37-step scope plan included 4 cross-cutting admin features that don't map to a sidebar group (notifications, global search, onboarding, real-time updates). Build numbering diverged from scope numbering around mid-build (build is 1 ahead). Going forward, entries use both numbers.
+
+| Build Step | Scope Step | Title | Status |
+|---|---|---|---|
+| 38 | 37 | Notifications Center | ✅ Done |
+| 39 | 38 | Global admin search | ⏸ pending |
+| 40 | 39 | Onboarding for new admins | ⏸ pending |
+| 41 | 40 | Real-time updates | ⏸ pending |
+
+### Step 38 (Scope Step 37) — Notifications Center
+
+- **Status:** ✅ Done — **PART 9 CROSS-CUTTING: 1 of 4 complete**
+- **Session:** 5
+- **Routes:** `/admin/notifications` (LIST only, no detail route)
+- **HTML lines:** 67081–67486 (view-notifications, 406 lines)
+- **CSS lines:** 31838–32170 (333 lines; full-page nt-* widgets at 31963-32168)
+- **Files added:** ~15 total
+  - Mock data: `src/lib/mock-data/admin/notifications-data.ts` (page meta + meta-pulse + 3 header actions + 5 top stats + 8 filter chips + 3 tabs + 2 day groups with 11 verbatim notification rows including per-row href + 11-entry footer)
+  - Pass A components (6): `nfc-meta-pulse.tsx`, `nfc-filter-chips.tsx` (`'use client'` controlled 8-chip toolbar), `nfc-tab-row.tsx` (`'use client'` 3-tab underline strip with count badges + active state inversion), `nfc-page-header.tsx` (`'use client'` fr-page-head with Filter/Settings/Mark all read primary), `nfc-shell.tsx` (`'use client'` orchestrator with useState for activeTab + activeFilterChip)
+  - Pass B components (6): `nfc-row-icon.tsx` (32px circular icon with 8 color variants + 8 verbatim SVG glyphs: triangle-alert/refresh/info-circle/lock/trending-down/activity-pulse/bar-chart/credit-card), `nfc-priority-chip.tsx` (4 variants: critical danger / high amber / info paper-deep+ink-mute / resolved success), `nfc-quick-btn.tsx` (`'use client'` 24px square with paper→ink hover inversion + 2 kinds: open navigates via router.push(href) / archive fires toast + e.stopPropagation on click + keyDown), `nfc-row.tsx` (`'use client'` 3-col grid with 4-state model + absolute-positioned `<span>` for unread dot + super tint for unread / danger+pulse-fr 1.2s for unread-critical + title font-extrabold when unread + role="link" + router.push(href) on click + keyboard accessibility), `nfc-day-group.tsx` (dashed-head bucket + rounded paper-bordered card containing N rows), `nfc-footer.tsx` (`'use client'` summary + Load earlier button)
+  - Route: `src/app/(admin)/admin/notifications/page.tsx` (server, renders NfcShell)
+  - Topbar update: `src/components/admin/shell/admin-topbar.tsx` (bell-icon `<button>` → Next `<Link href="/admin/notifications">` with `import Link from 'next/link'`). No bell-dropdown component existed in our admin shell — direct navigation is simpler than building one.
+- **Passes:**
+  - Pass A: page header with meta-pulse + 5-stat strip + 8 category filter chips + 3-tab underline strip + topbar bell-icon Link
+  - Pass B: 2 day-grouped notification feeds (TODAY MAY 13 with 8 rows + YESTERDAY MAY 12 with 3 rows) with 8 icon type variants + 4 priority variants + unread/critical row states + footer
+  - Post-build fix: Added `href` field to NfcNotificationRow + wired row click to `router.push(row.href)` (initially fired toast — replaced with real navigation). Open quick button uses same href; Archive stays as toast.
+- **Data model:**
+  - `NfcRowState`: 4-variant union (`'default' | 'unread' | 'critical' | 'unread-critical'`) — cleaner than two boolean flags for className composition
+  - `NfcIconType`: 8-variant union (fraud/finance/platform/compliance/pool/performance/audit/subscription) mapping to 4 color families (danger/amber/super/success)
+  - `NfcPriorityVariant`: 4-variant union (critical/high/info/resolved)
+  - `NfcNotificationRow`: id + state + iconType + title + priority + priorityLabel + metaHtml + time + href + openAction
+  - `NfcDayGroup`: label + countMeta + N rows
+  - All fixture content extracted **verbatim** from admin.html lines 67081-67486 (11 notifications with strong-tag-rich meta HTML)
+- **CSS/Design tokens:**
+  - 17 tokens (all existing in globals.css from prior steps)
+  - **ZERO globals.css additions** this step (pulse-fr already shipped from Step 32)
+  - Row tints: default (no bg) / unread (`rgba(110,63,224,0.025)` super @ 2.5% — lightest tint in any step) / critical (`rgba(194,65,43,0.035)` danger @ 3.5%) / unread+critical (same danger tint + danger pulsing dot)
+  - Tab row: underline-style strip (not pill chips), 2px transparent bottom-border becomes ink on active, count badge inverts (paper-deep/ink-mute → ink/paper)
+  - Icon variants: 8 colored 32px circles; admin.html uses 2 different SVGs for some types (fraud rows 1+10, platform rows 3+11, compliance rows 4+9) — picked canonical SVG per type for type-safety
+  - Priority chip: small 8.5px mono flat chip, no dot, no animation (unlike Step 35 ic-sev)
+  - Unread dot: absolutely-positioned `<span>` child at top-18/left-6 (sits in padding gutter, not in icon column)
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/notifications` (static)
+- **Tailwind-only:** ✅ ZERO inline styles in `src/components/admin/notifications/`
+- **Forbidden classNames:** ✅ Zero matches (no nt-, ntr-, ntdh-, fr-, cd-, etc. in any className string)
+- **Notes:**
+  - **Component naming `Nfc*`** maps to admin.html's `nt-*` CSS prefix (avoiding leading-digit identifier issues, and forbidden-className rule prevents direct nt-* usage anyway).
+  - **No bell dropdown built**: admin.html has a separate `notif-dropdown` widget (line 34382) with simpler `notif-*` classes. Our admin shell only has a bare bell button — wrapping in Next Link is simpler than building a full dropdown component. Bell-icon dropdown could be added as future polish.
+  - **Cross-step component reuse:** `PrStatStrip` + `PrStat` type from Step 27 reused for 5-stat strip; `AdminActionToastProvider` from Step 34 powers archive button + header action toasts.
+  - **Row navigation wired to real admin routes**: 11 rows route via `router.push(row.href)` to existing admin entity pages. 9 detail routes + 2 fallbacks: `nt-ref-0084` → `/admin/finance/refunds` (LIST fallback since no refund detail `[id]` route exists) and `nt-maint` → `/admin/dashboard` (no maintenance route). Specific entity IDs (e.g. fa-2026-0042, dsr-2026-0089, aud-2026-106102) may 404 if not in target route's `generateStaticParams` — accepted risk; can patch in follow-up if user reports any.
+  - **PART 9 CROSS-CUTTING: 1 of 4 complete (Build 38 = Scope 37 Notifications)**. Remaining: Build 39 Global Search · Build 40 Onboarding · Build 41 Real-time.
+
+---
+
 ## Step 13 — Reviews (current)
 
 - **Status:** ⏳ Pending SCOPE DISCOVERY
