@@ -644,6 +644,59 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Cache invalidation lesson (repeated):** after Pass B added the `[id]` route, dev server held stale route map; user had to `Remove-Item -Recurse -Force .next` + restart `pnpm dev` + hard-refresh browser before row clicks worked. Same lesson as Step 34 specialist row navigation.
   - **2 of 4 PART 8 INTERNAL OPS pages shipped** (Step 34 Performance + Step 35 Incident Reports). Remaining: Step 36 Internal Communications + Step 37 Knowledge Base.
 
+### Step 36 — Internal Communications
+
+- **Status:** ✅ Done — **PART 8 INTERNAL OPS: 3 of 4 pages complete (Steps 34–36)**
+- **Session:** 4
+- **Routes:** `/admin/internal/communications` (single-page dashboard, no detail route)
+- **HTML lines:** 65500–66149 (single view; 4 sections: pinned widget + Messaging + Announcements + Memos)
+- **CSS lines:** 30832–31524 (692 lines)
+- **Files added:** ~25 total
+  - Mock data: `src/lib/mock-data/admin/communications-data.ts` (page meta + meta-pulse + search + 2 header actions + 4 compose options + 5 top stats + canonical ANN-2026-018 pinned card + Section 02 messaging fixture (8 threads + #inc-042-retro conversation with 6 messages) + Section 03 announcements fixture (3 filter buttons + 5 cards) + Section 04 memos fixture (6 rows))
+  - Pass A components (7): `icm-meta-pulse.tsx`, `icm-required-ack-chip.tsx` (super-tinted chip replacing Step 35 ic-sev sev-3 markup), `icm-pinned-stat.tsx`, `icm-pinned-card.tsx` (UNIQUE widget — 2px super border + super gradient bg + STATIC "📌 PINNED · ADMIN TEAM" eyebrow no pulse + 16px iaha-dot author avatar + 4-stat row + foot with 2 actions), `icm-compose-dropdown.tsx` (`'use client'` useState toggle + click-outside handler + 4 compose options), `icm-page-header.tsx`, `icm-shell.tsx`
+  - Pass B components (7): `icm-section-head.tsx` (shared section head primitive with optional `rightSlot`), `icm-thread-row.tsx` (`'use client'` with 3 variants default/active inverted/unread + 2 avatar kinds person/group), `icm-thread-list.tsx` (left column with internal scroll), `icm-message.tsx` (default + system variants + super role tint), `icm-composer.tsx` (`'use client'` Enter-to-send), `icm-conversation.tsx` (32px square avatar head + 2 quick-action buttons Pin/Info + scrollable body + composer), `icm-messaging-section.tsx` (2-col `[280px_minmax(0,1fr)]` grid with fixed `h-[480px]`, collapses to 1-col + `h-auto` at ≤980px)
+  - Pass C components (4): `icm-filter-button.tsx` (stateless), `icm-announcement-meta-row.tsx` (discriminated meta-item sequence: author/scope/pinned/date), `icm-announcement-card.tsx` (default + urgent variants with amber-tinted bg/border + URGENT chip + ACK indicator with partial/full color), `icm-announcements-section.tsx`
+  - Pass D components (3): `icm-memo-row.tsx` (`'use client'` with inline audience color), `icm-memos-table.tsx` (5-col thead with `w-[N%]` widths), `icm-memos-section.tsx`
+  - Route: `src/app/(admin)/admin/internal/communications/page.tsx` (server, renders IcmShell)
+  - Sidebar integration: `sidebar-nav-data.ts` Communications pathname `#communications` → `/admin/internal/communications`; `admin-sidebar.tsx` active-state matcher added for list + descendant routes
+- **Passes:**
+  - Pass A: page header (meta-pulse + Audit + Compose dropdown with 4 options) + 5-stat strip + UNIQUE pinned-announcement card (ANN-2026-018 with super gradient + REQUIRED ACK chip + 4 inner stats) + sidebar wire-up
+  - Pass B: Section 02 Messaging (2-col 480px-tall layout with 8 verbatim threads + canonical #inc-042-retro conversation with 6 verbatim messages + Enter-to-send composer)
+  - Pass C: Section 03 Announcements (3 stateless filter buttons + 5 verbatim cards with urgent variant + partial/full ACK indicators + 📌 PINNED inline span + scope chips with 3 variants)
+  - Pass D: Section 04 Memos archive (6-row table with eyebrow/title + author + tinted audience + views + published)
+- **Data model:**
+  - `IcmPinnedData`: id + requiredAckLabel + author avatar (initials + gradient) + author meta + title + summaryHtml + 4 IcmPinnedStat + footMetaHtml + 2 IcmPinnedAction
+  - `IcmMessagingSectionData`: sectionHead + sectionActionLabel + threadList (head + 8 IcmThread) + conversation (avatar + name + metaHtml + 2 headActions + 6 IcmMessage + composer placeholder + send label)
+  - `IcmAnnouncementsData`: sectionHead + 3 filterButtons + 5 IcmAnnouncementCard (discriminated metaItems: author/scope/pinned/date + optional ack with partial/full variant + bodyHtml + footStatsHtml + footDateText) + footerText + footerActionLabel
+  - `IcmMemosData`: sectionHead + headerActionLabel + 6 IcmMemoRow (eyebrow + title + author + audience + audienceColor + views + publishedDate + publishedRel) + footerText + footerActionLabel
+  - All fixture content extracted **verbatim** from admin.html lines 65500-66149
+- **CSS/Design tokens:**
+  - 18 tokens (all existing in globals.css from prior steps)
+  - **ZERO globals.css additions** this step (pulse-fr already shipped from Step 32; super/amber/success tints all literal `rgba(...)` matching prior Step 34/35 patterns)
+  - Pinned widget: 2px super border + 135° gradient bg using literal `rgba(110,63,224,0.08)` + STATIC "📌 PINNED · ADMIN TEAM" eyebrow chip (NO pulse, unlike Step 35 active-callout)
+  - Thread variants: default = base, active = `bg-[var(--ink)]` inverted with paper-tinted text via `rgba(251,248,242,0.55)`, unread = `bg-[rgba(110,63,224,0.04)]` super-tinted + bold preview
+  - Avatar kinds: person = `rounded-full`, group = `rounded-[6px]` (channel-style)
+  - System message variant: collapsed to 1-col grid (no avatar) + centered dashed-border informational stripe
+  - Super role tint: `bg-[rgba(110,63,224,0.10)] text-[var(--super)]` on `.imsg-role.super`
+  - Announcement urgent variant: `bg-[rgba(232,118,58,0.04)]` + `border-[rgba(232,118,58,0.3)]` + child "URGENT" amber chip at top
+  - ACK pct variants: default = ink-soft, partial = amber, full = success
+  - Scope chip variants: default = paper-deep, super = super tint, team = success tint (reserve, not used in markup)
+  - Memo audience color: inline `style={{ color: 'var(--super)' | 'var(--success)' }}` per row (CSS defines no color rule on col-mem-scope)
+  - Filter buttons: stateless plain cd-action-btn (no `.active` state in admin.html)
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/internal/communications` (static, single page, no detail route)
+- **Tailwind-only:** ✅ ~30 total inline-style instances at runtime: 20 verbatim avatar gradients (8 threads + 1 conv head + 5 messages + 5 announcement authors + 1 pinned author) + 6 memo audience colors + 5 ACK pct `/N` suffix sub-spans + 1 pinned-stat `/12` suffix + 1 📌 PINNED color/weight override on ANN-2026-018. All extracted verbatim from admin.html.
+- **Forbidden classNames:** ✅ Zero matches (no ic2-, iph-, ips-, ipf-, itlh-, itr-, ich-, imsg-, icomp-, iah-, iaha-, iaf-, icmt-, col-mem-, fr-, cd-, etc. in any className string)
+- **Notes:**
+  - **Component naming `icm-*`** maps to admin.html's `ic2-*` CSS prefix (chosen to avoid awkward TS identifier with leading digit). Class names are forbidden anyway, so mapping is internal-only.
+  - **Filename `communications-data.ts`** — distinct from any prior step (no collision).
+  - **Cross-step component reuse:** `PrStatStrip` + `PrStat` type from Step 27 reused for 5-stat strip; `AdminActionToastProvider` from Step 34 powers all button/row feedback toasts.
+  - **No detail route**: flat single-page dashboard per admin.html (no `view-comm-detail` or `view-announcement-detail` exists). All "open thread / open memo / open announcement" actions fire toast feedback instead of navigation.
+  - **Fixed 480px messaging height**: matches admin.html CSS (`height: 480px` on `.ic2-messaging-layout`). Collapses to `auto` at ≤980px breakpoint.
+  - **Composer Enter-to-send** added as a UX nicety (not in admin.html); Shift+Enter ignored since input is single-line.
+  - **Mateo's scope chip** on ANN-2026-011 uses `default` variant (no super tint) per admin.html line 66009 markup — followed exactly despite his purple author avatar.
+  - **3 of 4 PART 8 INTERNAL OPS pages shipped** (Step 34 Performance + Step 35 Incident Reports + Step 36 Internal Communications). Remaining: Step 37 Knowledge Base.
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -719,13 +772,13 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | 32 | Email & SMS Templates | ✅ Done |
 | 33 | Help Center Content | ✅ Done |
 
-### Internal group (4 entities, 2 shipped)
+### Internal group (4 entities, 3 shipped)
 
 | Step | Title | Status |
 |---|---|---|
 | 34 | Performance Dashboards | ✅ Done |
 | 35 | Incident Reports | ✅ Done |
-| 36 | Internal Communications | ⏸ pending HTML |
+| 36 | Internal Communications | ✅ Done |
 | 37 | Knowledge Base | ⏸ pending HTML |
 
 ---

@@ -301,7 +301,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'communications',
           label: 'Communications',
-          pathname: '#communications',
+          pathname: '/admin/internal/communications',
           icon: CommunicationsNavIcon,
         },
         {

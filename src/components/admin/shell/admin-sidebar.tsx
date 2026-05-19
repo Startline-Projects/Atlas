@@ -209,6 +209,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/internal/incidents' || pathname.startsWith('/admin/internal/incidents/');
     }
 
+    // Internal Communications: single-page dashboard
+    if (itemPathname === '/admin/internal/communications') {
+      return pathname === '/admin/internal/communications' || pathname.startsWith('/admin/internal/communications/');
+    }
+
     return pathname === itemPathname;
   };
 
