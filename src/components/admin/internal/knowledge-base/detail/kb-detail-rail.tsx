@@ -16,7 +16,7 @@ interface KbDetailRailProps {
 
 export function KbDetailRail({ preview, categorization }: KbDetailRailProps) {
   return (
-    <aside className="sticky top-[22px] self-start max-h-[calc(100vh-44px)] overflow-y-auto space-y-[14px] [scrollbar-gutter:stable] max-[1080px]:static max-[1080px]:max-h-none max-[1080px]:overflow-visible max-[1080px]:order-[-1]">
+    <aside className="sticky top-[22px] self-start space-y-[14px] max-[1080px]:static max-[1080px]:order-[-1]">
       <KbPreviewCard data={preview} />
       <KbCategorizationCard data={categorization} />
     </aside>
