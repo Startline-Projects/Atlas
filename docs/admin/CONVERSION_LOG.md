@@ -697,6 +697,55 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
   - **Mateo's scope chip** on ANN-2026-011 uses `default` variant (no super tint) per admin.html line 66009 markup — followed exactly despite his purple author avatar.
   - **3 of 4 PART 8 INTERNAL OPS pages shipped** (Step 34 Performance + Step 35 Incident Reports + Step 36 Internal Communications). Remaining: Step 37 Knowledge Base.
 
+### Step 37 — Internal Knowledge Base
+
+- **Status:** ✅ Done — **PART 8 INTERNAL OPS COMPLETE (4/4 pages)** · **ALL 8 PARTS OF ATLAS CONVERSION COMPLETE · 37 of 37 STEPS SHIPPED**
+- **Session:** 5
+- **Routes:** `/admin/internal/knowledge-base` (LIST) + `/admin/internal/knowledge-base/[id]` (DETAIL, 13 static params)
+- **HTML lines:** 66159–67072 (LIST 66159-66707, DETAIL 66714-67072)
+- **CSS lines:** 31525–31837 (313 lines)
+- **Files added:** ~20 total
+  - Mock data: `src/lib/mock-data/admin/knowledge-base-data.ts` (LIST: 5 top stats / 7 categories with KbCategoryIconKey union / 4 category sections with 13 verbatim docs across Fraud/SOPs/Compliance/Onboarding · DETAIL canonical kb-vorona-ring-sop: breadcrumb / hero / verify-banner fresh / 4 detail stats / 7-row frontmatter / 30+ line markdown body / phase-1 preview with 5 step-checks / categorization with 5 linked cases + 3 runbooks + cross-step + 6-version revision history · UNIVERSAL HELPER `buildKbDetailFromDoc(doc, section)` derives full detail from any doc row + section)
+  - Pass A components (9): `kb-meta-pulse.tsx`, `kb-tag.tsx` (6 variants), `kb-verified-dot.tsx` (3 variants with stale pulse), `kb-status-pill.tsx` (5 variants with needs-verify 1.4s + critical-stale 1s pulses), `kb-doc-card.tsx` (`'use client'` 6-col grid with 4 row-tint variants + 980px collapse), `kb-cat-side.tsx` (`'use client'` sticky 7-category sidebar with KB-specific icon set), `kb-cat-section.tsx` (`'use client'` section head + doc list), `kb-page-header.tsx`, `kb-shell.tsx` (`'use client'` orchestrator with useState filter + useMemo section filtering)
+  - Pass B components (6): `detail/kb-breadcrumb.tsx`, `detail/kb-verify-banner.tsx` (`'use client'` UNIQUE widget with 3 verification variants: fresh success / aging amber / stale danger + 36px icon circle + gradient bg), `detail/kb-detail-stat.tsx` (with success/warn value variants + optional `↑/↓` trend chip), `detail/kb-detail-stats.tsx` (4-col grid collapsing 4→2→1), `detail/kb-detail-hero.tsx` (`'use client'` hero reusing KbStatusPill + 3 actions with link/history/save icons + rich subtitleHtml), `detail/kb-detail-shell.tsx` (orchestrator)
+  - Pass C components (0): **Zero new — cross-step reuse** of Step 33's `HcSectionHead` + `HcFrontmatterCard` + `HcMarkdownCard` via direct imports (all 3 accept data-driven props with `data-hc-*` attribute markers — perfect fit for KB DETAIL fr-main frontmatter + markdown body)
+  - Pass D components (5): `detail/kb-step-check.tsx` (18px box with complete variant filling success + check SVG + line-through), `detail/kb-preview-card.tsx` (head + body with phase eyebrow + N step-checks + dashed-top progress footer), `detail/kb-linked-case.tsx` (`'use client'` 3-row stack with super-purple mono id arrow + title + meta + dashed border + click toast), `detail/kb-categorization-card.tsx` (`'use client'` 4-block container: LINKED CASES (5 KbLinkedCaseRow) + LINKED RUNBOOKS (3 Next Link to /admin/internal/knowledge-base/{id}) + CROSS-STEP LINKS (html) + REVISION HISTORY (html with data-kb-rev-current for v6 ink-tinted) + Full history & diff button), `detail/kb-detail-rail.tsx` (sticky aside with max-h calc(100vh-44px) + overflow-y-auto + space-y-[14px] block layout + scrollbar-gutter:stable for guaranteed reachability of all rail content)
+  - Routes: `src/app/(admin)/admin/internal/knowledge-base/page.tsx` (LIST, server) + `src/app/(admin)/admin/internal/knowledge-base/[id]/page.tsx` (DETAIL with `generateStaticParams` for 13 doc ids; canonical kb-vorona-ring-sop uses full fixture, other 12 use `buildKbDetailFromDoc(doc, section)` universal builder)
+  - Sidebar integration: `sidebar-nav-data.ts` Knowledge Base pathname `#knowledge-base` → `/admin/internal/knowledge-base`; `admin-sidebar.tsx` active-state matcher handles list + descendant routes
+- **Passes:**
+  - Pass A: LIST view (page header with meta-pulse + 5-stat strip + sticky 7-category sidebar + 4 category sections with 13 verbatim docs + sidebar wire-up)
+  - Pass B: DETAIL route + breadcrumb + hero (KbStatusPill Live·v6 + 3 actions) + UNIQUE kb-verify-banner (fresh variant) + 4-stat strip
+  - Pass C: fr-main with 2 fr-section cards — Frontmatter (7 verbatim rows) + Markdown body (30+ lines with 7 syntax classes via `data-hc-md-*` attribute markers) — REUSED Step 33's HcSectionHead + HcFrontmatterCard + HcMarkdownCard via cross-step imports
+  - Pass D: fr-rail with KbPreviewCard (Phase 1 checklist with 5 step-checks, 3 complete) + KbCategorizationCard (4 blocks: 5 linked cases + 3 runbooks + 5 cross-step links + 6-version revision history)
+  - Post-build fix: Replaced `flex flex-col gap-[14px]` rail layout with `space-y-[14px]` block layout + `[scrollbar-gutter:stable]` to fix flex-shrink clipping issue (flex items default to shrink instead of overflow, breaking scroll chain). Also added `buildKbDetailFromDoc` universal helper to render full detail pages for all 12 non-canonical docs (previously placeholder).
+- **Data model:**
+  - `KbDocRow`: id + variant (4) + badge? (★/⚠) + title + tags (6 variants) + slug + views + viewsMeta + verifiedDot (3 variants) + verifiedDate + verifiedMeta + modifiedDate + modifiedAuthor + statusVariant (5) + statusLabel
+  - `KbDetailData`: breadcrumb + hero + verifyBanner + 4 detailStats + frontmatter (HcFrontmatterData type from Step 33) + markdownBody (HcMarkdownData type) + previewCard (5 step-checks + footer) + categorization (4 blocks)
+  - `buildKbDetailFromDoc(doc, section): KbDetailData` — derives full detail page from doc row + section, reusing canonical markdown/preview/categorization while deriving doc-specific breadcrumb/hero/verifyBanner/stats/frontmatter
+  - All fixture content extracted **verbatim** from admin.html lines 66159-67072
+- **CSS/Design tokens:**
+  - 19 tokens (all existing in globals.css from prior steps)
+  - **ZERO globals.css additions** this step (pulse-fr already shipped from Step 32; super/amber/success tints all literal `rgba(...)`)
+  - Doc card row tints: default = paper / stale = amber@4% bg + amber@22% border / draft = super@3% bg + super@18% border / critical-stale = danger@4% bg + danger@25% border
+  - Tag variants: default cream / runbook inverted ink / critical danger / compliance super / fraud danger (reserve) / onboarding success
+  - Verified-dot: fresh = success / aging = amber / stale = danger + pulse-fr 1.4s
+  - Status pill: live success / needs-verify amber + pulse-fr 1.4s / critical-stale danger + pulse-fr 1s (faster = more urgent) / draft super / archived cream-deep (reserve)
+  - Verify banner: 3 gradient variants (success/amber/danger) with matching icon circle + eyebrow color
+  - Step-check: complete fills success + check icon + line-through ink-mute text
+  - Sticky rail uses `max-h calc(100vh-44px) + overflow-y-auto + space-y-[14px] + scrollbar-gutter:stable` so tall content stays reachable via internal scroll (block layout avoids flex-shrink clipping bug)
+- **TypeScript strict:** ✅ No errors (after adding null guards for `String.match` regex result indexing)
+- **Build:** ✅ Compiled successfully — `/admin/internal/knowledge-base` (static) + `/admin/internal/knowledge-base/[id]` (SSG, 13 paths)
+- **Tailwind-only:** ✅ ZERO inline styles in `src/components/admin/internal/knowledge-base/` (no avatar gradients or inline-color decorations needed for KB)
+- **Forbidden classNames:** ✅ Zero matches (no kb-, kbd-, klc-, kvb-, ksc-, hc-, fr-, cd-, etc. in any className string)
+- **Notes:**
+  - **Cross-step component reuse:** `PrStatStrip` + `PrStat` type from Step 27 reused for 5-stat strip; `AdminActionToastProvider` from Step 34 powers all button/row feedback toasts; `HcSectionHead` + `HcFrontmatterCard` + `HcMarkdownCard` from Step 33 reused for DETAIL fr-main (data-driven props made these directly reusable)
+  - **Step 33 reuse limits:** `HcCatSide` hardcoded "CATEGORIES · 8" + 9-icon set / `HcCatSection` hardcoded `HcArticleRowComponent` / `HcPreviewCard` hardcoded `HcPublicFrame` / `HcCategorizationCard` hardcoded `/admin/platform/help-content/` link routes / `HcDetailRail` hardcoded HcPreviewCard+HcCategorizationCard composition — all required hand-translation as Kb* equivalents
+  - **Universal detail builder pattern** (matching Step 33's `buildHcDetailFromArticle`): All 12 non-canonical docs render full detail pages using their own row metadata (breadcrumb / hero / verify-banner variant derived from `doc.verifiedDot` / 4 stats / 7-row frontmatter with doc's actual tags + slug + author) while reusing canonical markdown body + preview + categorization verbatim. No placeholders.
+  - **Sticky rail fix (post-build)**: Initial Pass D shipped with `flex flex-col gap-[14px]` which caused inner cards to be compressed/clipped instead of producing scrollable overflow (flex-shrink: 1 default). Replaced with `space-y-[14px]` block layout — cards now have natural height and aside overflow-y-auto produces internal scroll properly. Added `[scrollbar-gutter:stable]` so scrollbar gutter is reserved (no content reflow when scrollbar appears).
+  - **Reserve variants** in CSS but unused in markup: `.kbd-tag.fraud`, `.kb-status-pill.archived`, `.kb-verify-banner.aging` + `.stale` (only canonical uses fresh) — all wired in type system for future docs.
+  - **PART 8 INTERNAL OPS COMPLETE (4/4)**: Step 34 Performance + Step 35 Incident Reports + Step 36 Internal Communications + Step 37 Knowledge Base.
+  - **🎉 ALL 8 PARTS OF ATLAS CONVERSION COMPLETE — 37 of 37 STEPS SHIPPED**
+
 ---
 
 ## Step 13 — Reviews (current)
@@ -772,14 +821,14 @@ Urgent rows use a real CSS `border-l-[3px] border-l-[var(--danger)]` (not a `::b
 | 32 | Email & SMS Templates | ✅ Done |
 | 33 | Help Center Content | ✅ Done |
 
-### Internal group (4 entities, 3 shipped)
+### Internal group (4 entities, ALL SHIPPED)
 
 | Step | Title | Status |
 |---|---|---|
 | 34 | Performance Dashboards | ✅ Done |
 | 35 | Incident Reports | ✅ Done |
 | 36 | Internal Communications | ✅ Done |
-| 37 | Knowledge Base | ⏸ pending HTML |
+| 37 | Knowledge Base | ✅ Done |
 
 ---
 

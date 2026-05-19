@@ -214,6 +214,11 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       return pathname === '/admin/internal/communications' || pathname.startsWith('/admin/internal/communications/');
     }
 
+    // Internal Knowledge Base: list + detail descendant routes
+    if (itemPathname === '/admin/internal/knowledge-base') {
+      return pathname === '/admin/internal/knowledge-base' || pathname.startsWith('/admin/internal/knowledge-base/');
+    }
+
     return pathname === itemPathname;
   };
 

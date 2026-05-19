@@ -307,7 +307,7 @@ export const SIDEBAR_NAV = {
         {
           id: 'knowledge-base',
           label: 'Knowledge Base',
-          pathname: '#knowledge-base',
+          pathname: '/admin/internal/knowledge-base',
           icon: KnowledgeBaseNavIcon,
         },
       ],
