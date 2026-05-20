@@ -308,3 +308,96 @@ export const nfcFooter: NfcFooterData = {
     'Showing 11 of 14 unread · 2 in "earlier this week" · 1 awaiting category tagging',
   loadEarlierLabel: 'Load earlier →',
 };
+
+/* ============================================================
+   Bell-icon dropdown (compact view in topbar)
+   admin.html markup lines 34382-34455, CSS lines 1939-2140
+   Uses simpler notif-* class family — distinct from full-page nt-* family
+   ============================================================ */
+
+export type NfcDropdownIconVariant = 'urgent' | 'today' | 'week';
+
+export interface NfcDropdownItem {
+  categoryTag: string;
+  title: string;
+  time: string;
+  iconVariant: NfcDropdownIconVariant;
+  isUnread: boolean;
+  href: string;
+}
+
+export interface NfcDropdownData {
+  headerTitle: string;
+  unreadCountText: string;
+  markAllLabel: string;
+  items: NfcDropdownItem[];
+  footerLinkLabel: string;
+  footerHref: string;
+}
+
+export const nfcDropdownData: NfcDropdownData = {
+  headerTitle: 'Notifications',
+  unreadCountText: '7 unread',
+  markAllLabel: 'Mark all read',
+  items: [
+    {
+      categoryTag: 'TRUST & SAFETY',
+      title:
+        'Critical fraud alert: 7 accounts flagged with multiple-account patterns',
+      time: '3 min ago',
+      iconVariant: 'urgent',
+      isUnread: true,
+      href: '/admin/trust-safety/fraud-abuse',
+    },
+    {
+      categoryTag: 'COMPLIANCE',
+      title: 'Legal request received with 48h deadline',
+      time: '12 min ago',
+      iconVariant: 'urgent',
+      isUnread: true,
+      href: '/admin/compliance/legal-requests',
+    },
+    {
+      categoryTag: 'OPERATIONS',
+      title: '12 disputes have exceeded 72-hour SLA',
+      time: '1 hour ago',
+      iconVariant: 'today',
+      isUnread: true,
+      href: '/admin/operations/disputes',
+    },
+    {
+      categoryTag: 'FINANCE',
+      title: '8 refunds awaiting your approval — $14,250 total',
+      time: '2 hours ago',
+      iconVariant: 'today',
+      isUnread: true,
+      href: '/admin/finance/refunds',
+    },
+    {
+      categoryTag: 'PERFORMANCE',
+      title: 'Pool depletion: Senior Engineers below 40%',
+      time: '4 hours ago',
+      iconVariant: 'week',
+      isUnread: false,
+      href: '/admin/internal/performance',
+    },
+    {
+      categoryTag: 'TEAM',
+      title: 'Performance review overdue: 2 specialists',
+      time: '5 hours ago',
+      iconVariant: 'today',
+      isUnread: false,
+      href: '/admin/users/specialists',
+    },
+    {
+      categoryTag: 'FINANCE',
+      title: '14 subscription renewals approaching this week',
+      time: '6 hours ago',
+      iconVariant: 'week',
+      isUnread: false,
+      href: '/admin/finance/transactions',
+    },
+  ],
+  footerLinkLabel: 'View all notifications →',
+  footerHref: '/admin/notifications',
+};
