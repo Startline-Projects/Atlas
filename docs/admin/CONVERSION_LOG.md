@@ -756,7 +756,7 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
 |---|---|---|---|
 | 38 | 37 | Notifications Center | ✅ Done |
 | 39 | 38 | Global admin search | ✅ Done |
-| 40 | 39 | Onboarding for new admins | ⏸ pending |
+| 40 | 39 | Onboarding for new admins | ✅ Done |
 | 41 | 40 | Real-time updates | ⏸ pending |
 
 ### Step 38 (Scope Step 37) — Notifications Center
@@ -846,6 +846,40 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
   - **View-all links** route to LIST pages by design (explicit "View all in X →").
   - **Cross-step reuse:** `PrStatStrip` + `PrStat` type from Step 27; `AdminActionToastProvider` from Step 34 (filter chip + header action toasts).
   - **PART 9 CROSS-CUTTING: 2 of 4 complete (Build 38 Notifications + Build 39 Global Search)**. Remaining: Build 40 Onboarding · Build 41 Real-time.
+
+### Step 40 (Scope Step 39) — Onboarding Tour
+
+- **Status:** ✅ Done — **PART 9 CROSS-CUTTING: 3 of 4 complete**
+- **Session:** 6
+- **Routes:** `/admin/onboarding` (FLAT, trigger-only static `○` route — fires welcome modal + redirects URL to `/admin/dashboard`)
+- **HTML lines:** welcome modal 68045–68128 · tour tooltip 68131–68171 · 10-step `obTourSteps` JS array 81188–81270 · tour engine JS 81272–81409
+- **CSS lines:** 32543–32953 (welcome modal + tour overlay/tooltip/head/body/hint/progress/foot + section-badge + finish-banner; only animation = 0.12s dot transition)
+- **Files added:** 1 data + 9 components + 1 context + 1 route = 12 new (1 deleted)
+  - Mock data: `src/lib/mock-data/admin/onboarding-data.ts` (Pass A + B **verbatim** fixtures: welcome modal hero/body/8 overview rows/footnote/foot + 10 tour steps + finish banner). `obh-kbd` class → `data-ob-kbd` attribute marker. Each step stores full-route `hashTarget` + ready `hashLabel` (no slug→route helper needed).
+  - Pass A components (2): `ob-overview-row.tsx` (22px ink number circle + text + mono sub), `ob-welcome-modal.tsx` (`'use client'` — hero with inline gradient + decorative glow blob + body prose + 8-row 2-col overview grid + footnote + skip/start foot)
+  - Pass B components (7): `ob-progress-dot.tsx` (`'use client'` single dot, 3 states default/complete/active + scale-1.4), `ob-tour-progress.tsx` (`'use client'` 10 dots + verbatim "~Nmin remaining"/"final step" meta formula), `ob-tour-foot.tsx` (`'use client'` skip + back-disabled-on-step-1 + next/"Finish ✓"), `ob-section-badge.tsx` (super-tinted chip + single circle SVG), `ob-finish-banner.tsx` (success-gradient banner via Tailwind arbitrary bg-image — not inline), `ob-go-to-link.tsx` (`'use client'` per-step "Go to {section} →" → router.push), `ob-tour-tooltip.tsx` (`'use client'` centered card: head + body + progress + foot)
+  - Option B upgrade (3 + layout): `ob-tour-overlay.tsx` (`'use client'` global conditional render mounted in admin layout), `ob-onboarding-trigger.tsx` (`'use client'` redirects `/admin/onboarding` → `/admin/dashboard` + fires welcome), `src/lib/admin/onboarding-context.tsx` (`ObTourProvider` + `useObTour`), admin layout mount (`src/app/(admin)/layout.tsx` — wrap children in `<ObTourProvider>` + `<ObTourOverlay />`)
+  - Route: `src/app/(admin)/admin/onboarding/page.tsx` (server, renders `<ObOnboardingTrigger />`, keeps metadata)
+  - **DELETED:** `ob-onboarding-shell.tsx` (Pass B orchestrator, replaced by global overlay)
+- **Passes:**
+  - Pass A: route scaffold + 3-state machine + welcome modal + dimmed backdrop + 10-step verbatim fixtures
+  - Pass B: tour tooltip + 10-step nav + progress dots + per-step Go-to link + section badge + finish banner
+  - Option B upgrade: re-mounted globally so the underlying admin page navigates as the tour advances
+- **Route count:** 276 total (was 275 → +1 static trigger route)
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/onboarding` (static `○`)
+- **Tailwind-only:** ✅ 1 inline style (Pass A welcome hero gradient `linear-gradient(ink→#2A1F18)`); zero others
+- **Forbidden classNames:** ✅ Zero matches (no ob-/obwh-/obwf-/obor-/obth-/obtf-/obtp-/obh-/obfb- in any className; `data-ob-kbd` is an attribute marker, not a className)
+- **Notes:**
+  - **ARCHITECTURE KEY DECISION: Option B (global overlay matching admin.html's "rendered globally, overlays any page" intent), NOT Option A (centered route).** Initial Pass A/B built Option A (centered tooltip on `/admin/onboarding` route) but the user requested true admin.html behavior where the underlying admin page navigates as the tour advances + sidebar highlights update. Upgrade mounted `ObTourOverlay` globally in the admin layout; each next/back/dot-click `router.push`es the step's `hashTarget` so the underlying route changes while the tooltip stays on top. Backdrop is `pointer-events-none` so sidebar/page stays clickable mid-tour. `/admin/onboarding` route fires the welcome modal + redirects URL to `/admin/dashboard` so the user sees a real admin page from step 0.
+  - **Tooltip centered via Tailwind positioning** (admin.html's JS-anchored positioning not replicated — simpler centered render works well for the demo + avoids pixel-fragile anchor positioning). `::before` pointer arrow omitted since it'd point at nothing in centered mode.
+  - **10 verbatim tour steps** with eyebrow + optional section badge + proseHtml + hintHtml. **Section badge: admin.html uses a single circle SVG for ALL badges** — the tour JS only swaps the label text, never the icon; building 8 icon variants would be inventing content, so the verbatim single circle is used. Keyboard chips via `data-ob-kbd` attribute marker + `[&_[data-ob-kbd]]` selector CSS (same pattern as Step 33/37 markdown).
+  - **Finish banner** (CSS 32918–32953) exists in admin.html's stylesheet but the tour JS never injects it; rendered per user request on step 10 above the title/prose. Check-mark glyph is the one inferred element (no verbatim icon markup).
+  - Progress dots compute state (default/complete/active) from idx vs currentStep. Per-step "Go to {section} →" resolves to the real `/admin/...` URL stored verbatim in the Pass A fixture (full routes + hashLabel from admin.html JS).
+  - **Sidebar active-state already uses `usePathname`** so tour navigation auto-highlights the right sidebar group with ZERO sidebar changes.
+  - Step 10 finish banner accompanies the title + prose; Next button becomes "Finish ✓", transitioning state to `'closed'` + `router.push('/admin/dashboard')` + toast. Skip from any step does the same.
+  - **Cross-step reuse:** `AdminActionToastProvider`/`useAdminActionToast` from Step 34 powers skip/finish toasts.
+  - **PART 9 CROSS-CUTTING: 3 of 4 complete (Build 38 Notifications + Build 39 Global Search + Build 40 Onboarding)**. Remaining: Build 41 Real-time updates (view-realtime at line 68317).
 
 ---
 
