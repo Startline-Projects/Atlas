@@ -12,6 +12,8 @@ import {
   type SearchResult,
 } from '@/lib/mock-data/admin/search-index';
 import { GlobalSearchDropdown } from './global-search-dropdown';
+import { RtStatusPill } from '@/components/admin/realtime/rt-status-pill';
+import { RtTickerToggle } from '@/components/admin/realtime/rt-ticker-toggle';
 import {
   HamburgerIcon,
   SearchIcon,
@@ -199,8 +201,14 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
         )}
       </div>
 
-      {/* Right: Help + Notifications + Avatar */}
+      {/* Right: Realtime pill + Ticker toggle + Help + Notifications + Avatar */}
       <div className="flex items-center gap-1 flex-shrink-0 relative">
+        {/* STEP 41 · realtime connection-status pill (click → /admin/realtime) */}
+        <RtStatusPill />
+
+        {/* STEP 41 · live-ticker toggle (opens right-edge slide-out) */}
+        <RtTickerToggle />
+
         {/* Help Icon */}
         <a
           href="#"

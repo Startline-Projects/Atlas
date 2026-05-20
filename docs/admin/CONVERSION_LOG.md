@@ -4,6 +4,28 @@ Single-source-of-truth for converting Atlas Admin Interface from `reference/admi
 
 ---
 
+## 🎉 ATLAS CONVERSION COMPLETE — 40 of 40 scope deliverables shipped
+
+- **Completed:** 2026-05-20 · branch `hoor_v1` · final step = Build 41 / Scope 40 (Real-time updates)
+- **Routes shipped:** **277** (Next.js App Router, `(admin)` group + cross-cutting pages)
+- **All 9 PARTS shipped:**
+  1. Auth / sign-in (multi-state) · 2. Dashboard · 3. User management (candidates/clients/specialists/managers/admins) · 4. Operations (engagements/jobs/disputes/reviews/reports) · 5. Trust & Safety (fraud/incidents/suspicious/suspensions) · 6. Finance (transactions/fees/refunds/tax) · 7. Compliance (legal/DSR/audit/privacy/regulatory) · 8. Platform config (settings/categories/integrations/templates/help) + Internal ops (performance/incidents/communications/knowledge-base) · 9. **Cross-cutting (Notifications · Global Search · Onboarding · Real-time) — 4 of 4 ✅**
+- **`globals.css` mutation total across all 41 build steps: 3** —
+  1. `--lime-bg` token (Step 17)
+  2. `@keyframes pulse-live` (Step 31)
+  3. `@keyframes pulse-fr` (Step 32)
+  Every step thereafter (incl. Step 41's **3 new keyframes** `rts-pulse-live` / `rts-pulse-reconnect` / `rt-event-arrive`) added **zero** globals.css mutations — Step 41's keyframes live in a component-scoped `<style>` tag inside `RtStatusPill` (always mounted in the topbar), referenced via Tailwind arbitrary `animate-[name_duration_ease]` values.
+- **Architectural primitives proven in PART 9 cross-cutting:** global chrome mounted in the admin layout + a React context provider + consumer component — used identically by all four cross-cutting features:
+  - `NfcDropdown` (bell dropdown) — Step 38
+  - topbar Enter → `/admin/search?q=` wire-up — Step 39
+  - `ObTourProvider` + `useObTour` + global `ObTourOverlay` (tour navigates the underlying page) — Step 40
+  - `RtRealtimeProvider` + `useRtRealtime` + topbar pill/toggle + global `RtTicker` slide-out + `/admin/realtime` page — Step 41
+- **Universal detail-builder pattern** (derive a full detail view from row metadata + reuse canonical markdown/preview) proven across Steps 33 (Help Center) and 37 (Knowledge Base).
+- **Cross-step component reuse** proven throughout — e.g. `PrStatStrip`/`PrStat` (Step 27) reused by Steps 38/39/41; `AdminActionToastProvider`/`useAdminActionToast` (Step 34) powers decorative-action toasts in every later step.
+- **Navigation integrity:** all cross-cutting result/event/cross-link rows audited against each route's `generateStaticParams` — **zero 404s** (Steps 38/39/41).
+
+---
+
 ## Current Status
 
 - **Current step:** 13 — Reviews · pending SCOPE DISCOVERY
@@ -757,7 +779,7 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
 | 38 | 37 | Notifications Center | ✅ Done |
 | 39 | 38 | Global admin search | ✅ Done |
 | 40 | 39 | Onboarding for new admins | ✅ Done |
-| 41 | 40 | Real-time updates | ⏸ pending |
+| 41 | 40 | Real-time updates | ✅ Done |
 
 ### Step 38 (Scope Step 37) — Notifications Center
 
@@ -880,6 +902,48 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
   - Step 10 finish banner accompanies the title + prose; Next button becomes "Finish ✓", transitioning state to `'closed'` + `router.push('/admin/dashboard')` + toast. Skip from any step does the same.
   - **Cross-step reuse:** `AdminActionToastProvider`/`useAdminActionToast` from Step 34 powers skip/finish toasts.
   - **PART 9 CROSS-CUTTING: 3 of 4 complete (Build 38 Notifications + Build 39 Global Search + Build 40 Onboarding)**. Remaining: Build 41 Real-time updates (view-realtime at line 68317).
+
+### Step 41 (Scope Step 40) — Real-time Updates · **FINAL STEP — CLOSES THE 40-SCOPE CONVERSION**
+
+- **Status:** ✅ Done — **PART 9 CROSS-CUTTING: 4 of 4 complete · ATLAS CONVERSION 100% COMPLETE (40/40)**
+- **Session:** 6
+- **Routes:** `/admin/realtime` (FLAT page, static `○`) — reached via the topbar pill + ticker "Manage subscriptions →" link (not a sidebar item, matching admin.html)
+- **HTML lines:** topbar pieces 34354–34365 · ticker slide-out 68182–68312 · #realtime view 68317–68752 · 10-event JS array + engine 81454–81583
+- **CSS lines:** 32956–33443 (rt-* block, ~474 lines; the `sub-*` block 33445–33695 belongs to the deferred out-of-scope `view-subscriptions`)
+- **3 surfaces** built across 3 passes:
+  - **Pass A — topbar pieces** (global chrome): connection-status pill (3 states) + ticker toggle
+  - **Pass B — ticker slide-out** (global overlay): right-edge panel with 10 verbatim events
+  - **Pass C — #realtime page route**: header + 5-stat strip + 6 channel cards + 6 subscribers + §03 surfaces
+- **Files added (16 total):**
+  - Context: `src/lib/admin/realtime-context.tsx` (`RtRealtimeProvider` + `useRtRealtime` — tickerOpen / connectionState / latencyMs + openTicker/closeTicker/setConnectionState/setLatency)
+  - Mock data: `src/lib/mock-data/admin/realtime-data.ts` (Pass A pill labels · Pass B `rtTickerData` 10 events · Pass C `rtPageMeta`/`rtPageActions`/`rtPageStats`/`rtChannels`/`rtSubscribers`/`rtSurfaceCells` — all verbatim)
+  - Components (12) under `src/components/admin/realtime/`:
+    - Pass A (2): `rt-status-pill.tsx` (3-state pill + **owns the component-scoped `<style>` with all 3 keyframes**), `rt-ticker-toggle.tsx`
+    - Pass B (5): `rt-ticker.tsx` (global slide-out + Escape close), `rt-ticker-head.tsx`, `rt-ticker-foot.tsx`, `rt-event-row.tsx` (fresh-arrive animation + router.push), `rt-event-icon.tsx` (7 verbatim glyphs)
+    - Pass C (5): `rt-realtime-shell.tsx` (page header + stat strip + §01/§02/§03 + reconnect/openTicker/toast handlers), `rt-channel-card.tsx`, `rt-channel-icon.tsx` (6 verbatim glyphs), `rt-subscriber-row.tsx`, `rt-live-pulse.tsx`
+  - Route: `src/app/(admin)/admin/realtime/page.tsx` (server, renders `RtRealtimeShell`, keeps metadata)
+- **Files modified (2):**
+  - `src/app/(admin)/layout.tsx` — nested `<RtRealtimeProvider>` inside `<ObTourProvider>`; mounted global `<RtTicker />` (after content, before `<ObTourOverlay />`)
+  - `src/components/admin/shell/admin-topbar.tsx` — inserted `<RtStatusPill />` + `<RtTickerToggle />` at the head of the right cluster (admin.html order: pill → toggle → help → bell → avatar)
+- **Route count:** 277 total (was 276 → +1 static `/admin/realtime`)
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/realtime` (static `○`)
+- **Tailwind-only:** ✅ 1 inline style in realtime/ (subscriber avatar gradient via `.map`, renders 6× — approved, same pattern as Steps 27/39); zero others
+- **Forbidden classNames:** ✅ Zero matches (no rt-/rts-/rte-/rth-/rtt-/rtf-/rtch-/rtcm-/rtcf-/rtsr- in any className; `animate-[rts-pulse-live_...]` are arbitrary-value keyframe references, not semantic classNames)
+- **Notes:**
+  - **3 new keyframes** (`rts-pulse-live` box-shadow ping · `rts-pulse-reconnect` scale/opacity blink · `rt-event-arrive` fresh-event slide-in) are injected **once** via a component-scoped `<style>` tag inside `RtStatusPill` (always mounted in the topbar). **globals.css untouched.** Tailwind arbitrary `animate-[name_duration_ease]` values reference them by name (pill dot, ticker head dot, ticker-toggle badge, live-pulse badge, fresh event row).
+  - **11 NEW rt-* CSS prefix families** (`rt- rts- rte- rth- rtt- rtf- rtch- rtcm- rtcf- rtsr-`); **16 existing CSS tokens reused, zero new tokens**.
+  - **Static fixtures** (no WS engine ported): 10 ticker events + 6 channel cards + 6 subscriber rows + 6 §03 surface cells + 5 stats + 3 header actions.
+  - **6 verbatim hex gradient avatars** for subscribers as inline styles (approved — same pattern as Steps 27/39; one `style={{}}` literal rendered 6× via `.map`).
+  - **3 connection states** (live/reconnect/offline). **Force reconnect** sets the pill to `reconnect` (amber `rts-pulse-reconnect`) for 2s via `setTimeout`, then back to `live` + verbatim toast.
+  - **7 ticker-event icon type variants** (audit/payment/candidate/metric/review/dispute/fraud).
+  - **`rtch-icon` has NO per-channel CSS variants** — admin.html embeds 6 different inline SVGs per channel card (payments/audit/users/safety/performance/incidents); CSS gives one neutral style + a `.subscribed` success tint (all 6 cards subscribed). Verbatim single-style + 6 glyph variants.
+  - **Subscriber status: 2 variants** (online green / idle amber — Lina Almeida idle). **Channel-metric warn variants** on T&S "Critical · 24h 3" + Incident "Active INC-058".
+  - **All Step cross-links** (channel-card foots + §03 surface cells: Step 2/3/15/19/25/33/34/37) **audited against existing routes — zero 404s** (resolve to the 8 section LIST routes via the rtStepRoutes map). Ticker event rows audited against detail-route `generateStaticParams`: exact matches `aud-2026-106102` / `dsp-162` / `fa-2026-0042`, canonical fallbacks `tx-2026-08442`/`tx-2026-08441`/`rev-834`, LIST fallbacks for non-SSG candidate IDs + generic admin login.
+  - **`RtRealtimeProvider` + `useRtRealtime`** nested inside `ObTourProvider` in the admin layout; the ticker slide-out is mounted globally alongside `ObTourOverlay` — both consume their respective contexts.
+  - **Reuse:** `PrStatStrip`/`PrStatCell` + `PrStat` type (Step 27 family) for the 5-stat strip; `AdminActionToastProvider`/`useAdminActionToast` (Step 34) for all decorative-action toasts.
+  - **Cross-cutting closing note:** all 4 cross-cutting steps (Notifications · Global Search · Onboarding · Real-time) share the same pattern — **admin-layout-global chrome + context provider + consumer component**.
+  - **PART 9 CROSS-CUTTING: 4 of 4 complete. 🎉 ATLAS CONVERSION 100% COMPLETE — 40 of 40 scope deliverables shipped.**
 
 ---
 
