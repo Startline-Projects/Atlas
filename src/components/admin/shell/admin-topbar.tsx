@@ -118,7 +118,18 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
     if (e.key === 'Enter') {
       e.preventDefault();
       const target = flatResults[activeIndex];
-      if (target) handleSelect(target);
+      if (target) {
+        handleSelect(target);
+      } else {
+        const q = searchQuery.trim();
+        if (q.length > 0) {
+          setSearchDropdownOpen(false);
+          setSearchQuery('');
+          setActiveIndex(0);
+          searchInputRef.current?.blur();
+          router.push(`/admin/search?q=${encodeURIComponent(q)}`);
+        }
+      }
       return;
     }
   };

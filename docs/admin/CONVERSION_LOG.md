@@ -755,7 +755,7 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
 | Build Step | Scope Step | Title | Status |
 |---|---|---|---|
 | 38 | 37 | Notifications Center | ✅ Done |
-| 39 | 38 | Global admin search | ⏸ pending |
+| 39 | 38 | Global admin search | ✅ Done |
 | 40 | 39 | Onboarding for new admins | ⏸ pending |
 | 41 | 40 | Real-time updates | ⏸ pending |
 
@@ -801,6 +801,51 @@ The original 37-step scope plan included 4 cross-cutting admin features that don
   - **Cross-step component reuse:** `PrStatStrip` + `PrStat` type from Step 27 reused for 5-stat strip; `AdminActionToastProvider` from Step 34 powers archive button + header action toasts.
   - **Row navigation wired to real admin routes**: 11 rows route via `router.push(row.href)` to existing admin entity pages. 9 detail routes + 2 fallbacks: `nt-ref-0084` → `/admin/finance/refunds` (LIST fallback since no refund detail `[id]` route exists) and `nt-maint` → `/admin/dashboard` (no maintenance route). Specific entity IDs (e.g. fa-2026-0042, dsr-2026-0089, aud-2026-106102) may 404 if not in target route's `generateStaticParams` — accepted risk; can patch in follow-up if user reports any.
   - **PART 9 CROSS-CUTTING: 1 of 4 complete (Build 38 = Scope 37 Notifications)**. Remaining: Build 39 Global Search · Build 40 Onboarding · Build 41 Real-time.
+
+### Step 39 (Scope Step 38) — Global Admin Search
+
+- **Status:** ✅ Done — **PART 9 CROSS-CUTTING: 2 of 4 complete**
+- **Session:** 5
+- **Routes:** `/admin/search` (FLAT page, dynamic `ƒ` — reads `?q=` searchParam, falls back to canonical "vorona" fixture)
+- **HTML lines:** 67493–68033 (view-search, 540 lines)
+- **CSS lines:** 32171–32512 (342 lines; zero animations)
+- **Files added:** ~15 total
+  - Mock data: `src/lib/mock-data/admin/search-results-data.ts` (page meta + meta-pulse + query + 3 header actions + 4 top stats + 13 sidebar categories · Pass B: 7 result groups with 18 verbatim results + per-row href + 1 empty group + 3 recent searches)
+  - Pass A components (6): `gs-meta-pulse.tsx`, `gs-query-pill.tsx` (`'use client'` read-only chip + clear × → router.push), `gs-page-header.tsx` (`'use client'` h1 + inline query pill + meta-pulse + 3 actions), `gs-cat-item.tsx` (`'use client'` sidebar row, 13 verbatim icon SVGs), `gs-cat-side.tsx` (`'use client'` sticky 220px sidebar), `gs-shell.tsx` (`'use client'` orchestrator)
+  - Pass B components (7): `gs-group-icon.tsx` (28px rounded-7px square, 8 type variants + verbatim group SVGs), `gs-status-pill.tsx` (4 variants: banned/active/resolved/investigating), `gs-result.tsx` (`'use client'` 3-col card with canonical modifier + router.push + 2 avatar kinds + title/meta `[&_mark]`/`[&_strong]` highlights + super-purple gsr-id + crumb + relevance/status side), `gs-group.tsx` (`'use client'` head with icon+title+count+View-all link → router.push), `gs-empty.tsx` (group head + dashed centered message), `gs-recent-row.tsx` (`'use client'` clock + query/meta + arrow, router.push), `gs-recent-card.tsx` (head + N rows)
+  - Route: `src/app/(admin)/admin/search/page.tsx` (server, accepts `searchParams: Promise<{q?}>`)
+  - Topbar wire-up: `src/components/admin/shell/admin-topbar.tsx` — extended Enter handler: when no dropdown result is active AND query has text, `router.push('/admin/search?q=...')`. Existing dropdown-result selection unchanged.
+- **Passes:**
+  - Pass A: page header + query pill + meta-pulse + 4-stat strip + 220px sticky category sidebar + topbar Enter wire-up
+  - Sidebar fix: re-translated `gs-cat-item` verbatim from `hc-cat-*` CSS (admin.html 29088-29155) — full ink inversion on `.active` row (ink bg / paper text) + paper-alpha count pill + bare 18px icon (no chip). Pass A's first translation invented an icon-chip + wrong active state.
+  - Pass B: 7 result groups (Users 5 / Fraud 2 / Suspensions 2 / Audit 3 / Compliance 1 / Internal 3 / Notifications 2) + empty group + 3 recent searches
+  - Navigation fix: audited every detail route's `generateStaticParams`, mapped all 18 results + 3 recent rows to existing entities (no 404s, no list fallbacks).
+- **Data model:**
+  - `GsResult`: id + isCanonical? + href + avatar (initials gradient / icon SVG) + title (with `<mark>`) + idLabel? + metaHtml (with `<strong>`+`<mark>`) + crumb[] + relevance + status + statusLabel
+  - `GsResultGroup`: iconType (8) + title + count + viewAllLink + viewAllHref + results[]
+  - `GsResultStatus`: banned/active/resolved/investigating; `GsAvatarKind`: initials/icon
+  - All fixture content extracted **verbatim** from admin.html lines 67493-68033
+- **CSS/Design tokens:**
+  - 18 tokens (all existing in globals.css)
+  - **ZERO globals.css additions** · **ZERO animations** in entire view
+  - Sidebar: hand-translated verbatim from `hc-cat-*` CSS — Step 33's `HcCatSide` could NOT be reused (hardcoded "CATEGORIES · 8" head + fixed 9-icon set; search needs "CATEGORIES · 9" + 12 different icons)
+  - 5 inline gradient avatars (2 unique: primary `#C2412B→#8A2C1E`, satellites `#8A2C1E→#5C1D14`)
+  - `<mark>` highlights: amber@22% in titles, amber@18% in meta (scoped `[&_mark]:` selectors)
+  - `.canonical` modifier on top result per group (5 canonical rows): super-tinted bg/border + super relevance pill
+  - 4 status variants + 8 group-icon type variants
+- **TypeScript strict:** ✅ No errors
+- **Build:** ✅ Compiled successfully — `/admin/search` (dynamic ƒ)
+- **Tailwind-only:** ✅ 1 inline style (avatar gradient via `.map`); zero others
+- **Forbidden classNames:** ✅ Zero matches (no gs-, gsh-, gsr-, gqp-, gsrr-, hc-, fr-, cd-, etc. in any className string)
+- **Notes:**
+  - **Search input already existed** in admin topbar (`global-search-dropdown` shipped earlier — cmd-K-style dropdown). Pass A added a fallback Enter handler → `/admin/search?q=...` when no dropdown selection is active. Read-only `gs-query-pill` displays the query in the h1; clear × navigates to `/admin/search` (defaults to canonical "vorona").
+  - **ALL ROW NAVIGATION RESOLVED — zero 404s, zero list fallbacks for result rows.** Audit of `generateStaticParams` revealed search-fixture IDs (cand-1142-style, sb-0085, aud-105874/107412, dsp-2026-0144, cl-167) don't exist in route SSG params. Mapping:
+    - **Exact-match** where SSG contains the ID: FA-2026-0042, FA-2026-0041, SB-2026-0084, AUD-2026-106102, DSR-2026-0089 (uppercase casing fix), kb-vorona-ring-sop, kb-single-fraud, kb-vetting-cooldown
+    - **Canonical fallback** to existing entity in same domain: cand-1142→cand-001 + 4 satellites→cand-002..005, SB-0085→SB-0084, AUD-105874+107412→AUD-106102, cl-167→cl-001-acme, DSP-0144→dsp-144
+    - **Full-page targets** for non-detail entities: internal-comms → `/admin/internal/communications` (threads page), 2 notifications → `/admin/notifications` (full page)
+  - **View-all links** route to LIST pages by design (explicit "View all in X →").
+  - **Cross-step reuse:** `PrStatStrip` + `PrStat` type from Step 27; `AdminActionToastProvider` from Step 34 (filter chip + header action toasts).
+  - **PART 9 CROSS-CUTTING: 2 of 4 complete (Build 38 Notifications + Build 39 Global Search)**. Remaining: Build 40 Onboarding · Build 41 Real-time.
 
 ---
 
