@@ -2,13 +2,18 @@ import { cookies, headers } from "next/headers";
 import type { NextResponse } from "next/server";
 import { cache } from "react";
 
-import { isProduction } from "@/lib/config";
 import type { Candidate } from "@/lib/domain/candidate";
 import { UnauthorizedError } from "@/lib/errors/domain-error";
 import { candidateService } from "@/lib/services/candidate";
 
 import { SESSION_COOKIE } from "./cookie-names";
 import { PATHNAME_HEADER } from "./redirects";
+import {
+  applySessionCookies,
+  CANDIDATE_COOKIES,
+  clearSessionCookies,
+  type SessionTokens,
+} from "./session-cookies";
 
 /**
  * Candidate session — ARCHITECTURE §7.1.
@@ -34,28 +39,22 @@ export interface CandidateSession {
   candidate: Candidate;
 }
 
+/** Sets the access + refresh cookies after a successful login. */
 export function applySessionCookie(
   response: NextResponse,
-  accessToken: string,
-  maxAgeSeconds: number,
+  tokens: SessionTokens,
 ): void {
-  response.cookies.set(SESSION_COOKIE, accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: maxAgeSeconds,
-  });
+  applySessionCookies(response, CANDIDATE_COOKIES, tokens);
 }
 
 export function clearSessionCookie(response: NextResponse): void {
-  response.cookies.set(SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: 0,
-  });
+  clearSessionCookies(response, CANDIDATE_COOKIES);
+}
+
+/** The raw access token from the cookie, for routes that need to revoke it. */
+export async function currentAccessToken(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(SESSION_COOKIE)?.value ?? null;
 }
 
 /**

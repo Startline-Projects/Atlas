@@ -92,6 +92,7 @@ export const adminService = {
       admin,
       accessToken: session.access_token,
       expiresIn: session.expires_in,
+      refreshToken: session.refresh_token,
     };
   },
 
@@ -110,6 +111,15 @@ export const adminService = {
     if (!admin || admin.status !== "ACTIVE") return null;
 
     return admin;
+  },
+
+  /** Revokes the refresh tokens behind this access token. Best-effort. */
+  async signOut(accessToken: string): Promise<void> {
+    try {
+      await getServiceSupabaseClient().auth.admin.signOut(accessToken, "local");
+    } catch (error) {
+      console.error("[admin.signOut] could not revoke session", error);
+    }
   },
 
   /**

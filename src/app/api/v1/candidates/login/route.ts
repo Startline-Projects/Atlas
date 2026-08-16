@@ -38,7 +38,11 @@ export async function POST(request: NextRequest) {
       accessToken: result.accessToken,
       requiresEmailVerification: result.requiresEmailVerification,
     });
-    applySessionCookie(response, result.accessToken, result.expiresIn);
+    applySessionCookie(response, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+    });
     return response;
   } catch (error) {
     return handleApiError(error);

@@ -30,6 +30,8 @@ export interface AdminLoginResult {
   accessToken: string;
   /** Seconds until `accessToken` expires — the session cookie lives as long. */
   expiresIn: number;
+  /** See `LoginResult.refreshToken`. */
+  refreshToken: string;
 }
 
 /**

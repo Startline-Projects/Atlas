@@ -31,7 +31,11 @@ export async function POST(request: NextRequest) {
     const result = await adminService.login(parsed.data);
 
     const response = ok({ admin: toAdminDto(result.admin) });
-    applyAdminSessionCookie(response, result.accessToken, result.expiresIn);
+    applyAdminSessionCookie(response, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+    });
     return response;
   } catch (error) {
     return handleApiError(error);

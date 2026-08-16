@@ -2,21 +2,26 @@ import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { cache } from "react";
 
-import { isProduction } from "@/lib/config";
 import type { AdminUser } from "@/lib/domain/admin";
 import { UnauthorizedError } from "@/lib/errors/domain-error";
 import { adminService } from "@/lib/services/admin";
 
 import { ADMIN_SESSION_COOKIE } from "./cookie-names";
+import {
+  ADMIN_COOKIES,
+  applySessionCookies,
+  clearSessionCookies,
+  type SessionTokens,
+} from "./session-cookies";
 
 /**
  * Admin session — the console twin of `session.ts`.
  *
- * Same mechanics (Supabase access token in an HttpOnly cookie, validated on
- * every guarded render, memoised per request), different cookie, different
- * resolver: `adminService.fromAccessToken()` only ever returns a `role =
- * ADMIN` user, so a candidate who copies their token into this cookie still
- * gets `null`.
+ * Same mechanics (Supabase access token in an HttpOnly cookie, refresh token
+ * beside it, validated on every guarded render, memoised per request),
+ * different cookies, different resolver: `adminService.fromAccessToken()`
+ * only ever returns a `role = ADMIN` user, so a candidate who copies their
+ * token into this cookie still gets `null`.
  */
 
 export interface AdminSession {
@@ -28,26 +33,19 @@ export interface AdminSession {
 
 export function applyAdminSessionCookie(
   response: NextResponse,
-  accessToken: string,
-  maxAgeSeconds: number,
+  tokens: SessionTokens,
 ): void {
-  response.cookies.set(ADMIN_SESSION_COOKIE, accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: maxAgeSeconds,
-  });
+  applySessionCookies(response, ADMIN_COOKIES, tokens);
 }
 
 export function clearAdminSessionCookie(response: NextResponse): void {
-  response.cookies.set(ADMIN_SESSION_COOKIE, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction,
-    path: "/",
-    maxAge: 0,
-  });
+  clearSessionCookies(response, ADMIN_COOKIES);
+}
+
+/** The raw admin access token from the cookie, for routes that revoke it. */
+export async function currentAdminAccessToken(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(ADMIN_SESSION_COOKIE)?.value ?? null;
 }
 
 export const getAdminSession = cache(async (): Promise<AdminSession | null> => {

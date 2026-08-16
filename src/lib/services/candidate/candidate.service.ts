@@ -230,6 +230,7 @@ export const candidateService = {
       candidate,
       accessToken: session.access_token,
       expiresIn: session.expires_in,
+      refreshToken: session.refresh_token,
       requiresEmailVerification: false,
     };
   },
@@ -250,6 +251,19 @@ export const candidateService = {
     if (!candidate || candidate.status !== "ACTIVE") return null;
 
     return candidate;
+  },
+
+  /**
+   * Ends the session at the provider: revokes the refresh tokens behind this
+   * access token so a copied cookie cannot be refreshed after sign-out.
+   * Best-effort — the cookies are cleared regardless.
+   */
+  async signOut(accessToken: string): Promise<void> {
+    try {
+      await getServiceSupabaseClient().auth.admin.signOut(accessToken, "local");
+    } catch (error) {
+      console.error("[candidate.signOut] could not revoke session", error);
+    }
   },
 
   /** Admin-facing listing. Callers are responsible for the permission check. */

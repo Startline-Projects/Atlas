@@ -1,56 +1,77 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { ADMIN_SESSION_COOKIE, SESSION_COOKIE } from "@/lib/auth/cookie-names";
+import {
+  ADMIN_REFRESH_COOKIE,
+  ADMIN_SESSION_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_COOKIE,
+} from "@/lib/auth/cookie-names";
 import {
   adminSignInPath,
   candidateSignInPath,
   PATHNAME_HEADER,
 } from "@/lib/auth/redirects";
+import { accessTokenNeedsRefresh, refreshSession } from "@/lib/auth/refresh";
+import {
+  ADMIN_COOKIES,
+  applySessionCookies,
+  CANDIDATE_COOKIES,
+  clearSessionCookies,
+} from "@/lib/auth/session-cookies";
 
 /**
  * Request proxy (Next 16's name for `middleware.ts`) — ARCHITECTURE §15:
  * "All routes default to authenticated. Public routes are explicitly listed."
  *
- * This is the cheap outer gate. It looks only at whether a session cookie is
- * *present* — no network, no database — and bounces anonymous visitors to the
- * matching sign-in page with a `?next=` so they land back where they were.
- * The cookie's *validity* is checked by the guarded layouts and pages through
- * `getCandidateSession()` / `getAdminSession()`; a stale cookie therefore gets
- * past this file and is caught one step later. That split is deliberate:
- * validating here would put a Supabase round-trip in front of every request
- * the matcher touches.
+ * Two jobs, both cheap:
+ *
+ * 1. Gate. Anonymous visitors (no session cookies at all) are bounced to the
+ *    matching sign-in page with `?next=`. Only *presence* is checked here —
+ *    validity is the guarded layouts' job via `getCandidateSession()` /
+ *    `getAdminSession()`, so a stale cookie gets past this file and is caught
+ *    one step later. Validating here would put a Supabase round-trip in front
+ *    of every matched request.
+ *
+ * 2. Refresh. When the access token is gone or about to expire and a refresh
+ *    cookie exists, trade it for a new pair *before* the page renders. This is
+ *    the only place that can: Server Components cannot set cookies. Runs for
+ *    the `me` API prefixes too, so a long-open profile builder keeps working
+ *    across the access token's lifetime. On API paths a dead session is left
+ *    to the route (401 JSON) — never a redirect.
  *
  * Deliberately NOT done here: sending a visitor who *has* a cookie away from
- * a sign-in page. Presence is not validity, and a stale cookie would loop
- * (proxy → dashboard → layout finds no session → sign-in → proxy → …). The
- * auth layouts do that redirect after a real check.
+ * a sign-in page. Presence is not validity, and a stale cookie would loop.
+ * The auth layouts do that after a real check.
  *
- * Only guards. No rewrites, no locale, no rate limiting yet (§7.6 lands with
- * Upstash) — keep it that way so the file stays auditable at a glance.
+ * Only guards + refresh. No rewrites, no locale, no rate limiting yet (§7.6
+ * lands with Upstash) — keep it that way so the file stays auditable.
  */
 
 interface Surface {
-  /** URL prefix the surface owns. */
-  prefix: string;
-  /** Paths under the prefix an anonymous visitor may open. */
+  /** URL prefixes the surface owns. */
+  prefixes: ReadonlyArray<string>;
+  /** Prefixes that are API, not pages: refresh yes, redirect never. */
+  apiPrefixes: ReadonlyArray<string>;
+  /** Page paths under the prefixes an anonymous visitor may open. */
   publicPaths: ReadonlyArray<string>;
-  /** Cookie whose presence lets a request through. */
-  cookie: string;
+  cookies: { access: string; refresh: string };
   /** Where to send anonymous visitors, carrying `?next=`. */
   signInPath: (next: string) => string;
 }
 
 const SURFACES: ReadonlyArray<Surface> = [
   {
-    prefix: "/candidate",
+    prefixes: ["/candidate", "/api/v1/candidates/me"],
+    apiPrefixes: ["/api/v1/candidates/me"],
     publicPaths: ["/candidate/signin", "/candidate/signup"],
-    cookie: SESSION_COOKIE,
+    cookies: { access: SESSION_COOKIE, refresh: REFRESH_COOKIE },
     signInPath: candidateSignInPath,
   },
   {
-    prefix: "/admin",
+    prefixes: ["/admin", "/api/v1/admin/me"],
+    apiPrefixes: ["/api/v1/admin/me"],
     publicPaths: ["/admin/signin"],
-    cookie: ADMIN_SESSION_COOKIE,
+    cookies: { access: ADMIN_SESSION_COOKIE, refresh: ADMIN_REFRESH_COOKIE },
     signInPath: adminSignInPath,
   },
 ];
@@ -59,24 +80,76 @@ function isUnder(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-export function proxy(request: NextRequest): NextResponse {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
   const here = `${pathname}${search}`;
 
-  for (const surface of SURFACES) {
-    if (!isUnder(pathname, surface.prefix)) continue;
-    if (surface.publicPaths.some((p) => isUnder(pathname, p))) break;
-    if (request.cookies.has(surface.cookie)) break;
-    return NextResponse.redirect(new URL(surface.signInPath(here), request.url));
-  }
+  const surface = SURFACES.find((s) => s.prefixes.some((p) => isUnder(pathname, p)));
 
   // Layouts cannot see the URL they are rendering for; hand it to them so a
   // session that turns out to be stale can still redirect with a `?next=`.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(PATHNAME_HEADER, here);
-  return NextResponse.next({ request: { headers: requestHeaders } });
+
+  if (!surface || surface.publicPaths.some((p) => isUnder(pathname, p))) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  const isApi = surface.apiPrefixes.some((p) => isUnder(pathname, p));
+  const access = request.cookies.get(surface.cookies.access)?.value;
+  const refresh = request.cookies.get(surface.cookies.refresh)?.value;
+
+  // Healthy access token — nothing to do.
+  if (access && !accessTokenNeedsRefresh(access)) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // Access token missing or nearly dead, and a refresh token to trade in.
+  if (refresh) {
+    const fresh = await refreshSession(refresh);
+    if (fresh) {
+      // The render that follows must see the new token: rewrite the request
+      // cookie header, then also set the cookies on the response for the
+      // browser. `request.cookies.set` writes through to the `cookie` header.
+      request.cookies.set(surface.cookies.access, fresh.accessToken);
+      request.cookies.set(surface.cookies.refresh, fresh.refreshToken);
+      const forwarded = new Headers(request.headers);
+      forwarded.set(PATHNAME_HEADER, here);
+
+      const response = NextResponse.next({ request: { headers: forwarded } });
+      applySessionCookies(
+        response,
+        surface.cookies.access === SESSION_COOKIE ? CANDIDATE_COOKIES : ADMIN_COOKIES,
+        fresh,
+      );
+      return response;
+    }
+
+    // Refresh token is dead (revoked, reused, expired). Drop both cookies so
+    // the visitor is cleanly signed out instead of retrying every request.
+    const response = isApi
+      ? NextResponse.next({ request: { headers: requestHeaders } })
+      : NextResponse.redirect(new URL(surface.signInPath(here), request.url));
+    clearSessionCookies(
+      response,
+      surface.cookies.access === SESSION_COOKIE ? CANDIDATE_COOKIES : ADMIN_COOKIES,
+    );
+    return response;
+  }
+
+  // No refresh token. A still-valid-but-expiring access token gets through
+  // (the layout validates it); nothing at all → sign in (pages) / 401 (API).
+  if (access || isApi) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+  return NextResponse.redirect(new URL(surface.signInPath(here), request.url));
 }
 
 export const config = {
-  matcher: ["/candidate/:path*", "/admin/:path*"],
+  matcher: [
+    "/candidate/:path*",
+    "/admin/:path*",
+    "/api/v1/candidates/me/:path*",
+    "/api/v1/admin/me/:path*",
+  ],
 };

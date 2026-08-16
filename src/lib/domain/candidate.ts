@@ -99,5 +99,11 @@ export interface LoginResult {
   accessToken: string;
   /** Seconds until `accessToken` expires — the session cookie lives as long. */
   expiresIn: number;
+  /**
+   * Long-lived, single-use (rotated on each refresh). Kept in its own
+   * HttpOnly cookie; `src/proxy.ts` trades it for a new access token when
+   * the old one runs out. Never returned in a response body.
+   */
+  refreshToken: string;
   requiresEmailVerification: boolean;
 }
