@@ -2,18 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
 import { 
   Play, 
   Lock, 
   ShieldCheck, 
   CheckCircle2, 
   Star, 
-  MapPin, 
   Clock, 
-  DollarSign, 
-  Calendar,
-  Languages,
   ChevronRight,
   ArrowRight,
   Check,
@@ -105,7 +100,6 @@ const similar = [
 ]
 
 export default function CandidateProfile() {
-  const params = useParams()
   // In a real app, you'd fetch by params.slug. For the demo, we use Valentina.
   const c = valentina
   const [activeSection, setActiveSection] = useState<'bio' | 'scorecard' | 'skills'>('bio')

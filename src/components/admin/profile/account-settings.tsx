@@ -126,7 +126,7 @@ export default function AccountSettings() {
                   ) : 'badge' in row && row.badge ? (
                     <span className="inline-flex items-center gap-[4px] font-mono text-[9px] tracking-[0.12em] uppercase py-[2px] px-[6px] rounded-[3px] bg-[var(--color-success-bg)] text-[var(--color-success)] font-semibold flex-shrink-0">
                       <span className="w-[5px] h-[5px] rounded-full bg-[var(--color-success)] flex-shrink-0" />
-                      {(row as any).badge}
+                      {row.badge}
                     </span>
                   ) : null}
                 </div>

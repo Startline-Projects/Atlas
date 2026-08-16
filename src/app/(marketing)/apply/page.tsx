@@ -51,7 +51,7 @@ export default function Apply() {
       {/* Hero */}
       <section className="px-8 py-20 max-w-[1000px] mx-auto text-center">
         <div className="flex flex-col items-center">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Apply to Join</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Apply to Join"}</div>
           <h1 className="font-display text-6xl md:text-[120px] font-normal leading-none tracking-tight mb-7 text-ink">
             Join the <span className="italic text-ink-soft">top</span><br /><span className="text-amber">5.7%</span>.
           </h1>
@@ -82,7 +82,7 @@ export default function Apply() {
       {/* Eligibility checklist */}
       <section className="px-8 py-20 bg-paper border-y border-line">
         <div className="max-w-[700px] mx-auto text-center mb-10">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">// Eligibility check</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">{"// Eligibility check"}</div>
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-3.5 text-ink">Do you meet the bar?</h2>
           <p className="text-base leading-relaxed text-ink-soft">Six boxes. If you can honestly tick all of them, you&apos;re ready to start your application.</p>
         </div>
@@ -132,7 +132,7 @@ export default function Apply() {
       {/* Categories */}
       <section className="px-8 py-20">
         <div className="max-w-[700px] mx-auto text-center mb-10">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">// What we&apos;re hiring</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">{"// What we're hiring"}</div>
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-3.5 text-ink">Which role are you applying for?</h2>
           <p className="text-base leading-relaxed text-ink-soft">We accept applications across six core categories. Each one has multiple specializations.</p>
         </div>
@@ -156,7 +156,7 @@ export default function Apply() {
       {/* Timeline */}
       <section className="px-8 py-20 bg-paper border-y border-line">
         <div className="max-w-[700px] mx-auto text-center mb-10">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">// The path</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3.5">{"// The path"}</div>
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-3.5 text-ink">The path from here.</h2>
           <p className="text-base leading-relaxed text-ink-soft">Day-by-day, what happens after you click Apply.</p>
         </div>

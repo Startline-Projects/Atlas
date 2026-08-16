@@ -54,7 +54,7 @@ export default function ForBusinesses() {
     <div className="bg-cream min-h-screen">
       {/* Hero */}
       <section className="px-8 py-20 max-w-[1100px] mx-auto text-center flex flex-col items-center">
-        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// For businesses · hiring on Atlas</div>
+        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// For businesses · hiring on Atlas"}</div>
         <h1 className="font-display text-6xl md:text-8xl font-normal leading-tight tracking-tight mb-6 text-ink">Hire <span className="italic text-amber">A-players.</span><br />Not résumé piles.</h1>
         <p className="text-lg leading-relaxed text-ink-soft max-w-[800px] mb-10">Pre-vetted talent from 47 countries, hand-picked shortlists in 24 hours, flat 10% pricing, and a real human Talent Specialist who has your back. <strong className="text-ink">You only pay when you hire.</strong></p>
         <div className="flex flex-wrap justify-center gap-3 mb-14">

@@ -4,7 +4,7 @@ import { Sparkline } from './sparkline';
 
 interface Delta {
   direction: 'up' | 'down' | 'flat';
-  value: string;
+  value?: string;
 }
 
 interface BreakdownItem {
@@ -15,12 +15,12 @@ interface BreakdownItem {
 interface StatCellProps {
   label: string;
   value: string;
-  valueSuffix?: string;
+  valueSuffix?: string | undefined;
   currencyPrefix?: boolean;
-  delta?: Delta;
-  breakdown?: BreakdownItem[];
+  delta?: Delta | undefined;
+  breakdown?: BreakdownItem[] | undefined;
   detail?: string;
-  hasSparkline?: boolean;
+  hasSparkline?: boolean | undefined;
   sparklineHeights?: readonly number[];
   sparklinePeakIndex?: number;
 }

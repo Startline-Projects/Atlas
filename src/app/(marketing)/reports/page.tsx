@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, BarChart3, Clock, Mail, Globe, ShieldAlert, DollarSign, Zap } from 'lucide-react'
+import { ArrowRight, Clock, Globe, ShieldAlert, DollarSign, Zap } from 'lucide-react'
 
 const featured = {
   quarter: 'Q4 2025 · Global Talent Migration',
@@ -34,7 +34,7 @@ export default function Reports() {
       {/* Hero */}
       <section className="px-8 py-24 bg-cream border-b border-line">
         <div className="max-w-[1300px] mx-auto">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// A-Player Report</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// A-Player Report"}</div>
           <h1 className="font-display text-6xl md:text-[80px] font-normal leading-[1.05] tracking-tight mb-8 text-ink max-w-[900px]">Quarterly <span className="italic text-amber">data</span>, from a year of hiring&apos;s hardest problems.</h1>
           <p className="text-xl leading-relaxed text-ink-soft max-w-[800px]">Every quarter, the Atlas research team publishes a free data report on what we&apos;ve learned from processing 100k+ applications and running thousands of vetted hires. <strong className="text-ink font-semibold">No gated PDFs, no form walls.</strong></p>
           <div className="flex flex-wrap gap-8 items-center mt-12 font-mono text-[10px] tracking-widest uppercase text-ink-mute font-bold">
@@ -49,7 +49,7 @@ export default function Reports() {
       <section className="py-24 px-8">
         <div className="max-w-[1300px] mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div className="font-mono text-[11px] tracking-widest uppercase text-ink-mute font-bold italic">// Latest · Q4 2025</div>
+            <div className="font-mono text-[11px] tracking-widest uppercase text-ink-mute font-bold italic">{"// Latest · Q4 2025"}</div>
             <div className="text-[11px] font-bold text-ink-mute uppercase tracking-widest">Published Nov 14, 2025 · 18 min read</div>
           </div>
 
@@ -119,7 +119,7 @@ export default function Reports() {
       <section className="py-24 px-8 bg-paper border-y border-line">
         <div className="max-w-[1300px] mx-auto">
           <div className="flex items-center justify-between mb-16">
-            <div className="font-mono text-[11px] tracking-widest uppercase text-ink-mute font-bold italic">// Previous issues</div>
+            <div className="font-mono text-[11px] tracking-widest uppercase text-ink-mute font-bold italic">{"// Previous issues"}</div>
             <div className="text-[11px] font-bold text-ink-mute uppercase tracking-widest">Newest first · 5 issues</div>
           </div>
 
@@ -157,7 +157,7 @@ export default function Reports() {
         <div className="max-w-[1100px] mx-auto">
           <div className="bg-ink text-paper rounded-[40px] p-12 md:p-24 text-center flex flex-col items-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(214,242,77,0.1),transparent_70%)]"></div>
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-paper/40 font-semibold mb-8 relative z-10">// Get the next one in your inbox</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-paper/40 font-semibold mb-8 relative z-10">{"// Get the next one in your inbox"}</div>
             <h2 className="font-display text-4xl md:text-[64px] font-normal leading-[1.05] tracking-tight mb-8 text-paper relative z-10">One email a <span className="italic text-lime">quarter.</span><br />No marketing, just data.</h2>
             <p className="text-lg leading-relaxed text-paper/60 max-w-[600px] mb-12 relative z-10">We send the new report the morning it&apos;s published. That&apos;s it. No drip campaigns, no upsells, no &quot;you might also like&quot; emails.</p>
             <form className="flex flex-col sm:flex-row gap-3 w-full max-w-[500px] relative z-10" onSubmit={e => { e.preventDefault(); alert('Thanks! You\'ll get the next report on launch day.') }}>

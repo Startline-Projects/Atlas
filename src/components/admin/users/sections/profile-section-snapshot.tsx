@@ -34,7 +34,7 @@ export function ProfileSectionSnapshot({ profile }: ProfileSectionSnapshotProps)
             Tagline &amp; Bio
           </div>
           <div className="text-[13.5px] leading-[1.55] text-[var(--color-ink)]">
-            <em className="font-display italic font-medium">"{profileSnapshot.bio.substring(0, profileSnapshot.bio.indexOf('"') > 0 ? profileSnapshot.bio.indexOf('"') : 50)}{profileSnapshot.bio.includes('"') ? '"' : ''}</em>
+            <em className="font-display italic font-medium">&quot;{profileSnapshot.bio.substring(0, profileSnapshot.bio.indexOf('"') > 0 ? profileSnapshot.bio.indexOf('"') : 50)}{profileSnapshot.bio.includes('"') ? '"' : ''}</em>
             {profileSnapshot.bio.includes('"') ? profileSnapshot.bio.substring(profileSnapshot.bio.indexOf('"') + 1) : profileSnapshot.bio}
           </div>
         </div>

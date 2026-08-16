@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { DashboardStateProvider } from '@/lib/admin/dashboard-state-context';
 import { DashboardHeader } from '@/components/admin/dashboard/dashboard-header';
 import { DashboardShell } from '@/components/admin/dashboard/dashboard-shell';
@@ -12,11 +11,6 @@ import { ActivityFeed } from '@/components/admin/dashboard/activity-feed';
 import { DashboardRail } from '@/components/admin/dashboard/dashboard-rail';
 
 function DashboardContent() {
-  // Overlay state (local to this page, not in context)
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-
   return (
     <DashboardShell
       header={<DashboardHeader />}

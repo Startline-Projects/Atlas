@@ -366,7 +366,7 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
                       return 'role' in row && 'twoFa' in row ? (
                         <div key={col.id}>
                           {(() => {
-                            const role = (row as any).role;
+                            const role = row.role;
                             const styles = roleMiniStyles[role] || { pill: defaultMiniPill, dot: defaultMiniDot };
                             return (
                               <span className={`${baseMiniPillClasses} ${styles.pill}`}>
@@ -384,12 +384,12 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
                           <div
                             key={col.id}
                             className={`font-mono text-[11.5px] tracking-[0.02em] whitespace-nowrap ${
-                              (row as any).lastLogin.startsWith('Today')
+                              row.lastLogin.startsWith('Today')
                                 ? 'text-[var(--color-success)] font-semibold'
                                 : 'text-[var(--color-ink-mute)]'
                             }`}
                           >
-                            {(row as any).lastLogin}
+                            {row.lastLogin}
                           </div>
                         );
                       }
@@ -407,7 +407,7 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
                       // Admins-specific IP count
                       return 'ipCount' in row ? (
                         <div key={col.id} className="text-[13px]">
-                          <strong>{(row as any).ipCount}</strong> IPs
+                          <strong>{row.ipCount}</strong> IPs
                         </div>
                       ) : null;
                     case 'actionsToday':
@@ -416,14 +416,14 @@ export function UsersTable({ rows, tableConfig, selectedRows, onSelectionChange,
                         <div
                           key={col.id}
                           className={
-                            (row as any).actionsTodayType === 'count'
+                            row.actionsTodayType === 'count'
                               ? 'text-[13px]'
                               : 'font-mono text-[11.5px] text-[var(--color-ink-mute)]'
                           }
                         >
-                          {(row as any).actionsTodayType === 'count' ? (
+                          {row.actionsTodayType === 'count' ? (
                             <>
-                              <strong>{(row as any).actionsToday}</strong> today
+                              <strong>{row.actionsToday}</strong> today
                             </>
                           ) : (
                             'none today'

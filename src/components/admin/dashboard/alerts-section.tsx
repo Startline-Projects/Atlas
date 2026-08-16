@@ -82,10 +82,10 @@ export function AlertsSection() {
         {shouldShowAlerts && filteredAlerts.length > 0 ? (
           filteredAlerts.map(alert => {
             const colors = PRIORITY_COLORS[alert.priority as 'urgent' | 'today' | 'week'];
-            const slaStatus = (alert as any).slaStatus;
-            const refNum = (alert as any).refNum;
-            const detail = (alert as any).detail;
-            const timestamp = (alert as any).timestamp;
+            const slaStatus = alert.slaStatus;
+            const refNum = alert.refNum;
+            const detail = alert.detail;
+            const timestamp = alert.timestamp;
             const isCritical = slaStatus?.includes('RESPONSE') || slaStatus?.includes('LEFT');
 
             return (

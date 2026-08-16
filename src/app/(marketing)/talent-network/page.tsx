@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check, Users, Briefcase, Mail, MapPin, Info } from 'lucide-react'
+import { ArrowRight, Check, Users, Mail, MapPin, Info } from 'lucide-react'
 
 function LinkedInIcon({ className }: { className?: string }) {
   return (

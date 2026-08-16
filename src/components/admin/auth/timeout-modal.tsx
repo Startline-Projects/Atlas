@@ -10,15 +10,17 @@ export function TimeoutModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  // Mount the countdown only while open so it starts fresh on every open
+  if (!isOpen) return null;
+
+  return <TimeoutModalContent onClose={onClose} />;
+}
+
+function TimeoutModalContent({ onClose }: { onClose: () => void }) {
   const [secondsLeft, setSecondsLeft] = useState(298); // 5 min - 2 sec = 4:58
 
   // Countdown timer
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Reset seconds when modal opens
-    setSecondsLeft(298);
-
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
@@ -31,9 +33,7 @@ export function TimeoutModal({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
+  }, [onClose]);
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
@@ -72,8 +72,8 @@ export function TimeoutModal({
         {/* Body text */}
         <p className="text-[14px] text-[var(--color-ink-soft)] leading-[1.55] mb-6">
           Your admin session has been idle for 55 minutes. For security,
-          we'll sign you out automatically. Stay signed in to keep working —
-          anything you've started will be preserved.
+          we&apos;ll sign you out automatically. Stay signed in to keep working —
+          anything you&apos;ve started will be preserved.
         </p>
 
         {/* Countdown display */}

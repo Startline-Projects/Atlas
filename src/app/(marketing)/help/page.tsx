@@ -33,7 +33,7 @@ export default function Help() {
     <div className="bg-cream min-h-screen pt-20">
       {/* Hero */}
       <section className="px-8 py-24 bg-cream border-b border-line text-center flex flex-col items-center">
-        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Help Center · answer in minutes</div>
+        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Help Center · answer in minutes"}</div>
         <h1 className="font-display text-6xl md:text-8xl font-normal leading-tight tracking-tight mb-8 text-ink">How can we <span className="italic text-amber">help?</span></h1>
         <p className="text-lg md:text-xl leading-relaxed text-ink-soft max-w-[700px]">Search our guides or browse by topic. If you can&apos;t find what you&apos;re looking for, our support team is 14 minutes away, on average.</p>
 
@@ -119,7 +119,7 @@ export default function Help() {
       <section className="py-24 px-8">
         <div className="max-w-[1100px] mx-auto">
           <div className="bg-paper border border-line rounded-[32px] p-12 md:p-20 relative overflow-hidden flex flex-col items-center text-center">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-6">// Still stuck?</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-6">{"// Still stuck?"}</div>
             <h2 className="font-display text-4xl md:text-[64px] font-normal leading-[1.05] tracking-tight mb-8 text-ink">Talk to a <span className="italic text-amber">human.</span></h2>
             <p className="text-lg leading-relaxed text-ink-soft max-w-[600px] mb-12">If our articles didn&apos;t help, we&apos;ll route you to a real person — usually within 14 minutes. No tickets, no bots.</p>
             <div className="flex flex-wrap justify-center gap-4">

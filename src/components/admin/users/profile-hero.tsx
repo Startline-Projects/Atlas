@@ -62,7 +62,6 @@ const actionBtnStyles = {
     svg: 'text-[var(--ink-mute)] flex-shrink-0 transition-colors duration-[150ms] ease',
   },
 };
-const disabledBtnClasses = 'opacity-45 cursor-not-allowed pointer-events-none';
 
 interface ProfileHeroProps {
   profile: CandidateProfile;

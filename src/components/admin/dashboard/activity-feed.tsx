@@ -128,13 +128,13 @@ export function ActivityFeed() {
                 <span className="text-[var(--color-ink)] font-medium">
                   {row.verb}
                 </span>{' '}
-                {(row as any).target && (
-                  <span className="text-[var(--color-ink)]">{(row as any).target}</span>
+                {row.target && (
+                  <span className="text-[var(--color-ink)]">{row.target}</span>
                 )}
-                {(row as any).targetMeta && (
+                {row.targetMeta && (
                   <span className="font-mono text-[11px] tracking-[0.02em] text-[var(--color-ink-mute)]">
                     {' '}
-                    {(row as any).targetMeta}
+                    {row.targetMeta}
                   </span>
                 )}
               </span>

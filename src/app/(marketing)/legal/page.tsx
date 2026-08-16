@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Check, Clock, Mail, Shield, ShieldCheck, FileText, Lock, Scale, ArrowRight } from 'lucide-react'
+import { Check, Clock, ShieldCheck, FileText, Lock, Scale, ArrowRight } from 'lucide-react'
 
 const compliance = [
   { name: 'GDPR', status: 'Compliant · EU/EEA', active: true },
@@ -53,7 +53,7 @@ export default function LegalHub() {
         <div className="max-w-[1300px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-16 items-start">
             <div>
-              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Legal & Trust Center · governance · privacy · compliance</div>
+              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Legal & Trust Center · governance · privacy · compliance"}</div>
               <h1 className="font-display text-6xl md:text-[80px] font-normal leading-[1.05] tracking-tight mb-8 text-ink">The <span className="italic text-amber">boring</span> page.<br />Read it anyway.</h1>
               <p className="text-xl leading-relaxed text-ink-soft max-w-[700px]">These documents govern how we work together. We&apos;ve tried to write them in <em className="text-ink">English first, legalese second</em>, and to flag every meaningful change in plain language. They&apos;re still <strong className="text-ink font-semibold">binding agreements</strong> — treat them that way.</p>
             </div>

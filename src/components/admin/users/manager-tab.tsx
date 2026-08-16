@@ -170,7 +170,7 @@ export function ManagerTab() {
       {/* Activity Section (from admin.html lines 15726-15749) */}
       <div className={managerActivityClasses}>
         <div className={managerActivityHeadClasses}>
-          <span>Today's managerial activity</span>
+          <span>Today&apos;s managerial activity</span>
           <a
             href="#comp-audit"
             className={auditLinkClasses}

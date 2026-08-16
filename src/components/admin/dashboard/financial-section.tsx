@@ -23,10 +23,10 @@ export function FinancialSection() {
             key={i}
             label={stat.label}
             value={stat.value}
-            valueSuffix={(stat as any).suffix}
-            currencyPrefix={!!(stat as any).prefix}
-            delta={(stat as any).delta}
-            detail={(stat as any).detail}
+            valueSuffix={stat.suffix}
+            currencyPrefix={!!stat.prefix}
+            delta={stat.delta}
+            detail={stat.detail}
           />
         ))}
       </div>

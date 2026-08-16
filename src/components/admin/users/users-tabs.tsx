@@ -13,7 +13,7 @@ export function UsersTabs({
 }) {
   const handleTabClick = (tabId: TabName) => {
     onTabChange(tabId);
-    window.location.hash = '#' + tabId;
+    window.history.pushState(null, '', '#' + tabId);
   };
 
   return (

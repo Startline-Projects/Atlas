@@ -13,7 +13,7 @@
 | Package manager | pnpm | Yes |
 | Database | PostgreSQL via Supabase | Yes |
 | ORM | Prisma | Yes |
-| Auth | Clerk (recommended) or Auth.js v5 | Choose week 0 |
+| Auth | Supabase Auth (ADR 0001) | Yes |
 | Realtime | Pusher Channels | Yes |
 | Background jobs | Inngest | Yes |
 | Payments | Stripe Connect (Express) + Wise API for non-Stripe corridors | Yes |
@@ -98,9 +98,7 @@ Plain TypeScript modules in `src/lib/services/`. Only allowed dependencies: Node
 
 ### 2.5 Auth & Identity
 
-**Clerk** is the recommended pick. It saves ~5–7 days of work over Auth.js v5 by handling: email verification, password reset, 2FA (TOTP and SMS), magic links, session management, suspended-account state, and admin impersonation. The cost is ~$25/month at MVP scale, scaling with MAU.
-
-**Auth.js v5 (NextAuth)** is the fallback if budget says no to Clerk. More control, more work. Pick before week 1.
+**Supabase Auth** (decided — `docs/adr/0001-supabase-auth.md`). Supabase holds passwords, email verification and refresh tokens; our `User` table (linked by `authProviderId`) holds role, status and profile and is the source of truth. Sessions are the Supabase access token in an HttpOnly cookie plus a refresh cookie, read via `lib/auth`, refreshed in `src/proxy.ts`. Admins are provisioned (`pnpm admin:create`), never self-registered. Still to add on Supabase: password reset, TOTP 2FA (Supabase MFA), real OTP email delivery.
 
 **Stripe Identity** for KYC of candidates earning over thresholds. **Persona** is the alternative if a more configurable flow is needed.
 
@@ -222,7 +220,7 @@ Merge to `main` triggers production deploy via Vercel. Database migrations run a
 |---|---|
 | Vercel (Pro plan) | $20 / dev seat |
 | Supabase (Pro) | $25 |
-| Clerk | ~$25 (up to 10k MAU) |
+| Supabase Auth | included in Supabase Pro |
 | Pusher | $0 (free tier) → $49 |
 | Inngest | $0 (free tier) → $50 |
 | Sentry | $0 (free tier for small team) |
@@ -240,7 +238,7 @@ Merge to `main` triggers production deploy via Vercel. Database migrations run a
 
 These are the only things not locked. Choose, write a one-pager ADR, move on.
 
-1. **Auth: Clerk vs Auth.js v5.** Recommend Clerk if budget allows.
+1. ~~**Auth: Clerk vs Auth.js v5.**~~ Resolved 2026-08-16 — Supabase Auth, see `docs/adr/0001-supabase-auth.md`.
 2. **KYC: Stripe Identity vs Persona.** Stripe Identity if you're already Stripe-heavy.
 3. **RBAC: CASL vs hand-rolled.** CASL if the team has used it; otherwise hand-rolled is 1 day of work and equally clean.
 4. **Realtime: Pusher vs Ably.** Either works. Pusher's pricing is simpler at MVP scale.
@@ -265,7 +263,7 @@ Not because they're bad, but because they don't pay rent during a 4-week MVP:
 
 ## 9. Upgrade Path Notes
 
-- **From Clerk to self-hosted auth:** Clerk exports user data; Auth.js v5 can re-import. Migration cost is roughly 1 week.
+- **From Supabase Auth to another provider:** the seam is `lib/integrations/supabase` + the login/verify paths in the auth services; `User.authProviderId` and the cookie contract stay. Roughly 1 week.
 - **From Pusher to self-hosted Socket.io:** Realistic only if MAU justifies the operational cost (probably 100k+).
 - **From Postgres FTS to Algolia/Meilisearch:** Hot-swappable behind `searchService` interface.
 - **From Vercel to Cloud Run / Fly.io:** Possible but unjustified pre-Series A.

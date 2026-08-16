@@ -230,7 +230,7 @@ For privacy review and DPIA. All listed data is collected with user consent at s
 **Behavioral:** logins, page views, message timestamps, audit log.
 **Content:** profiles, portfolios, messages, contracts, invoices.
 
-We do **not** hold: passwords (Clerk/Auth.js handles), full payment card numbers (Stripe), bank account numbers in plain (Wise/Stripe).
+We do **not** hold: passwords (Supabase Auth handles — ADR 0001), full payment card numbers (Stripe), bank account numbers in plain (Wise/Stripe).
 
 ---
 

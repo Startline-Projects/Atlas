@@ -107,7 +107,15 @@
 
 ## Frontend Usage
 
-### Basic Implementation
+> **Updated 2026-08-16.** The web app does NOT store the token itself: the
+> login route sets HttpOnly cookies (`atlas_session` + `atlas_refresh`) and
+> every later request carries them automatically. `accessToken` in the body
+> exists only for the future mobile client. On success just hard-navigate
+> (`window.location.assign(next)`) so the server-rendered surface reads the
+> cookie — see `components/candidate/auth/signin-form.tsx`, which is the
+> real implementation. The snippets below are kept for the mobile case.
+
+### Basic Implementation (mobile-style — web uses the cookie)
 
 ```typescript
 import { candidatesApi } from "@/lib/api-client/candidates";
@@ -207,20 +215,22 @@ export const loginSchema = z.object({
 - ✅ Backend: API route complete
 - ✅ Backend: Error handling complete
 - ✅ Frontend: API client complete
-- 🔲 Frontend: Login form UI component
-- 🔲 Frontend: Session/token storage strategy
-- 🔲 Frontend: Authentication middleware
+- ✅ Frontend: Login form UI component (`signin-form.tsx`, honours `?next=`)
+- ✅ Frontend: Session storage — HttpOnly cookies, refresh rotation in `src/proxy.ts`
+- ✅ Frontend: Authentication guard — `src/proxy.ts` + guarded layouts
+- ✅ Rate limiting — per-IP (proxy) + per-account lockout 5/15m (service)
+- ✅ Session invalidation on logout (`auth.admin.signOut`)
 - 🔲 Testing: Unit tests for service
 - 🔲 Testing: Integration tests for endpoint
-- 🔲 Rate limiting (pending Upstash setup)
 
 ## Next Steps
 
-1. **Create Authentication Middleware** - Middleware to check JWT tokens
-2. **Create GET /me endpoint** - Get current user profile
-3. **Create Login Form UI** - React component for login page
-4. **Add Session Management** - Store and manage tokens
-5. **Add Password Reset** - Forgot password flow
+1. ~~Authentication middleware~~ — done (`src/proxy.ts`)
+2. ~~GET /me endpoint~~ — done
+3. ~~Login form UI~~ — done
+4. ~~Session management~~ — done (cookies + refresh + revoke)
+5. **Add Password Reset** — deferred with the email work (needs custom SMTP first)
+6. **Login attempt logging** — with the audit log (ARCHITECTURE §7.7)
 
 ## Security Notes
 
@@ -233,7 +243,7 @@ export const loginSchema = z.object({
 
 ## TODO Items
 
-- [ ] Implement rate limiting on this endpoint (ARCHITECTURE §7.6)
-- [ ] Add refresh token handling
-- [ ] Implement session invalidation on logout
-- [ ] Add login attempt logging for security
+- [x] Implement rate limiting on this endpoint (ARCHITECTURE §7.6)
+- [x] Add refresh token handling
+- [x] Implement session invalidation on logout
+- [ ] Add login attempt logging for security (audit log, §7.7)

@@ -43,7 +43,7 @@ export default function Contact() {
       <section className="px-8 py-20 max-w-[1340px] mx-auto">
         <div className="flex flex-col">
           <div className="max-w-[800px] mx-auto mb-14 text-center">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Contact · we route every inquiry to a real person</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Contact · we route every inquiry to a real person"}</div>
             <h1 className="font-display text-6xl md:text-8xl font-normal tracking-tight mb-6 text-ink">Get in <span className="italic text-amber">touch.</span></h1>
             <p className="text-lg leading-relaxed text-ink-soft">Pick the option that fits best. We route every inquiry to a real person — <strong className="text-ink">no ticket queues, no bots</strong>, no &quot;we&apos;ll get back to you within 10 business days.&quot;</p>
           </div>

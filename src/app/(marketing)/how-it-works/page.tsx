@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 type Tab = 'clients' | 'candidates'
@@ -288,7 +288,7 @@ export default function HowItWorks() {
       {/* Hero */}
       <section className="px-8 py-20 max-w-[1100px] mx-auto text-center">
         <div className="flex flex-col items-center">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// How it works</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// How it works"}</div>
           <h1 className="font-display text-6xl md:text-8xl font-normal leading-tight tracking-tight mb-6 text-ink">
             How it <span className="italic text-amber">works.</span>
           </h1>

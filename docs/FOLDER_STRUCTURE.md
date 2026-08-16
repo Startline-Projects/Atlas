@@ -93,7 +93,7 @@ atlas/
 │   │   │   │
 │   │   │   ├── webhooks/
 │   │   │   │   ├── stripe/route.ts
-│   │   │   │   ├── clerk/route.ts                      # if using Clerk
+│   │   │   │   ├── supabase/route.ts                   # auth-event hooks (later)
 │   │   │   │   └── pusher/route.ts                     # auth endpoint
 │   │   │   │
 │   │   │   ├── inngest/route.ts                        # background jobs
@@ -248,12 +248,11 @@ atlas/
 │   │   │   │   └── anthropic.client.ts
 │   │   │   ├── openai/
 │   │   │   │   └── openai.client.ts
-│   │   │   ├── supabase-storage/
-│   │   │   │   └── storage.client.ts
-│   │   │   ├── clerk/                          # if Clerk is chosen
-│   │   │   │   └── clerk.client.ts
+│   │   │   ├── supabase/                       # auth admin API + Storage (ADR 0001)
+│   │   │   │   ├── supabase.client.ts
+│   │   │   │   └── storage.ts
 │   │   │   └── upstash/
-│   │   │       └── ratelimit.ts
+│   │   │       └── rate-limit.ts
 │   │   │
 │   │   ├── jobs/                               # Inngest function definitions
 │   │   │   ├── send-email.ts
@@ -354,7 +353,7 @@ atlas/
 │   ├── adr/                                    # Architectural Decision Records
 │   │   ├── 0001-monolith-with-extraction-path.md
 │   │   ├── 0002-prisma-with-repositories.md
-│   │   ├── 0003-clerk-vs-authjs.md
+│   │   ├── 0003-supabase-auth.md               # landed as 0001 (first ADR written)
 │   │   └── 0004-pusher-vs-ably.md
 │   └── runbooks/
 │       ├── refund.md

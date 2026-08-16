@@ -450,7 +450,7 @@ Every PR ships a complete slice. **No "API-only" or "UI-only" PRs in weeks 1–2
 ## 7. Cross-Cutting Concerns
 
 ### 7.1 Authentication
-Clerk (recommended) or Auth.js v5. Session is read in the API route via `requireSession()` (or `getSession()` for optional auth). The session object carries `userId`, `role`, and any role-scoped IDs (e.g. `candidateProfileId`). Services receive the session as an argument when they need it; they never read it from request context.
+Supabase Auth (ADR 0001 — `docs/adr/0001-supabase-auth.md`). The session is a Supabase access token in an HttpOnly cookie, one cookie pair per surface (`atlas_session`+`atlas_refresh` for candidates, `atlas_admin_session`+`atlas_admin_refresh` for admins). Route handlers read it via `requireCandidateSession()` / `requireAdminSession()` (401 when absent); Server Components via `getCandidateSession()` / `getAdminSession()` (redirect when null); both are memoised per request. The session object carries `userId`, `email`, and the resolved domain user (`candidate` / `admin`). Services receive `session.userId` (or the domain user) as an argument; they never read cookies or request context. `src/proxy.ts` is the outer gate: cookie-presence redirect, access-token refresh (the only place cookies can be rewritten before a render), and per-IP rate limits — validity is always re-checked by the layout/page/route.
 
 ### 7.2 Authorization (RBAC)
 `src/lib/permissions/` defines a policy module (CASL or hand-rolled). The single entry point is `can(session, action, resource)`. Permission checks happen in services, never in API handlers, never in UI. UI may *call* `can()` to hide buttons, but the server is always the source of truth.

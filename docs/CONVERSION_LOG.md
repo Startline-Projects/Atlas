@@ -6175,3 +6175,69 @@ Server-side rate limiting on paid retakes (abuse guard) replaces the
 old cooldown enforcement item.
 
 ---
+
+## Backend foundation — auth, admin console guard, English test + payments, sessions, rate limits
+
+**Date:** 2026-08-16 · **Branch:** talent-specialist · Commits `9cd220b` → `ed678e3`
+
+First real backend. Everything below follows ARCHITECTURE §6 (domain →
+schema → validator → repository → service → API → api-client → UI); the
+identity provider decision is recorded in `docs/adr/0001-supabase-auth.md`.
+
+### Slices landed (in order)
+
+| # | Slice | Key files |
+|---|---|---|
+| 0 | Candidate auth + profile backend (Prisma 7, Supabase Auth, session cookie, profile builder) — committed as one unit | `prisma/schema.prisma`, `src/app/api/v1/candidates/**`, `src/lib/{auth,services,repositories,validators}/**`, `docs/CANDIDATE_PROFILE.md`, `docs/LOGIN_ENDPOINT.md` |
+| 1 | Guard the whole `(candidate)` surface — `src/proxy.ts` (Next 16 successor of middleware), server layouts, topbar/dashboard read the real candidate, auto sign-in after signup verify | `src/proxy.ts`, `(candidate)/layout.tsx`, `(candidate-auth)/layout.tsx`, `lib/auth/{cookie-names,redirects,session}.ts` |
+| 2 | Real admin auth — `AdminProfile`, provisioned accounts (`pnpm admin:create`), `atlas_admin_session`, guarded `/admin/*`, sign-in form wired (2FA states remain design previews) | `lib/services/admin`, `app/api/v1/admin/**`, `(admin)/layout.tsx` (server) + `components/admin/shell/admin-root-client.tsx`, `scripts/create-admin.ts` |
+| 3 | English test + $10 retake go real — `TestAttempt` + `Payment`, server-side scoring from a server-only question bank, Stripe Checkout + webhook (+ `PAYMENTS_DEV_BYPASS`), dashboard/runner/result/retake pages read through the API client with `serverInit()` | `lib/domain/english-test.ts`, `lib/services/{english-test,payment}`, `lib/integrations/stripe`, `app/api/v1/candidates/me/english-test/**`, `app/api/webhooks/stripe` |
+| 5 | Refresh-token rotation + revoke-on-logout (both surfaces); refresh happens in the proxy before render | `lib/auth/{refresh,session-cookies}.ts`, `src/proxy.ts` |
+| 6 | Rate limiting + account lockout — Upstash Ratelimit/Redis with in-process dev fallback; per-IP in the proxy, per-account in the auth services | `lib/config/rate-limits.ts`, `lib/integrations/upstash`, `lib/auth/account-lockout.ts` |
+| 7 | Cleanup — ESLint zero across the repo, ADR 0001, docs aligned (this entry) | `docs/adr/0001-supabase-auth.md`, `docs/TECH_STACK.md`, `docs/ARCHITECTURE.md §7.1` |
+
+Step 4 (password reset) is deferred with the email work — see follow-ups.
+
+### Conventions established
+
+- **Guarding:** proxy checks cookie *presence* (cheap) and refreshes; the
+  guarded layout/page/route validates the token (`getXSession()`, memoised
+  per request with React `cache()`); the auth layouts redirect a *valid*
+  session to its home. Never redirect cookie-holders in the proxy (a stale
+  cookie would loop).
+- **Server Components read through the API client** (`englishTestApi.overview(await serverInit())`) — the documented §5.1 pattern is now real; `apiFetch` resolves absolute URLs on the server. The admin candidates page still calls the service directly with an eslint-disable and a justification comment (predates this convention; revisit).
+- **Answer keys, prices, eligibility live in services**; the UI renders flags (`eligibility.status`).
+- **Dev bypasses are env-driven, refused in production, and documented in `.env.example`:** `AUTH_DEV_FIXED_OTP` (email), `PAYMENTS_DEV_BYPASS` (Stripe). No code change to switch to the real path.
+- **Cookies are written in one place** (`lib/auth/session-cookies.ts`), used by routes and proxy alike.
+
+### Verification
+
+Every slice was exercised live against the real Supabase project with
+`curl` (see the commit messages for the exact matrix): anonymous/stale/
+valid cookie paths, signup → 111111 → auto sign-in → dashboard, admin
+provisioning + login + suspended/lockout paths, free attempt → locked →
+checkout (bypass) → unlocked → paid pass, refresh rotation + logout
+revocation, per-IP 429 + per-account lockout. `pnpm typecheck` clean;
+`pnpm lint` clean (after step 7).
+
+### Follow-ups (production phase)
+
+- **Email (deferred by product decision 2026-08-16):** custom SMTP (Resend)
+  in Supabase + `{{ .Token }}` "Confirm signup" template → drop
+  `AUTH_DEV_FIXED_OTP`; then **password reset** (`resetPasswordForEmail`
+  + `/candidate/reset` page) — step 4 of the plan.
+- **Stripe live:** set `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`, register
+  `POST /api/webhooks/stripe` for the four checkout events, drop
+  `PAYMENTS_DEV_BYPASS`. The Stripe path is typed and wired but has not been
+  exercised against a real account.
+- **Upstash live:** set `UPSTASH_REDIS_REST_URL/_TOKEN` (production logs
+  "limits are OFF" without them and fails open).
+- **Admin TOTP 2FA** (PROJECT_SCOPE §2.1 mandatory) via Supabase MFA — the
+  sign-in screen's 2FA/session-confirm states are ready-made previews.
+- **RBAC `can()` module** (§7.2), audit log (§7.7), Sentry/pino (§7.5).
+- Real proctored English assessment replaces the 10-question bank
+  (`services/english-test/question-bank.ts`); scoring contract stays.
+- Client-side browse/detail of candidates can reuse
+  `components/candidate/profile/client-profile-view.tsx`.
+
+---

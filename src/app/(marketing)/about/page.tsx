@@ -39,13 +39,6 @@ const values = [
   { num: '05', title: 'Quiet beats loud.', desc: "We do not pop. We do not gamify. We do not send 'you might be missing out!' notifications. Atlas is a tool for serious work. The product should respect that." },
 ]
 
-const timeline = [
-  { year: '2023', title: 'Two founders, one Notion doc.', desc: "Mariana and Tomás sketch a global hiring product on a flight to Lisbon. The first principles document is 14 pages. Most of them survive intact." },
-  { year: '2024', title: 'Quiet beta with 19 clients.', desc: "Onboard our first 200 candidates by hand. Build the vetting funnel. The first hires are made; the first dispute is mediated. The bar is set." },
-  { year: '2025', title: 'Series A, 1,000 candidates.', desc: "Raised $14M from Sequoia, Founders Fund, and Y Combinator. Open to the public in March. Cross 1,000 verified candidates by October. Launch in 47 countries." },
-  { year: '2026', title: 'Where we are now.', desc: "A team of 28 across 19 countries. $94M in contracts processed in the last 12 months. 5.7% acceptance rate. And honestly — just getting started." },
-]
-
 export default function About() {
   return (
     <div className="bg-cream min-h-screen pt-20">
@@ -53,7 +46,7 @@ export default function About() {
       <section className="px-8 py-20 max-w-[1340px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="max-w-[540px]">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-6">// About Atlas · est. 2023</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-6">{"// About Atlas · est. 2023"}</div>
             <h1 className="font-display text-5xl md:text-7xl lg:text-[88px] font-normal leading-none tracking-tight mb-7">
               Talent is <span className="italic text-amber">global.</span><br />Opportunity should<br />be too.
             </h1>

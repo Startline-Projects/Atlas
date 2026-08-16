@@ -47,7 +47,7 @@ export default function ForCandidates() {
     <div className="bg-cream min-h-screen">
       {/* Hero */}
       <section className="px-8 py-20 max-w-[1100px] mx-auto text-center flex flex-col items-center">
-        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// For candidates · applying to Atlas</div>
+        <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// For candidates · applying to Atlas"}</div>
         <h1 className="font-display text-6xl md:text-8xl font-normal leading-tight tracking-tight mb-6 text-ink">Get paid <span className="italic text-amber">what you&apos;re worth.</span><br />Plus 10% from the client.</h1>
         <p className="text-lg leading-relaxed text-ink-soft max-w-[800px] mb-10">Zero fees from you, forever. Real clients in US, UK, AU, CA. A dedicated Talent Specialist who has your back. <strong className="text-ink font-semibold italic">If you can clear the vetting bar, this is the best deal in the global talent market.</strong></p>
         <div className="flex flex-wrap justify-center gap-3 mb-14">

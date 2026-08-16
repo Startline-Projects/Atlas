@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Shield, Check, Lock, FileText, Scale, Eye, ShieldCheck, Mail, ArrowRight, Activity, Layers } from 'lucide-react'
+import { Shield, Check, Lock, FileText, Scale, ShieldCheck, Mail, ArrowRight, Activity, Layers } from 'lucide-react'
 
 const sections = [
   { id: 'overview', label: '● Overview' },
@@ -46,7 +46,7 @@ export default function Trust() {
       <section className="px-8 py-24 bg-cream border-b border-line pt-36" id="overview">
         <div className="max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-16 items-center">
           <div className="flex flex-col items-start">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Trust & Safety · how we keep both sides safe and verified</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Trust & Safety · how we keep both sides safe and verified"}</div>
             <h1 className="font-display text-6xl md:text-[80px] font-normal leading-[1.05] tracking-tight mb-8 text-ink">The <span className="italic text-amber">verified</span><br />marketplace for <span className="text-lime-deep">remote work.</span></h1>
             <p className="text-lg md:text-xl leading-relaxed text-ink-soft max-w-[700px] mb-12">Every candidate is verified. Every contract is escrowed. Every dispute goes to a real human mediator. Fraud on Atlas isn&apos;t just discouraged — it&apos;s <strong className="text-ink font-semibold">structurally hard</strong>.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-12 gap-y-8 w-full">
@@ -281,7 +281,7 @@ export default function Trust() {
       <section className="py-24 px-8" id="ts-contact">
         <div className="max-w-[1100px] mx-auto">
           <div className="bg-ink text-cream rounded-[32px] p-12 md:p-20 relative overflow-hidden flex flex-col items-center text-center">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-cream/60 font-semibold mb-6">// Something doesn&apos;t feel right?</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-cream/60 font-semibold mb-6">{"// Something doesn't feel right?"}</div>
             <h2 className="font-display text-4xl md:text-[64px] font-normal leading-[1.05] tracking-tight mb-8 text-cream">Report it. We <span className="italic text-lime">act fast.</span></h2>
             <p className="text-lg leading-relaxed text-cream/80 max-w-[600px] mb-12">Suspected fraud, impersonation, payment issues, or safety concerns — tell us. Urgent reports reviewed within 1 hour.</p>
             <div className="flex flex-wrap justify-center gap-4">

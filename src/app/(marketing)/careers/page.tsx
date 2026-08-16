@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Globe, Users, Zap, Briefcase, GraduationCap, Heart, Gift, MessageSquare, ChevronDown } from 'lucide-react'
+import { ArrowRight, Globe, Users, Zap, GraduationCap, Heart, Gift } from 'lucide-react'
 
 const reasons = [
   { num: '01', title: 'The mission is', italic: 'actually', titleEnd: 'real.', body: "Global hiring is genuinely broken — not in a 'pitch deck problem' way, in a 'we saw it from the inside for a decade and got burned by it' way. You'll be building toward an actual fix, not an incremental feature on top of someone else's broken marketplace.", tag: '● 2,699 lives changed · and counting' },
@@ -53,7 +53,7 @@ export default function Careers() {
       <section className="px-8 py-24 bg-cream border-b border-line overflow-hidden pt-36">
         <div className="max-w-[1300px] mx-auto grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-16 items-center">
           <div className="flex flex-col items-start">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Careers · we&apos;re hiring</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Careers · we're hiring"}</div>
             <h1 className="font-display text-6xl md:text-[80px] font-normal leading-[1.05] tracking-tight mb-8 text-ink">Help us build the<br />hiring platform every<br />company will <span className="italic text-amber underline underline-offset-8 decoration-amber/30">eventually use.</span></h1>
             <p className="text-xl leading-relaxed text-ink-soft max-w-[700px] mb-12">We apply the same vetting bar to our team that our platform applies to every candidate on it. <strong className="text-ink font-semibold">Small team, high ownership, remote anywhere.</strong> If you&apos;ve built something people still use years after you left, we probably want to talk.</p>
             <div className="flex flex-wrap gap-4 mb-14">

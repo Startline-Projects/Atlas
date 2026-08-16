@@ -15,7 +15,22 @@ export const PAGE_HEADER = {
   systemStatusChecked: 'Checked 30s ago',
 } as const;
 
-export const ALERTS = [
+export type DashboardAlertPriority = 'urgent' | 'today' | 'week';
+
+export interface DashboardAlert {
+  id: string;
+  priority: DashboardAlertPriority;
+  tag: string;
+  title: string;
+  refNum?: string;
+  timestamp?: string;
+  detail?: string;
+  slaStatus?: string;
+  actionLabel: string;
+  actionHref: string;
+}
+
+export const ALERTS: readonly DashboardAlert[] = [
   {
     id: 'ALT-001',
     priority: 'urgent' as const,
@@ -66,7 +81,7 @@ export const ALERTS = [
     actionLabel: 'See pools',
     actionHref: '#int-performance',
   },
-] as const;
+];
 
 export const ALERT_COUNTS = {
   all: 9,
@@ -75,7 +90,27 @@ export const ALERT_COUNTS = {
   week: 3,
 } as const;
 
-export const HEALTH_STATS = [
+export interface DashboardStatDelta {
+  direction: 'up' | 'down' | 'flat';
+  /** Omitted for flat deltas — the cell renders the arrow alone. */
+  value?: string;
+}
+
+export interface DashboardStatBreakdownItem {
+  key: string;
+  value: string;
+}
+
+export interface DashboardHealthStat {
+  label: string;
+  value: string;
+  valueSuffix?: string;
+  delta?: DashboardStatDelta;
+  breakdown?: DashboardStatBreakdownItem[];
+  hasSparkline?: boolean;
+}
+
+export const HEALTH_STATS: readonly DashboardHealthStat[] = [
   {
     label: 'Total users',
     value: '28,471',
@@ -131,9 +166,18 @@ export const HEALTH_STATS = [
       { key: 'P95', value: '124ms' },
     ],
   },
-] as const;
+];
 
-export const FINANCIAL_STATS = [
+export interface DashboardFinancialStat {
+  label: string;
+  value: string;
+  prefix?: string;
+  suffix?: string;
+  delta?: DashboardStatDelta;
+  detail: string;
+}
+
+export const FINANCIAL_STATS: readonly DashboardFinancialStat[] = [
   {
     label: 'Today\'s GMV',
     value: '186,420',
@@ -176,7 +220,7 @@ export const FINANCIAL_STATS = [
     prefix: '$',
     detail: '3 cases · oldest 6 days',
   },
-] as const;
+];
 
 export const OPERATIONS_DATA = {
   disputes: {
@@ -210,7 +254,30 @@ export const OPERATIONS_DATA = {
   },
 } as const;
 
-export const ACTIVITY_FEED = [
+export type ActivityActorType = 'me' | 'other';
+
+export type ActivityCategory =
+  | 'suspension'
+  | 'refund'
+  | 'dispute'
+  | 'override'
+  | 'investigation'
+  | 'export'
+  | 'signin';
+
+export interface ActivityFeedItem {
+  time: string;
+  actor: string;
+  actorName: string;
+  actorType: ActivityActorType;
+  verb: string;
+  target: string;
+  targetMeta?: string;
+  tag: string;
+  category: ActivityCategory;
+}
+
+export const ACTIVITY_FEED: readonly ActivityFeedItem[] = [
   {
     time: '12:34 PM',
     actor: 'AO',
@@ -320,7 +387,7 @@ export const ACTIVITY_FEED = [
     tag: 'T&S',
     category: 'investigation' as const,
   },
-] as const;
+];
 
 export const SPARKLINE_HEIGHTS = [38, 52, 44, 61, 58, 70, 84, 76, 88, 92] as const;
 export const SPARKLINE_PEAK_INDEX = 6;

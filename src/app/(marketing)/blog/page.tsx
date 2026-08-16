@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, Mail, ArrowRight, X } from 'lucide-react'
+import { Search, ChevronDown, ArrowRight } from 'lucide-react'
 
 type Article = {
   id: string
@@ -61,7 +61,7 @@ export default function Blog() {
       list = list.filter(a => a.title.toLowerCase().includes(q) || a.excerpt.toLowerCase().includes(q) || a.author.toLowerCase().includes(q))
     }
     return list
-  }, [activeCat, role, query, sort])
+  }, [activeCat, role, query])
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: articles.length }
@@ -77,7 +77,7 @@ export default function Blog() {
       <section className="px-8 py-20 bg-cream border-b border-line">
         <div className="max-w-[1300px] mx-auto flex flex-col lg:flex-row lg:items-end justify-between gap-12">
           <div>
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// The A-Player Journal</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// The A-Player Journal"}</div>
             <h1 className="font-display text-6xl md:text-[80px] font-normal leading-[1.05] tracking-tight mb-8 text-ink">Hiring, working,<br /><span className="italic text-amber">and winning.</span></h1>
             <p className="text-lg leading-relaxed text-ink-soft max-w-[700px]">Field notes from the Atlas research team on the global talent economy — who&apos;s getting hired, who&apos;s charging what, what&apos;s breaking, and what&apos;s actually working.</p>
           </div>

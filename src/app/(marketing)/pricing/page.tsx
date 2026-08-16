@@ -60,7 +60,7 @@ export default function Pricing() {
       {/* Hero */}
       <section className="px-8 py-20 max-w-[1100px] mx-auto text-center">
         <div className="flex flex-col items-center">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">// Pricing</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-4.5">{"// Pricing"}</div>
           <h1 className="font-display text-5xl md:text-7xl font-normal leading-tight tracking-tight mb-6 text-ink">
             Simple pricing.<br /><span className="italic text-amber">No hidden fees.</span>
           </h1>
@@ -92,7 +92,7 @@ export default function Pricing() {
           {/* Client Card */}
           <div className="p-9 bg-paper border border-line rounded-2xl flex flex-col">
             <div className="mb-6">
-              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-2">// For clients hiring</div>
+              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-2">{"// For clients hiring"}</div>
               <h2 className="font-display text-[28px] font-normal tracking-tight text-ink">What you pay</h2>
             </div>
             <div className="flex items-baseline gap-3.5 mb-4.5">
@@ -125,7 +125,7 @@ export default function Pricing() {
           {/* Candidate Card */}
           <div className="p-9 bg-ink text-cream border border-ink rounded-2xl flex flex-col">
             <div className="mb-6">
-              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-lime font-semibold mb-2">// For candidates working</div>
+              <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-lime font-semibold mb-2">{"// For candidates working"}</div>
               <h2 className="font-display text-[28px] font-normal tracking-tight text-cream">What you pay</h2>
             </div>
             <div className="flex items-baseline gap-3.5 mb-4.5">
@@ -160,7 +160,7 @@ export default function Pricing() {
       <section className="py-20 bg-paper border-y border-line">
         <div className="px-8 max-w-[1200px] mx-auto">
           <div className="max-w-[700px] mx-auto text-center mb-12">
-            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3">// Cost calculator</div>
+            <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3">{"// Cost calculator"}</div>
             <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-4 text-ink">Run the numbers.</h2>
             <p className="text-base leading-relaxed text-ink-soft">Slide the rate and hours to see what you&apos;d actually spend — and what the same hire would cost on other platforms.</p>
           </div>
@@ -229,7 +229,7 @@ export default function Pricing() {
       {/* Comparison Table */}
       <section className="py-24">
         <div className="max-w-[700px] mx-auto text-center mb-12 px-8">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3">// Head-to-head</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3">{"// Head-to-head"}</div>
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-4 text-ink">How we stack up.</h2>
           <p className="text-base leading-relaxed text-ink-soft">Every platform in our category, compared on what actually matters — not on logos and buzzwords.</p>
         </div>
@@ -251,7 +251,7 @@ export default function Pricing() {
                 <tr key={i}>
                   <td className="p-[16px_14px] text-[13px] border-b border-line-soft font-bold text-ink">{row.label}</td>
                   {(['atlas', 'upwork', 'fiverr', 'toptal', 'online'] as const).map(col => {
-                    const cell = (row as any)[col]
+                    const cell = row[col]
                     const isAtlas = col === 'atlas'
                     if (typeof cell === 'string') {
                       return <td key={col} className={`p-[16px_14px] text-[13px] border-b border-line-soft ${isAtlas ? 'bg-amber/5 text-ink font-bold' : 'text-ink-soft'}`}>{cell}</td>
@@ -272,7 +272,7 @@ export default function Pricing() {
       {/* FAQ */}
       <section className="py-20 px-8">
         <div className="max-w-[800px] mx-auto">
-          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3 text-center">// Pricing questions</div>
+          <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-ink-mute font-semibold mb-3 text-center">{"// Pricing questions"}</div>
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-[1.05] tracking-tight mb-9 text-center text-ink">Pricing questions.</h2>
           <div className="flex flex-col gap-2 max-w-[800px] mx-auto">
             {faqs.map((f, i) => (

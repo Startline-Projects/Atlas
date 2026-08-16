@@ -544,7 +544,36 @@ export const ACTIVITY_TIMELINE_DATA = {
 } as const;
 
 // Account settings
-export const ACCOUNT_SETTINGS_BLOCKS = [
+export interface AccountSettingsListItem {
+  ip: string;
+  label: string;
+}
+
+export interface AccountSettingsRow {
+  key: string;
+  value?: string;
+  valueDanger?: boolean;
+  warning?: boolean;
+  badge?: string;
+  action?: string;
+  actionId?: string;
+  actionPrimary?: boolean;
+  actionDanger?: boolean;
+  toggle?: boolean;
+  toggled?: boolean;
+  isList?: boolean;
+  items?: AccountSettingsListItem[];
+}
+
+export interface AccountSettingsBlock {
+  id: string;
+  title: string;
+  icon: string;
+  meta: string;
+  rows: AccountSettingsRow[];
+}
+
+export const ACCOUNT_SETTINGS_BLOCKS: readonly AccountSettingsBlock[] = [
   {
     id: 'identity',
     title: 'Identity',
@@ -707,4 +736,4 @@ export const ACCOUNT_SETTINGS_BLOCKS = [
       },
     ],
   },
-] as const;
+];

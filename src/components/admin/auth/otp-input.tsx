@@ -4,10 +4,9 @@ import { useRef, useState } from 'react';
 
 interface OTPInputProps {
   onComplete: (code: string) => void;
-  onError?: () => void;
 }
 
-export function OTPInput({ onComplete, onError }: OTPInputProps) {
+export function OTPInput({ onComplete }: OTPInputProps) {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const [values, setValues] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState(false);
@@ -82,7 +81,7 @@ export function OTPInput({ onComplete, onError }: OTPInputProps) {
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          <span>That code didn't match. Try the latest 6 digits in your authenticator.</span>
+          <span>That code didn&apos;t match. Try the latest 6 digits in your authenticator.</span>
         </div>
       )}
     </div>

@@ -23,10 +23,10 @@ export function HealthSection() {
             key={i}
             label={stat.label}
             value={stat.value}
-            valueSuffix={(stat as any).valueSuffix}
-            delta={(stat as any).delta}
-            breakdown={(stat as any).breakdown}
-            hasSparkline={(stat as any).hasSparkline}
+            valueSuffix={stat.valueSuffix}
+            delta={stat.delta}
+            breakdown={stat.breakdown}
+            hasSparkline={stat.hasSparkline}
             sparklineHeights={SPARKLINE_HEIGHTS}
             sparklinePeakIndex={SPARKLINE_PEAK_INDEX}
           />
