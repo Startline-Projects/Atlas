@@ -1,7 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { adminApi } from '@/lib/api-client';
 import { TOPBAR } from '@/lib/mock-data/admin/topbar-data';
+import { adminInitials, type AdminIdentity } from './admin-identity';
 import {
   HamburgerIcon,
   SearchIcon,
@@ -14,9 +16,28 @@ import {
   LogoutIcon,
 } from '@/components/ui/icons';
 
-export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => void }) {
+export function AdminTopbar({
+  admin,
+  onHamburgerClick,
+}: {
+  /** The signed-in admin. Search, notifications and menu items stay on mock data. */
+  admin: AdminIdentity;
+  onHamburgerClick?: () => void;
+}) {
   const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await adminApi.logout();
+    } finally {
+      // Hard navigation so every server component re-reads the (now empty) cookie.
+      window.location.assign('/admin/signin');
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -50,7 +71,7 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
             style={{ animation: 'pulse-soft 2s infinite' }}
             aria-hidden="true"
           />
-          {TOPBAR.role.label}
+          {admin.title}
         </span>
       </div>
 
@@ -105,7 +126,7 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
               className="w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0 text-[var(--color-paper)] font-display text-[12.5px] font-medium"
               style={{ background: 'linear-gradient(135deg, #D9A77F, #8B5A3C)' }}
             >
-              {TOPBAR.avatar.initials}
+              {adminInitials(admin.fullName)}
             </span>
             <ChevronDownIcon className="w-3 h-3 text-[var(--color-ink-mute)] hidden md:block" />
           </button>
@@ -120,17 +141,17 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
               {/* Header */}
               <div className="px-[18px] py-[14px] border-b border-[var(--color-line-soft)]">
                 <div className="text-[14.5px] font-semibold text-[var(--color-ink)] leading-tight">
-                  {TOPBAR.avatar.fullName}
+                  {admin.fullName}
                 </div>
                 <div className="inline-flex items-center gap-1 mt-1.5 font-mono text-[9.5px] uppercase tracking-widest text-[var(--color-ink-soft)] font-semibold px-[7px] py-0.5 pl-1.5 bg-[var(--color-cream-deep)] rounded-sm">
                   <span
                     className="w-1 h-1 rounded-full bg-[var(--color-ink)]"
                     aria-hidden="true"
                   />
-                  {TOPBAR.avatar.role}
+                  {admin.title}
                 </div>
                 <div className="text-[12.5px] text-[var(--color-ink-mute)] mt-2 font-mono tracking-tight">
-                  {TOPBAR.avatar.email}
+                  {admin.email}
                 </div>
               </div>
 
@@ -200,7 +221,10 @@ export function AdminTopbar({ onHamburgerClick }: { onHamburgerClick?: () => voi
               {/* Section 3: Sign Out */}
               <div className="px-1.5 py-1.5">
                 <button
-                  className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-sm text-[13.5px] text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)] transition-colors"
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="w-full flex items-center gap-2.5 px-3 py-[9px] rounded-sm text-[13.5px] text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)] transition-colors disabled:opacity-60"
                 >
                   <LogoutIcon className="w-4 h-4 flex-shrink-0 text-[var(--color-danger)]" />
                   {TOPBAR.dropdownItems[5].label}

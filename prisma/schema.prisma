@@ -73,6 +73,7 @@ model User {
   deletedAt DateTime?
 
   candidateProfile CandidateProfile?
+  adminProfile     AdminProfile?
 
   @@index([role, status])
   @@index([deletedAt])
@@ -231,4 +232,22 @@ model PortfolioItem {
   sortOrder   Int     @default(0)
 
   @@index([profileId])
+}
+
+/// Internal Staffva staff (PROJECT_SCOPE §2.4). Admins are provisioned, never
+/// self-registered — see `scripts/create-admin.ts`. Kept apart from `User`
+/// for the same reason `CandidateProfile` is: `User` is shared by all five
+/// surfaces and only an admin has a job title and (later) 2FA enrolment.
+model AdminProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName String
+  /// Shown under the name in the console topbar — "Operations Admin",
+  /// "Trust & Safety". Free text for now; becomes an enum with RBAC (§7.2).
+  title    String @default("Admin")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -4,9 +4,19 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SIDEBAR_NAV } from '@/lib/mock-data/admin/sidebar-nav-data';
+import { adminInitials, type AdminIdentity } from './admin-identity';
 import { ChevronDownIcon, SidebarSearchIcon, SidebarCloseIcon, MoreDotsIcon } from '@/components/ui/icons';
 
-export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function AdminSidebar({
+  admin,
+  isOpen,
+  onClose,
+}: {
+  /** The signed-in admin — shown in the sidebar footer. Nav items stay on mock data. */
+  admin: AdminIdentity;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
   const pathname = usePathname();
   const [filterQuery, setFilterQuery] = useState('');
   const [hash, setHash] = useState('');
@@ -225,14 +235,14 @@ export function AdminSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[var(--color-paper)] font-display text-[13px] font-medium"
             style={{ background: 'linear-gradient(135deg, #D9A77F, #8B5A3C)' }}
           >
-            {SIDEBAR_NAV.footer.avatarInitials}
+            {adminInitials(admin.fullName)}
           </span>
           <span className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold truncate">
-              {SIDEBAR_NAV.footer.name}
+              {admin.fullName}
             </div>
             <div className="font-mono text-[9.5px] uppercase tracking-tight text-[var(--color-ink-mute)] mt-0.5">
-              {SIDEBAR_NAV.footer.role}
+              {admin.title}
             </div>
           </span>
           <MoreDotsIcon className="w-3.5 h-3.5 flex-shrink-0 text-[var(--color-ink-mute)]" />

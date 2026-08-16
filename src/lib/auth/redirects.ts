@@ -8,6 +8,9 @@
 export const CANDIDATE_SIGNIN_PATH = "/candidate/signin";
 export const CANDIDATE_HOME_PATH = "/candidate/dashboard";
 
+export const ADMIN_SIGNIN_PATH = "/admin/signin";
+export const ADMIN_HOME_PATH = "/admin/dashboard";
+
 /**
  * Request header the proxy stamps with the path (+ query) being served.
  * Layouts have no other way to learn the URL they render for.
@@ -27,12 +30,19 @@ export function safeNextPath(
   return fallback;
 }
 
-/**
- * `/candidate/signin?next=<path>` — `next` is dropped when there is nowhere
- * useful to return to (unsafe value, or the dashboard, which is the default).
- */
-export function candidateSignInPath(next?: string | null): string {
+function signInPath(signin: string, home: string, next?: string | null): string {
   const target = safeNextPath(next, "");
-  if (!target || target === CANDIDATE_HOME_PATH) return CANDIDATE_SIGNIN_PATH;
-  return `${CANDIDATE_SIGNIN_PATH}?next=${encodeURIComponent(target)}`;
+  // Nowhere useful to return to: unsafe value, or the default landing page.
+  if (!target || target === home) return signin;
+  return `${signin}?next=${encodeURIComponent(target)}`;
+}
+
+/** `/candidate/signin?next=<path>` — `next` dropped when it adds nothing. */
+export function candidateSignInPath(next?: string | null): string {
+  return signInPath(CANDIDATE_SIGNIN_PATH, CANDIDATE_HOME_PATH, next);
+}
+
+/** `/admin/signin?next=<path>` — same rule as the candidate variant. */
+export function adminSignInPath(next?: string | null): string {
+  return signInPath(ADMIN_SIGNIN_PATH, ADMIN_HOME_PATH, next);
 }

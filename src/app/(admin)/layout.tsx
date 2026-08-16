@@ -1,26 +1,35 @@
-'use client';
+/**
+ * Admin console layout. Server Component.
+ *
+ * Auth guard for everything under `/admin/*` except sign-in (which lives in
+ * the `(admin-auth)` group). `src/proxy.ts` already turned away requests
+ * with no admin cookie; this is where a cookie that exists but no longer
+ * resolves — expired token, suspended admin, or a candidate token pasted
+ * into the admin cookie — is caught and sent back to sign-in with `?next=`.
+ *
+ * The chrome itself is client-side (sidebar state, preview panel, timeout
+ * modal) and lives in `AdminRootClient`; it receives the verified identity.
+ */
+import { redirect } from 'next/navigation';
 
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { SignInStateProvider } from '@/lib/admin/signin-state-context';
-import { AdminLayoutShell } from '@/components/admin/shell/admin-layout-shell';
-import { AdminPreviewPanel } from '@/components/admin/shell/admin-preview-panel';
-import { TimeoutModal } from '@/components/admin/auth/timeout-modal';
+import { AdminRootClient } from '@/components/admin/shell/admin-root-client';
+import { adminSignInPath, currentRequestPath, getAdminSession } from '@/lib/auth';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isSignInPage = pathname === '/admin/signin';
-  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
-
-  const content = isSignInPage ? children : <AdminLayoutShell>{children}</AdminLayoutShell>;
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getAdminSession();
+  if (!session) {
+    redirect(adminSignInPath(await currentRequestPath()));
+  }
 
   return (
-    <SignInStateProvider>
-      <>
-        {content}
-        <AdminPreviewPanel onShowTimeoutModal={() => setShowTimeoutModal(true)} />
-        <TimeoutModal isOpen={showTimeoutModal} onClose={() => setShowTimeoutModal(false)} />
-      </>
-    </SignInStateProvider>
+    <AdminRootClient
+      admin={{
+        fullName: session.admin.fullName,
+        email: session.admin.email,
+        title: session.admin.title,
+      }}
+    >
+      {children}
+    </AdminRootClient>
   );
 }

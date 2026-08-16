@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 import { SignInForm } from '@/components/admin/auth/signin-form';
 
 export const metadata = {
@@ -6,5 +8,10 @@ export const metadata = {
 };
 
 export default function SignInPage() {
-  return <SignInForm />;
+  return (
+    // The form reads `?next=` — useSearchParams needs a boundary to prerender.
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
+  );
 }

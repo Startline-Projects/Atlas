@@ -1,28 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircleIcon, AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon, CheckShieldIcon, LockIcon, MailIcon, ShieldIcon } from '@/components/ui/icons';
 import { OTPInput } from './otp-input';
 import { useSignInState } from '@/lib/admin/signin-state-context';
+import { ApiClientError, adminApi } from '@/lib/api-client';
+// Leaf module, not the `@/lib/auth` barrel — that one reaches `next/headers`.
+import { ADMIN_HOME_PATH, safeNextPath } from '@/lib/auth/redirects';
+// Same reason: the module, not the errors barrel.
+import { fieldsFromZod } from '@/lib/errors/zod-fields';
+import { adminLoginSchema } from '@/lib/validators/admin';
 
-type SignInState =
-  | 'default'
-  | '2fa'
-  | 'session-confirm'
-  | 'lockout'
-  | 'routing'
-  | 'wrong-password-1'
-  | 'wrong-password-2'
-  | 'no-account'
-  | '2fa-wrong'
-  | 'ip-blocked'
-  | 'anomaly'
-  | 'suspended'
-  | 'password-expired';
+/**
+ * Failed attempts before the (client-side) lockout screen. Real lockout is
+ * enforced server-side once rate limiting lands (ARCHITECTURE §7.6); until
+ * then this only shapes the UI — the copy in the wrong-password states
+ * already speaks of "3 attempts".
+ */
+const MAX_ATTEMPTS = 3;
+
+// The screen states (`default`, `2fa`, `wrong-password-1`, …) are typed by
+// `SignInStateProvider` in lib/admin/signin-state-context.tsx.
 
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentState, setCurrentState } = useSignInState();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,36 +37,73 @@ export function SignInForm() {
   const [passwordError, setPasswordError] = useState('');
   const [captchaVerifying, setCaptchaVerifying] = useState(false);
 
+  /**
+   * Real sign-in against `/api/v1/admin/login`, which sets the console
+   * cookie. On success we go through the "routing" splash and hard-navigate
+   * so the server-rendered console reads the fresh cookie.
+   *
+   * The 2FA / session-confirm states are still design previews (reachable
+   * from the preview panel): TOTP enrolment + challenge is a later slice, so
+   * a password alone signs an admin in for now. Tracked in
+   * `services/admin/admin.service.ts`.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setEmailError('');
     setPasswordError('');
-    setIsLoading(true);
 
-    // Fake validation - accept any email/password combo
-    if (!email || !password) {
-      setIsLoading(false);
-      if (!email) setEmailError('Email is required');
-      if (!password) setPasswordError('Password is required');
+    const parsed = adminLoginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      const fields = fieldsFromZod(parsed.error);
+      setEmailError(fields.email ?? '');
+      setPasswordError(fields.password ?? '');
       return;
     }
 
-    // Simulate credential verification delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    setIsLoading(true);
+    try {
+      await adminApi.login(parsed.data);
+      setCurrentState('routing');
+      window.location.assign(safeNextPath(searchParams.get('next'), ADMIN_HOME_PATH));
+    } catch (error) {
+      setIsLoading(false);
+      if (!(error instanceof ApiClientError)) {
+        setPasswordError('Something went wrong. Please try again.');
+        return;
+      }
 
-    // Move to 2FA state (no actual auth backend)
-    setCurrentState('2fa');
-    setIsLoading(false);
+      // Suspended / deactivated admin — the API says so explicitly (403).
+      if (error.code === 'FORBIDDEN') {
+        setCurrentState('suspended');
+        return;
+      }
+
+      // Anything else is "email or password is incorrect" — deliberately one
+      // message for a wrong password and an unknown address. Escalate through
+      // the attempt-aware states the design already has.
+      const used = attempts + 1;
+      setAttempts(used);
+      setPassword('');
+      if (used >= MAX_ATTEMPTS) {
+        setCurrentState('lockout');
+      } else if (used === 2) {
+        setCurrentState('wrong-password-2');
+      } else {
+        setCurrentState('wrong-password-1');
+      }
+    }
   };
 
   const handleOTPComplete = async (code: string) => {
-    // Fake OTP validation - accept any 6 digits
+    // Design preview only — accept any 6 digits. Real TOTP is a later slice.
     if (code.length === 6) {
       setCurrentState('session-confirm');
     }
   };
 
   const handleConfirmSession = async () => {
+    // Design preview only: the real path never enters "session-confirm".
     setCurrentState('routing');
     await new Promise(resolve => setTimeout(resolve, 2000));
     router.push('/admin/dashboard');
@@ -86,11 +126,6 @@ export function SignInForm() {
   };
 
   const isFormValid = email && password && captchaChecked && !isLoading;
-
-  const handlePreviewStateChange = (state: SignInState) => {
-    setCurrentState(state);
-    setAttempts(0);
-  };
 
   return (
     <>
@@ -149,7 +184,7 @@ export function SignInForm() {
                 <form onSubmit={handleSubmit} className="flex flex-col">
                   <h2 className="font-display text-[21px] font-medium tracking-[-0.01em] mb-1">Sign in to continue</h2>
                   <p className="text-[13.5px] text-[var(--color-ink-mute)] mb-5.5 leading-[1.5]">
-                    Enter your admin credentials. After your password, you'll verify with two-factor authentication.
+                    Enter your admin credentials. After your password, you&apos;ll verify with two-factor authentication.
                   </p>
 
                   {/* Email field */}
@@ -454,7 +489,7 @@ export function SignInForm() {
                 <form onSubmit={handleSubmit} className="flex flex-col">
                   <h2 className="font-display text-[21px] font-medium tracking-[-0.01em] mb-1">Sign in to continue</h2>
                   <p className="text-[13.5px] text-[var(--color-ink-mute)] mb-5.5 leading-[1.5]">
-                    Enter your admin credentials. After your password, you'll verify with two-factor authentication.
+                    Enter your admin credentials. After your password, you&apos;ll verify with two-factor authentication.
                   </p>
 
                   <div className="mb-4.5">
@@ -507,7 +542,7 @@ export function SignInForm() {
                     <label className="flex items-center gap-3 cursor-pointer user-select-none">
                       <input type="checkbox" className="sr-only" />
                       <div className="w-5.5 h-5.5 border-[1.5px] border-[var(--color-line-strong)] bg-white rounded flex items-center justify-center flex-shrink-0"></div>
-                      <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you're human</span>
+                      <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you&apos;re human</span>
                     </label>
                     <div className="flex items-center gap-2.25 flex-shrink-0">
                       <div className="w-7 h-7 rounded-sm bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-ink-soft)] flex items-center justify-center text-[var(--color-lime)] font-display text-sm font-medium">A</div>
@@ -520,10 +555,14 @@ export function SignInForm() {
 
                   <button
                     type="submit"
-                    disabled
-                    className="w-full px-5 py-3.75 rounded-[var(--radius-md)] text-[14.5px] font-semibold bg-[var(--color-cream-deep)] text-[var(--color-ink-mute)] cursor-not-allowed flex items-center justify-center gap-2.5"
+                    disabled={!isFormValid}
+                    className={`w-full px-5 py-3.75 rounded-[var(--radius-md)] text-[14.5px] font-semibold flex items-center justify-center gap-2.5 transition-all ${
+                      isFormValid
+                        ? 'bg-[var(--color-ink)] text-[var(--color-paper)] hover:bg-black active:translate-y-0.5'
+                        : 'bg-[var(--color-cream-deep)] text-[var(--color-ink-mute)] cursor-not-allowed'
+                    }`}
                   >
-                    Continue to verification
+                    {isLoading ? 'Verifying credentials…' : 'Continue to verification'}
                   </button>
                 </form>
               )}
@@ -533,7 +572,7 @@ export function SignInForm() {
                 <form onSubmit={handleSubmit} className="flex flex-col">
                   <h2 className="font-display text-[21px] font-medium tracking-[-0.01em] mb-1">Sign in to continue</h2>
                   <p className="text-[13.5px] text-[var(--color-ink-mute)] mb-5.5 leading-[1.5]">
-                    Enter your admin credentials. After your password, you'll verify with two-factor authentication.
+                    Enter your admin credentials. After your password, you&apos;ll verify with two-factor authentication.
                   </p>
 
                   <div className="mb-4.5">
@@ -543,6 +582,8 @@ export function SignInForm() {
                     <input
                       type="email"
                       value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="username"
                       placeholder="you@atlas.example"
                       className="w-full px-3.5 py-3 text-[14.5px] bg-[#FFFDF7] border border-[var(--color-line)] rounded-[var(--radius-md)] text-[var(--color-ink)] focus:outline-none"
                     />
@@ -559,6 +600,8 @@ export function SignInForm() {
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="current-password"
                         placeholder="••••••••••"
                         className="w-full px-3.5 py-3 text-[14.5px] bg-[var(--color-danger-bg)] border border-[var(--color-danger)] rounded-[var(--radius-md)] text-[var(--color-ink)] pr-[76px] focus:outline-none"
                       />
@@ -584,7 +627,7 @@ export function SignInForm() {
                     <label className="flex items-center gap-3 cursor-pointer user-select-none">
                       <input type="checkbox" className="sr-only" />
                       <div className="w-5.5 h-5.5 border-[1.5px] border-[var(--color-line-strong)] bg-white rounded flex items-center justify-center flex-shrink-0"></div>
-                      <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you're human</span>
+                      <span className="text-[14px] font-medium text-[var(--color-ink)]">Verify you&apos;re human</span>
                     </label>
                     <div className="flex items-center gap-2.25 flex-shrink-0">
                       <div className="w-7 h-7 rounded-sm bg-gradient-to-br from-[var(--color-ink)] to-[var(--color-ink-soft)] flex items-center justify-center text-[var(--color-lime)] font-display text-sm font-medium">A</div>
@@ -595,7 +638,15 @@ export function SignInForm() {
                     </div>
                   </div>
 
-                  <button type="submit" disabled className="w-full px-5 py-3.75 rounded-[var(--radius-md)] text-[14.5px] font-semibold bg-[var(--color-cream-deep)] text-[var(--color-ink-mute)] cursor-not-allowed">
+                  <button
+                    type="submit"
+                    disabled={!isFormValid}
+                    className={`w-full px-5 py-3.75 rounded-[var(--radius-md)] text-[14.5px] font-semibold transition-all ${
+                      isFormValid
+                        ? 'bg-[var(--color-ink)] text-[var(--color-paper)] hover:bg-black active:translate-y-0.5'
+                        : 'bg-[var(--color-cream-deep)] text-[var(--color-ink-mute)] cursor-not-allowed'
+                    }`}
+                  >
                     Continue to verification
                   </button>
                 </form>
@@ -615,7 +666,7 @@ export function SignInForm() {
                     <AlertCircleIcon className="w-7 h-7 text-[var(--color-danger)]" />
                   </div>
                   <h2 className="font-display text-[26px] font-medium tracking-[-0.015em] leading-[1.15] mb-2.5">
-                    Code didn't match
+                    Code didn&apos;t match
                   </h2>
                   <p className="text-[14.5px] text-[var(--color-ink-soft)] leading-[1.55] mb-8">
                     Try the latest 6 digits from your authenticator app.
@@ -704,7 +755,7 @@ export function SignInForm() {
                     Unusual sign-in
                   </h2>
                   <p className="text-[14.5px] text-[var(--color-ink-soft)] leading-[1.55] mb-6">
-                    We don't recognize this device/location. Verify it's you before continuing.
+                    We don&apos;t recognize this device/location. Verify it&apos;s you before continuing.
                   </p>
 
                   <div className="bg-[var(--color-amber-bg)] border border-[#F0BB95] rounded-[var(--radius-md)] px-4 py-3 mb-6 text-left text-[13px]">
@@ -727,7 +778,7 @@ export function SignInForm() {
                       onClick={() => setCurrentState('session-confirm')}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-ink)] text-[13.5px] font-medium text-[var(--color-paper)] rounded-full hover:bg-black"
                     >
-                      It's me
+                      It&apos;s me
                       <ArrowRightIcon className="w-3.5 h-3.5" />
                     </button>
                   </div>
