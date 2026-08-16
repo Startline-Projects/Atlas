@@ -1,0 +1,234 @@
+// Atlas — database schema
+// Docs: docs/ARCHITECTURE.md §5.7, docs/PROJECT_SCOPE.md §6
+//
+// This is the seed of the model, not the finished one. Each vertical slice
+// adds its own models (see ARCHITECTURE §6 — domain → schema → validator →
+// repository → service → route → client → UI).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 moved connection URLs out of the schema:
+//   • migrations read `datasource.url` from `prisma.config.ts` (DIRECT_URL —
+//     the pooler cannot run DDL);
+//   • the running app connects through a driver adapter built in
+//     `src/lib/db/prisma.ts` (DATABASE_URL — the pooled port).
+datasource db {
+  provider = "postgresql"
+}
+
+/// All five surfaces are reserved from day one so that adding the Phase 2
+/// specialist and manager roles never needs an enum migration.
+/// PROJECT_SCOPE §6.
+enum Role {
+  GUEST
+  CANDIDATE
+  CLIENT
+  ADMIN
+  SPECIALIST
+  MANAGER
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+/// The category a candidate applies under. Mirrors the options offered by the
+/// signup form (`components/candidate/auth/signup-form.tsx`) — the two lists
+/// must stay in step, which `validators/candidate.ts` enforces at the boundary.
+enum RoleCategory {
+  ENGINEERING
+  DESIGN
+  MARKETING
+  OPERATIONS
+  CONTENT
+  FINANCE
+}
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+
+  role   Role          @default(GUEST)
+  status AccountStatus @default(PENDING_VERIFICATION)
+
+  emailVerifiedAt DateTime?
+
+  /// Supabase `auth.users.id`. Nullable until the auth provider is wired.
+  authProviderId String? @unique
+
+  /// Refreshed on sign-in. Drives the "last active" column in the admin table.
+  lastActiveAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Soft delete with a 30-day recovery window (PROJECT_SCOPE §2.1).
+  /// Every query must filter on `deletedAt: null` — enforced in the
+  /// repository layer, never left to callers.
+  deletedAt DateTime?
+
+  candidateProfile CandidateProfile?
+
+  @@index([role, status])
+  @@index([deletedAt])
+}
+
+enum Availability {
+  IMMEDIATELY
+  WITHIN_2_WEEKS
+  WITHIN_1_MONTH
+  NOT_AVAILABLE
+}
+
+enum LanguageProficiency {
+  BASIC
+  CONVERSATIONAL
+  FLUENT
+  NATIVE
+}
+
+/// Everything a candidate tells us about themselves. Split from `User` because
+/// `User` is shared by all five surfaces — a client or an admin has no
+/// role category and no English-test history.
+model CandidateProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// As it appears on their ID — collected at signup.
+  fullName     String
+  roleCategory RoleCategory
+
+  /// Collected after signup, during profile completion (PROJECT_SCOPE §2.2).
+  country     String?
+  countryCode String?
+  city        String?
+  headline    String?
+  bio         String?
+  photoUrl    String?
+
+  /// USD cents — integers avoid the float/Decimal round-trip for money.
+  hourlyRateCents Int?
+  hoursPerWeek    Int?
+  availability    Availability?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills         CandidateSkill[]
+  languages      CandidateLanguage[]
+  experiences    WorkExperience[]
+  education      Education[]
+  certifications Certification[]
+  portfolio      PortfolioItem[]
+
+  @@index([roleCategory])
+  @@index([createdAt])
+  @@index([availability])
+}
+
+/// Global, deduplicated tag vocabulary. Candidates attach existing tags or
+/// create new ones by name; `slug` is the case/space-insensitive identity so
+/// "React.js" and "react js" collapse into one searchable tag.
+model Skill {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  candidates CandidateSkill[]
+
+  @@index([name])
+}
+
+model CandidateSkill {
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  sortOrder Int              @default(0)
+
+  @@id([profileId, skillId])
+  @@index([skillId])
+}
+
+model CandidateLanguage {
+  id          String              @id @default(cuid())
+  profileId   String
+  profile     CandidateProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  language    String
+  proficiency LanguageProficiency
+  sortOrder   Int                 @default(0)
+
+  @@index([profileId])
+}
+
+model WorkExperience {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  title       String
+  company     String
+  location    String?
+  /// Month precision — stored as the first day of the month.
+  startDate   DateTime  @db.Date
+  endDate     DateTime? @db.Date
+  isCurrent   Boolean   @default(false)
+  description String?
+  /// Set by a Talent Specialist after checking references (Phase 2). Never
+  /// writable by the candidate.
+  verified    Boolean   @default(false)
+  sortOrder   Int       @default(0)
+
+  @@index([profileId])
+}
+
+model Education {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  school       String
+  degree       String?
+  fieldOfStudy String?
+  startYear    Int?
+  endYear      Int?
+  sortOrder    Int     @default(0)
+
+  @@index([profileId])
+}
+
+model Certification {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name          String
+  issuer        String?
+  issuedYear    Int?
+  credentialUrl String?
+  sortOrder     Int     @default(0)
+
+  @@index([profileId])
+}
+
+/// Up to six items (PROJECT_SCOPE §2.2) — the cap is enforced in the service.
+model PortfolioItem {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  imageUrl    String?
+  linkUrl     String?
+  sortOrder   Int     @default(0)
+
+  @@index([profileId])
+}

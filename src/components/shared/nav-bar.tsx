@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { cn } from "@/lib/utils/cn";
-
-type NavBarProps = {
-  onSignupClick?: () => void;
-  onSigninClick?: () => void;
-};
 
 const NAV_LINKS = [
   { label: "Find Talent", href: "/find-talent" },
@@ -20,7 +14,7 @@ const NAV_LINKS = [
   { label: "Pricing", href: "/pricing" },
 ];
 
-export function NavBar({ onSignupClick, onSigninClick }: NavBarProps) {
+export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -54,19 +48,18 @@ export function NavBar({ onSignupClick, onSigninClick }: NavBarProps) {
         </div>
 
         <div className="flex items-center gap-[10px]">
-          <Button 
-            variant="ghost" 
-            onClick={onSigninClick}
-            className="hidden md:inline-flex text-ink font-medium"
+          <a
+            href="/candidate/signin"
+            className="btn btn-ghost text-ink hidden font-medium md:inline-flex"
           >
             Sign In
-          </Button>
-          <button 
-            onClick={onSignupClick}
-            className="bg-ink text-amber font-display italic text-[17px] font-bold hover:scale-[1.04] transition-transform px-6 py-3 rounded-full shadow-sm"
+          </a>
+          <a
+            href="/candidate/signup"
+            className="bg-ink text-amber font-display rounded-full px-6 py-3 text-[17px] font-bold italic shadow-sm transition-transform hover:scale-[1.04]"
           >
             Sign Up
-          </button>
+          </a>
           <button
             type="button"
             className="hover:bg-cream-deep flex h-10 w-10 items-center justify-center rounded-sm md:hidden"

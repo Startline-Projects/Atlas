@@ -148,10 +148,10 @@ export default function Pricing() {
                 <li key={i} className="text-sm text-cream/90 pl-[22px] relative before:content-['✓'] before:absolute before:left-0 before:top-0 before:text-lime before:font-bold before:text-[13px]">{f}</li>
               ))}
             </ul>
-            <button className="bg-lime text-ink px-6 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-white transition-all text-base font-medium self-start">
+            <Link href="/candidate/signup" className="bg-lime text-ink px-6 py-3.5 rounded-full inline-flex items-center gap-2 hover:bg-white transition-all text-base font-medium self-start">
               Apply to Join
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-            </button>
+            </Link>
           </div>
         </div>
       </section>

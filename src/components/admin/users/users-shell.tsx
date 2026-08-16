@@ -10,17 +10,47 @@ import { UsersTable } from '@/components/admin/users/users-table';
 import { BulkActionBar } from '@/components/admin/users/bulk-action-bar';
 import { ManagerTab } from '@/components/admin/users/manager-tab';
 import { USERS_DATA } from '@/lib/mock-data/admin/users-data';
+import type { CandidateUser } from '@/lib/mock-data/admin/users-data';
 
 type TabName = 'candidates' | 'clients' | 'specialists' | 'manager' | 'admins';
 
 interface UsersShellProps {
   initialTab?: TabName;
+  /**
+   * Real candidates, read from the database by the page. When present they
+   * replace the mock rows; the other tabs stay on mock data until their own
+   * slice lands.
+   */
+  candidateRows?: CandidateUser[] | undefined;
 }
 
-export function UsersShell({ initialTab }: UsersShellProps) {
+export function UsersShell({ initialTab, candidateRows }: UsersShellProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabName>(initialTab ?? 'candidates');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+  // Single place that decides mock vs. real, so every consumer below —
+  // the table, select-all, the bulk bar count — agrees on what is on screen.
+  const rowsFor = (tab: 'candidates' | 'clients' | 'specialists' | 'admins') =>
+    tab === 'candidates' && candidateRows ? candidateRows : USERS_DATA[tab].rows;
+
+  // The mock pagination line quotes a fixed 22,108. Once the rows are real the
+  // count has to be too, or the table contradicts itself on screen.
+  const tableConfigFor = (
+    tab: 'candidates' | 'clients' | 'specialists' | 'admins',
+  ) => {
+    const config = USERS_DATA[tab].tableConfig;
+    if (tab !== 'candidates' || !candidateRows) return config;
+
+    const total = candidateRows.length;
+    return {
+      ...config,
+      pagination: {
+        ...config.pagination,
+        text: `Showing ${total} of ${total} candidate${total === 1 ? '' : 's'}`,
+      },
+    };
+  };
 
   // Read hash on mount to set initial activeTab, and listen for hash changes
   // Only sync from hash if NO initialTab was provided (real route takes precedence)
@@ -72,9 +102,8 @@ export function UsersShell({ initialTab }: UsersShellProps) {
   // Select all handler: select or deselect all rows
   const handleSelectAll = (selectAll: boolean) => {
     if (selectAll) {
-      const tabData = USERS_DATA[activeTab];
-      if ('rows' in tabData && Array.isArray(tabData.rows)) {
-        setSelectedRows(new Set(tabData.rows.map((r) => r.id)));
+      if (activeTab !== 'manager') {
+        setSelectedRows(new Set(rowsFor(activeTab).map((r) => r.id)));
       }
     } else {
       setSelectedRows(new Set());
@@ -108,8 +137,8 @@ export function UsersShell({ initialTab }: UsersShellProps) {
             />
           )}
           <UsersTable
-            rows={USERS_DATA[activeTab].rows}
-            tableConfig={USERS_DATA[activeTab].tableConfig}
+            rows={rowsFor(activeTab)}
+            tableConfig={tableConfigFor(activeTab)}
             selectedRows={selectedRows}
             onSelectionChange={handleRowSelect}
             onSelectAll={handleSelectAll}

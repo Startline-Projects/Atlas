@@ -180,15 +180,16 @@ const candidateSteps: Step[] = [
     privacy: 'Your ID and biometric data are encrypted, stored separately from your profile, and never shown to clients or third parties.',
   },
   {
-    title: 'Proctored English assessment passed.',
-    desc: 'A 25-minute online English test covering grammar, vocabulary, listening, and speaking. CEFR-scored, with detailed sub-scores.',
+    title: 'Proctored English assessment taken.',
+    desc: 'A 25-minute online English test covering grammar, vocabulary, listening, and speaking. CEFR-scored, with detailed sub-scores. Pass or fail, you keep your account and see your full result.',
     time: { label: '25 minutes', tone: 'amber' },
     list: [
       'Grammar, vocabulary, listening, speaking',
       'CEFR-scored (A1 to C2)',
       'Proctored — webcam on, no tab switching',
       'Detailed sub-scores shown on your profile',
-      'You need at least B2 to continue',
+      'First attempt free — C1 or higher continues to interviews',
+      'Below C1? Retake for $10 any time — no waiting period',
     ],
   },
   {
@@ -266,6 +267,7 @@ const faqs = [
   { q: "What does Atlas cost?", a: "Clients pay 12% on top of the candidate's hourly rate. Candidates pay 5% from their earnings. No subscriptions, no hidden fees, no setup costs." },
   { q: "What if it doesn't work out?", a: "If you part ways with a hire in the first 14 days, we replace them for free. Beyond that, your Talent Specialist mediates any disputes." },
   { q: 'How do you vet candidates?', a: 'A 9-step funnel: email + WhatsApp + ID + liveness check, English assessment, first interview, Talent Specialist assignment, role-specific interview, profile build, and final review. About 4% of applicants make it.' },
+  { q: 'What if a candidate fails the English test?', a: "Nothing is deleted. Every applicant keeps their account and sees their full CEFR result and sub-scores on their dashboard. The first attempt is free; retakes cost $10 and unlock immediately after payment — no waiting period. C1 or higher continues to interviews." },
   { q: 'Where are candidates from?', a: 'Latin America, Southeast Asia, Eastern Europe, and Africa. We focus on regions with strong English, high skill density, and timezone overlap with the US/EU.' },
 ]
 
@@ -478,10 +480,10 @@ export default function HowItWorks() {
               </>
             ) : (
               <>
-                <button className="bg-ink text-paper px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-black transition-all text-base font-medium">
+                <Link href="/candidate/signup" className="bg-ink text-paper px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-black transition-all text-base font-medium">
                   Apply to Join
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                </button>
+                </Link>
                 <Link href="/for-candidates" className="border border-ink text-ink px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-ink hover:text-cream transition-all text-base font-medium">Learn more</Link>
               </>
             )}

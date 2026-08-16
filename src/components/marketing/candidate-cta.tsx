@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, DollarSign, Globe, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { useReveal } from "@/hooks/use-reveal";
@@ -55,14 +55,14 @@ export function CandidateCta() {
               in, you work with US, UK, AU, and CA clients who pay full rate.
               No platform fees, ever.
             </p>
-            <Button variant="lime" size="lg">
+            <Link href="/candidate/signup" className="btn btn-lime btn-lg">
               Apply to Join
               <ArrowRight
                 className="h-3.5 w-3.5"
                 strokeWidth={2.5}
                 aria-hidden="true"
               />
-            </Button>
+            </Link>
           </div>
 
           <div className="relative z-[1] flex flex-col gap-4">

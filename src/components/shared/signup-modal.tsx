@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { ArrowRight, Lock, X } from "lucide-react";
 
 type SignupModalProps = {
@@ -76,8 +77,9 @@ export function SignupModal({ open, onClose }: SignupModalProps) {
               aria-hidden="true"
             />
           </button>
-          <button
-            type="button"
+          <Link
+            href="/candidate/signup"
+            onClick={onClose}
             className="border-line hover:border-ink hover:bg-cream group flex w-full items-center justify-between rounded-md border p-4 text-left transition-colors"
           >
             <div>
@@ -92,13 +94,17 @@ export function SignupModal({ open, onClose }: SignupModalProps) {
               className="text-ink-mute group-hover:text-ink h-4 w-4"
               aria-hidden="true"
             />
-          </button>
+          </Link>
         </div>
         <p className="text-ink-mute mt-5 text-center text-[13px]">
           Already have an account?{" "}
-          <a href="#" className="text-ink underline-offset-2 hover:underline">
+          <Link
+            href="/candidate/signin"
+            onClick={onClose}
+            className="text-ink underline-offset-2 hover:underline"
+          >
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>

@@ -13,7 +13,9 @@ const layerRules = {
     "error",
     {
       zones: [
-        // UI may not reach below the API layer.
+        // UI may not reach below the API layer. Route handlers under
+        // `src/app/api` are the API layer and are exempted by the override at
+        // the bottom of this file.
         {
           target: "./src/app",
           from: [
@@ -35,13 +37,6 @@ const layerRules = {
           ],
           message:
             "UI may not import services, repositories, db, or integrations. Use lib/api-client.",
-        },
-        // API routes may not touch repositories or db directly.
-        {
-          target: "./src/app/api",
-          from: ["./src/lib/repositories", "./src/lib/db"],
-          message:
-            "API routes are thin wrappers. Delegate to a service in lib/services.",
         },
         // Services must remain framework-free.
         {
@@ -79,6 +74,31 @@ const layerRules = {
   ],
 };
 
+/**
+ * Route handlers sit inside `src/app` but are not UI — they *are* the API
+ * layer, so calling a service is exactly their job. This override replaces the
+ * whole rule for them rather than adding to it: the only thing still forbidden
+ * is reaching past the service, straight into a repository or the database.
+ */
+const apiRouteRules = {
+  files: ["src/app/api/**/*.{ts,tsx}"],
+  rules: {
+    "import/no-restricted-paths": [
+      "error",
+      {
+        zones: [
+          {
+            target: "./src/app/api",
+            from: ["./src/lib/repositories", "./src/lib/db"],
+            message:
+              "API routes are thin wrappers. Delegate to a service in lib/services.",
+          },
+        ],
+      },
+    ],
+  },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -86,6 +106,7 @@ const eslintConfig = defineConfig([
     plugins: { import: importPlugin },
     rules: layerRules,
   },
+  apiRouteRules,
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);
 

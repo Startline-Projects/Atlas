@@ -6028,3 +6028,150 @@ robotics`, etc.).
   source HTML — net-new architectural surface
 
 ---
+
+## Candidate surface — English-test slice (open results + $10 retake)
+
+**Date:** 2026-07-17 · **Branch:** talent-specialist
+
+### Product policy (locked)
+
+Anyone who takes the English test — pass OR fail — keeps their
+account and sees their full result + sub-scores on their dashboard.
+First attempt is free. Every retake costs **$10** with a **24-hour
+cooldown** between attempts. **C1 or higher** continues to
+interviews (standardized: how-it-works previously said B2; apply
+said C1 — C1 wins, matching the eligibility checklist).
+
+### New role surface (per AI_RULES.md §3.6)
+
+First slice of the `candidate` role. Follows the specialist/admin
+folder template exactly — no cross-role imports; auth-card /
+auth-header are copies of the specialist primitives, not imports.
+
+| Route | Type | Notes |
+|---|---|---|
+| `/candidate/signup` | static | account → email OTP → done (internal useState steps); done state hands off to `?state=fresh` dashboard |
+| `/candidate/signin` | static | return path for failed candidates ("your result is saved") |
+| `/candidate/dashboard` | dynamic | 4 states via `?state=`: `fresh` / `cooldown` (default) / `retake-ready` / `passed` |
+| `/candidate/english-test` | static | interactive 10-question short-form runner (intro → questions → score) |
+| `/candidate/english-test/result` | dynamic | `?score=N&fresh=1` from the runner, or saved mock attempt with recorded sub-scores |
+| `/candidate/english-test/retake` | static | $10 checkout (mock Stripe) → paid state → "Start attempt #2" |
+
+### Mock data — `lib/mock-data/candidate/`
+
+- `current-candidate.ts` — `CandidateUser` (Lina Haddad, Executive
+  assistant · Operations) + 7-step `journeySteps` strip.
+- `english-test.ts` — `ENGLISH_TEST` config (25 min, C1 bar,
+  $10/1000¢ retake, 24h cooldown), CEFR bands + `cefrForScore`,
+  `TestAttempt` history (default story: attempt #1 failed at 72/B2,
+  free), `passedRetakeAttempt` (#2, 84/C1, paid — powers the
+  `?state=passed` preview), `retakeCooldown` precomputed labels
+  (static countdown per LockoutCard convention), 10-question bank +
+  `scoreForAnswers`, `subScoresForScore` (deterministic offsets).
+- `index.ts` barrel.
+
+### Default story (why `cooldown` is the default state)
+
+The dashboard's no-param render demos the locked policy end-to-end:
+failed attempt visible (72 · B2 · "Below C1" pill), account fully
+active, attempt history on record, retake panel showing "$10 ·
+5h 40m left". `?state=retake-ready` flips the disabled button to a
+live Link → checkout; checkout success links back to the runner as
+attempt #2.
+
+### Marketing updates
+
+- `apply/page.tsx` — Day 1–3 timeline entry rewritten (was "You
+  need C1 or higher to continue" — a dead end); final "Apply to
+  Join" `<button>` → `<Link href="/candidate/signup">`.
+- `how-it-works/page.tsx` — English step retitled "taken" (not
+  "passed"), list gains free-first-attempt + $10-retake items (B2 →
+  C1 fix); new candidate FAQ "What if a candidate fails the English
+  test?"; candidate CTA button → signup Link.
+- `pricing/page.tsx` + `marketing/candidate-cta.tsx` — dead "Apply
+  to Join" buttons wired to `/candidate/signup` (candidate-cta
+  swapped `<Button>` for a `btn btn-lime btn-lg` Link).
+
+### Files added (17) + 6 modified
+
+New: `(candidate-auth)/layout.tsx`, `(candidate-auth)/candidate/{signup,signin}/page.tsx`,
+`(candidate)/layout.tsx`, `(candidate)/candidate/dashboard/page.tsx`,
+`(candidate)/candidate/english-test/{page,result/page,retake/page}.tsx`,
+`components/candidate/auth/{auth-card,auth-header,signup-form,signin-form}.tsx`,
+`components/candidate/shell/candidate-topbar.tsx`,
+`components/candidate/english-test/{test-runner,result-view,attempt-history,retake-checkout}.tsx`,
+`components/candidate/dashboard/dashboard-app.tsx`,
+`lib/mock-data/candidate/{current-candidate,english-test,index}.ts`.
+
+Modified: `apply/page.tsx`, `how-it-works/page.tsx`,
+`pricing/page.tsx`, `marketing/candidate-cta.tsx`, this log.
+
+### Verification
+
+- `pnpm build` ✓ (after clearing a stale `.next` referencing
+  long-deleted admin routes). All 6 candidate routes render.
+- Smoke test on `next start`: 12 routes → 200; policy strings
+  ($10.00, Below C1, cooldown label, pass/fail heroes) confirmed in
+  rendered HTML.
+- ESLint: all new candidate files clean. Pre-existing errors in
+  apply/pricing/how-it-works (`//`-in-JSX eyebrows, `any`) left
+  untouched — out of scope.
+- Marketing landing, specialist, and admin surfaces untouched by
+  the new route groups.
+
+### Follow-ups (production phase)
+
+- Real slice per AI_RULES §3.1: `test_attempts` + `payments`
+  schema, Stripe Checkout for the $10 retake, webhook-gated attempt
+  unlock, server-enforced 24h cooldown (UI countdown is static).
+- Specialist/admin visibility into paid retakes (recert-queue
+  already models retake language).
+
+---
+
+## Candidate English test — cooldown removed (instant paid retake)
+
+**Date:** 2026-07-17 · **Branch:** talent-specialist · Supersedes the
+cooldown behavior in the previous entry.
+
+### Policy change (locked)
+
+The 24-hour wait between attempts is **removed**. Payment is the only
+gate: a failed candidate can book the $10 retake immediately — from
+the result screen or the dashboard — and a fresh attempt unlocks the
+moment the (mock) payment clears. Fee unchanged at $10.00.
+
+### Changes
+
+- `lib/mock-data/candidate/english-test.ts` — dropped
+  `retakeCooldownHours` from `ENGLISH_TEST` and deleted the
+  `retakeCooldown` label snapshot.
+- `dashboard-app.tsx` — `DashboardState` narrowed to
+  `fresh | failed | passed`; `FailedCard` lost its `retakeReady`
+  prop — the retake button is always a live Link ("Available now —
+  unlocks the moment payment clears", Zap icon replaces
+  Hourglass/CalendarClock).
+- `dashboard/page.tsx` — legacy `?state=cooldown` /
+  `?state=retake-ready` resolve to `failed` so shared preview links
+  keep working; default remains the failed story.
+- `result-view.tsx` — fail panel's disabled button became a live
+  Link to `/candidate/english-test/retake`; cooldown copy replaced
+  with "no waiting period".
+- Copy sweep (`test-runner` intro rule, `signup-form` InfoNote,
+  `apply` Day 1–3 timeline, `how-it-works` step list + candidate
+  FAQ) — every "24-hour wait" mention replaced with instant-retake
+  wording.
+
+### Verification
+
+`pnpm typecheck` ✓ · dev-server render check: dashboard default +
+`?state=cooldown` alias show the live "Book retake · $10.00" button
+with "Available now"; result page shows "right away — no waiting
+period" and links to the checkout; no stale countdown strings.
+
+### Follow-up (production phase)
+
+Server-side rate limiting on paid retakes (abuse guard) replaces the
+old cooldown enforcement item.
+
+---

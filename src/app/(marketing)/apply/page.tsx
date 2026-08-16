@@ -24,7 +24,7 @@ const categories = [
 const timeline = [
   { day: 'Day 0', title: 'Submit your application.', desc: 'Email, password, picked role, region. 60 seconds. We email you a verification link the same minute.' },
   { day: 'Day 0–1', title: 'WhatsApp + ID verified.', desc: 'You verify your phone via WhatsApp code, then upload a government ID and complete a 30-second selfie liveness check.' },
-  { day: 'Day 1–3', title: 'English assessment passed.', desc: 'A proctored 25-minute online English test. CEFR-scored, with detailed sub-scores. You need C1 or higher to continue.' },
+  { day: 'Day 1–3', title: 'English assessment taken.', desc: 'A proctored 25-minute online English test. CEFR-scored, with detailed sub-scores. First attempt is free. C1 or higher continues to interviews — score lower and you keep your account, see your full result, and can retake for $10 right away, as many times as you need.' },
   { day: 'Day 2–5', title: 'First video interview.', desc: '30 minutes with one of our screeners. No prep needed. We ask about your background and walk through softball role questions.' },
   { day: 'Day 4–8', title: 'Role-specific interview.', desc: 'A 60-minute deep dive with a live exercise. Code review, design critique, writing sample, etc. Tailored to your role and seniority.' },
   { day: 'Day 7–10', title: 'Profile + intro built.', desc: 'Your Talent Specialist helps you build a strong profile and record a 90-second video intro + 30-second voice intro.' },
@@ -192,10 +192,10 @@ export default function Apply() {
           <h2 className="font-display text-4xl md:text-[56px] font-normal leading-tight tracking-tight mb-4.5 text-ink">Start your <span className="italic text-ink-soft">application.</span></h2>
           <p className="text-base leading-relaxed text-ink-soft mb-8">Sign up, verify your email, and pick your role. Takes 60 seconds. You can pause and resume any time.</p>
           <div className="flex flex-wrap justify-center gap-3">
-            <button className="bg-ink text-paper px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-black transition-all text-base font-medium">
+            <Link href="/candidate/signup" className="bg-ink text-paper px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-black transition-all text-base font-medium">
               Apply to Join
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-            </button>
+            </Link>
             <Link href="/how-it-works" className="border border-ink text-ink px-7 py-4 rounded-full inline-flex items-center gap-2 hover:bg-ink hover:text-amber transition-all text-base font-medium">See full walkthrough</Link>
           </div>
         </div>
