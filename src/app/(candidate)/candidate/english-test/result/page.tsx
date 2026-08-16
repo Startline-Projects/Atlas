@@ -2,44 +2,52 @@
  * /candidate/english-test/result
  *
  * Shown to EVERY candidate, pass or fail. Two entry paths:
- *   - ?score=N&fresh=1 — straight from the runner; sub-scores derived
- *     deterministically from the overall score.
- *   - no params — revisiting the saved mock attempt (dashboard "View
- *     full result"), including its recorded sub-scores.
+ *   - ?attempt=<id>&fresh=1 — straight from the runner, right after scoring
+ *   - ?attempt=<id>         — revisiting from the dashboard
+ *   - no param              — the latest attempt; no attempts → dashboard
+ *
+ * The attempt is read through the API client (own attempts only — another
+ * candidate's id is a 404 → back to the dashboard).
  */
+import { redirect } from "next/navigation";
+
 import { ResultView } from "@/components/candidate/english-test/result-view";
-import { latestAttempt, testAttempts } from "@/lib/mock-data/candidate";
+import { ApiClientError, englishTestApi } from "@/lib/api-client";
+import { serverInit } from "@/lib/api-client/server";
+import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
 
 type PageProps = {
-  searchParams: Promise<{ score?: string; fresh?: string }>;
+  searchParams: Promise<{ attempt?: string; fresh?: string }>;
 };
 
-export default async function EnglishTestResultPage({
-  searchParams,
-}: PageProps) {
-  const { score, fresh } = await searchParams;
+export default async function EnglishTestResultPage({ searchParams }: PageProps) {
+  const session = await getCandidateSession();
+  if (!session) redirect(candidateSignInPath("/candidate/english-test/result"));
 
-  const parsed = Number(score);
-  const hasScore = score !== undefined && Number.isFinite(parsed);
-  const clamped = Math.max(0, Math.min(100, Math.round(parsed)));
+  const { attempt: attemptId, fresh } = await searchParams;
+  const init = await serverInit();
 
-  if (hasScore) {
-    return (
-      <ResultView
-        score={clamped}
-        fresh={fresh === "1"}
-        attemptNumber={testAttempts.length + 1}
-      />
-    );
+  const overview = await englishTestApi.overview(init);
+
+  let attempt = overview.latest;
+  if (attemptId) {
+    try {
+      attempt = (await englishTestApi.attempt(attemptId, init)).attempt;
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) {
+        redirect("/candidate/dashboard");
+      }
+      throw error;
+    }
   }
 
-  // Saved-attempt view — falls back to the default mock story.
+  if (!attempt) redirect("/candidate/dashboard");
+
   return (
     <ResultView
-      score={latestAttempt?.score ?? 0}
-      fresh={false}
-      attemptNumber={latestAttempt?.number ?? 1}
-      subScores={latestAttempt?.subScores}
+      attempt={attempt}
+      fresh={fresh === "1"}
+      retakeUnlocked={overview.eligibility.status === "retake_unlocked"}
     />
   );
 }

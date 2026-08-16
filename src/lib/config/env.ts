@@ -49,6 +49,20 @@ const serverSchema = z.object({
     .string()
     .regex(/^\d{6}$/, "AUTH_DEV_FIXED_OTP must be exactly 6 digits")
     .optional(),
+
+  /**
+   * Stripe. Optional at startup so a page that never charges can still build;
+   * `lib/integrations/stripe` throws a clear error the moment a charge is
+   * attempted without them.
+   */
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  /**
+   * Temporary payments bypass. When set to "1", checkout skips Stripe and
+   * marks the payment succeeded immediately — for local development before
+   * Stripe keys exist. Refused in production by `paymentService`.
+   */
+  PAYMENTS_DEV_BYPASS: z.enum(["1"]).optional(),
 });
 
 type ClientEnv = z.infer<typeof clientSchema>;

@@ -3,13 +3,16 @@
  * Every attempt stays visible — pass or fail — with its fee chip
  * (Free / $10.00), score, CEFR level, and outcome pill.
  */
+import type { TestAttemptDto } from "@/lib/api/dto/english-test.dto";
+import { ENGLISH_TEST } from "@/lib/domain/english-test";
 import { cn } from "@/lib/utils/cn";
-import { testAttempts, type TestAttempt } from "@/lib/mock-data/candidate";
+
+import { formatTakenAt, formatUsdCents } from "./format";
 
 export function AttemptHistory({
-  attempts = testAttempts,
+  attempts,
 }: {
-  attempts?: ReadonlyArray<TestAttempt>;
+  attempts: ReadonlyArray<TestAttemptDto>;
 }) {
   if (attempts.length === 0) return null;
 
@@ -33,12 +36,16 @@ export function AttemptHistory({
               </span>
               <div className="flex flex-col leading-tight">
                 <span className="text-ink text-[14px] font-medium">
-                  {a.takenAtLabel}
+                  {formatTakenAt(a.takenAt)}
                 </span>
                 <span className="text-ink-mute text-[12px]">
-                  {a.kind === "free"
+                  {a.kind === "FREE"
                     ? "First attempt · Free"
-                    : `Retake · ${a.feePaidLabel ?? ""}`}
+                    : `Retake · ${
+                        a.feePaidCents !== null
+                          ? formatUsdCents(a.feePaidCents)
+                          : ENGLISH_TEST.retakeFeeLabel
+                      }`}
                 </span>
               </div>
             </div>
@@ -58,7 +65,7 @@ export function AttemptHistory({
                     : "bg-amber-bg text-amber",
                 )}
               >
-                {a.passed ? "Passed" : "Below C1"}
+                {a.passed ? "Passed" : `Below ${ENGLISH_TEST.passingLevel}`}
               </span>
             </div>
           </div>

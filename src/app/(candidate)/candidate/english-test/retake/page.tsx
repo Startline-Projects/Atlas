@@ -1,15 +1,55 @@
 /**
  * /candidate/english-test/retake
  *
- * $10 retake checkout (mock — real flow charges via Stripe and
- * unlocks the attempt on webhook confirmation). Reached from the
- * dashboard or the result screen — no waiting period; payment is
- * the only gate.
+ * $10 retake checkout. Three arrivals:
+ *   - plain              → order summary + "Pay with Stripe" (or, when a paid
+ *                          retake is already waiting, the unlocked screen)
+ *   - ?session_id=…      → back from checkout: confirm with Stripe, show
+ *                          unlocked / still-pending / failed
+ *   - ?cancelled=1       → back from checkout without paying
+ *
+ * No waiting period — payment is the only gate. Eligibility is the
+ * service's call: a candidate who has passed, or has no attempt yet, is
+ * sent to the dashboard rather than sold a retake.
  */
-import { RetakeCheckout } from "@/components/candidate/english-test/retake-checkout";
-import { ENGLISH_TEST } from "@/lib/mock-data/candidate";
+import { redirect } from "next/navigation";
 
-export default function EnglishTestRetakePage() {
+import { RetakeCheckout } from "@/components/candidate/english-test/retake-checkout";
+import { ApiClientError, englishTestApi } from "@/lib/api-client";
+import { serverInit } from "@/lib/api-client/server";
+import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
+import { ENGLISH_TEST } from "@/lib/domain/english-test";
+
+type PageProps = {
+  searchParams: Promise<{ session_id?: string; cancelled?: string }>;
+};
+
+export default async function EnglishTestRetakePage({ searchParams }: PageProps) {
+  const session = await getCandidateSession();
+  if (!session) redirect(candidateSignInPath("/candidate/english-test/retake"));
+
+  const { session_id: sessionId, cancelled } = await searchParams;
+  const init = await serverInit();
+
+  // Returning from checkout: sync the payment first, then read eligibility —
+  // a successful confirmation flips it to "retake_unlocked".
+  let paymentStatus: "SUCCEEDED" | "PENDING" | "FAILED" | null = null;
+  if (sessionId) {
+    try {
+      const { payment } = await englishTestApi.confirmRetakeCheckout(sessionId, init);
+      paymentStatus = payment.status === "REFUNDED" ? "FAILED" : payment.status;
+    } catch (error) {
+      // Unknown / foreign session id — treat as "nothing to confirm".
+      if (!(error instanceof ApiClientError && error.status === 404)) throw error;
+    }
+  }
+
+  const { eligibility } = await englishTestApi.overview(init);
+
+  if (eligibility.status === "passed" || eligibility.status === "free_available") {
+    redirect("/candidate/dashboard");
+  }
+
   return (
     <div className="mx-auto max-w-[560px]">
       <header className="mb-8 text-center">
@@ -25,7 +65,12 @@ export default function EnglishTestRetakePage() {
           score is the one that counts.
         </p>
       </header>
-      <RetakeCheckout />
+      <RetakeCheckout
+        attemptNumber={eligibility.nextAttemptNumber}
+        unlocked={eligibility.status === "retake_unlocked"}
+        returnedPaymentStatus={paymentStatus}
+        cancelled={cancelled === "1"}
+      />
     </div>
   );
 }

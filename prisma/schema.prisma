@@ -74,6 +74,7 @@ model User {
 
   candidateProfile CandidateProfile?
   adminProfile     AdminProfile?
+  payments         Payment[]
 
   @@index([role, status])
   @@index([deletedAt])
@@ -127,6 +128,7 @@ model CandidateProfile {
   education      Education[]
   certifications Certification[]
   portfolio      PortfolioItem[]
+  testAttempts   TestAttempt[]
 
   @@index([roleCategory])
   @@index([createdAt])
@@ -250,4 +252,97 @@ model AdminProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * English test + payments
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+enum TestAttemptKind {
+  /// The first attempt — free (product policy 2026-07-17).
+  FREE
+  /// A retake, unlocked by a `Payment` (ENGLISH_TEST_RETAKE).
+  PAID
+}
+
+/// One sitting of the English assessment. Every attempt is kept, pass or
+/// fail — the candidate's dashboard shows the full history. Belongs to the
+/// profile rather than the user because only candidates take tests.
+model TestAttempt {
+  id        String           @id @default(cuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  /// 1-based per candidate ("Attempt #2"). Unique per profile so two
+  /// concurrent submissions can never both become attempt #2.
+  number Int
+  kind   TestAttemptKind
+
+  /// 0–100. Scored server-side from `answers` against the question bank.
+  score  Int
+  /// CEFR band for `score` — "A1" … "C2". Denormalised so history is stable
+  /// even if the bands are re-tuned later.
+  cefr   String
+  passed Boolean
+
+  /// `[{ skill, score, cefr }]` per assessed section.
+  subScores Json
+  /// Raw option indexes as submitted — kept for audit / re-scoring.
+  answers   Json
+
+  /// The payment that unlocked this attempt (PAID only). Unique: a payment
+  /// unlocks exactly one attempt.
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  takenAt DateTime @default(now())
+
+  @@unique([profileId, number])
+  @@index([profileId, takenAt])
+}
+
+enum PaymentPurpose {
+  ENGLISH_TEST_RETAKE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+/// A charge to a user. Amounts are integer cents (ARCHITECTURE §7.12).
+/// Written PENDING when checkout starts and flipped by the Stripe webhook
+/// (or the on-return confirmation) — never by the client.
+model Payment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  purpose     PaymentPurpose
+  amountCents Int
+  currency    String         @default("usd")
+  status      PaymentStatus  @default(PENDING)
+
+  /// "stripe", or "dev-bypass" when PAYMENTS_DEV_BYPASS short-circuits checkout.
+  provider                String
+  providerCheckoutId      String? @unique
+  providerPaymentIntentId String? @unique
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  /// Set once the paid attempt is taken — a SUCCEEDED payment with no attempt
+  /// is an *unlocked* retake waiting to be used.
+  testAttempt TestAttempt?
+
+  @@index([userId, purpose, status])
 }

@@ -14,7 +14,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils/cn";
-import { ENGLISH_TEST } from "@/lib/mock-data/candidate";
+import { ENGLISH_TEST } from "@/lib/domain/english-test";
 import { ApiClientError, candidatesApi } from "@/lib/api-client";
 import { ROLE_CATEGORIES } from "@/lib/domain/candidate";
 // Imported from the module, not the barrel: the barrel reaches `next/server`,

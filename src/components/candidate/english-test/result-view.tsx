@@ -6,9 +6,8 @@
  * stays active, the result is saved, and the $10 retake is bookable
  * immediately — payment unlocks a fresh attempt on the spot.
  *
- * Props cover both entry paths:
- *   - fresh=true  → the interactive runner just finished (?score=N&fresh=1)
- *   - fresh=false → revisiting the saved mock attempt
+ * Renders a recorded attempt. `fresh` only tunes the copy (the runner just
+ * finished vs. revisiting from the dashboard).
  */
 import {
   ArrowRight,
@@ -18,32 +17,23 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import type { TestAttemptDto } from "@/lib/api/dto/english-test.dto";
+import { ENGLISH_TEST, isPassingLevel } from "@/lib/domain/english-test";
 import { cn } from "@/lib/utils/cn";
-import {
-  ENGLISH_TEST,
-  cefrForScore,
-  isPassingLevel,
-  subScoresForScore,
-  type SubScore,
-} from "@/lib/mock-data/candidate";
 
 type ResultViewProps = {
-  score: number;
+  attempt: TestAttemptDto;
   fresh: boolean;
-  attemptNumber: number;
-  /** Pre-built sub-scores (saved attempt); derived from score if omitted. */
-  subScores?: SubScore[] | undefined;
+  /**
+   * Whether a retake is already paid for — decides whether the fail panel
+   * offers "Start attempt #N" or "Retake for $10". Comes from the service.
+   */
+  retakeUnlocked: boolean;
 };
 
-export function ResultView({
-  score,
-  fresh,
-  attemptNumber,
-  subScores,
-}: ResultViewProps) {
-  const cefr = cefrForScore(score);
-  const passed = isPassingLevel(cefr);
-  const bars = subScores ?? subScoresForScore(score);
+export function ResultView({ attempt, fresh, retakeUnlocked }: ResultViewProps) {
+  const { score, cefr, passed, subScores: bars } = attempt;
+  const attemptNumber = attempt.number;
 
   return (
     <div className="mx-auto max-w-[720px]">
@@ -140,7 +130,7 @@ export function ResultView({
           <span className="font-display text-ink text-lg font-bold">
             ✓ English assessment complete.
           </span>
-          <Link href="/candidate/dashboard?state=passed" className="btn btn-primary group">
+          <Link href="/candidate/dashboard" className="btn btn-primary group">
             <span>Continue on your dashboard</span>
             <ArrowRight
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
@@ -158,7 +148,9 @@ export function ResultView({
               </span>
               <div>
                 <h2 className="font-display text-ink text-[19px] font-medium">
-                  Retake the test — {ENGLISH_TEST.retakeFeeLabel}
+                  {retakeUnlocked
+                    ? `Attempt #${attemptNumber + 1} is unlocked`
+                    : `Retake the test — ${ENGLISH_TEST.retakeFeeLabel}`}
                 </h2>
                 <p className="text-ink-soft mt-1 max-w-[400px] text-[13.5px] leading-[1.55]">
                   <Zap
@@ -166,19 +158,29 @@ export function ResultView({
                     strokeWidth={1.6}
                     aria-hidden="true"
                   />
-                  {fresh
-                    ? "Available right now — a fresh attempt unlocks the moment payment clears."
-                    : "Available any time — a fresh attempt unlocks the moment payment clears."}{" "}
+                  {retakeUnlocked
+                    ? "Already paid for — start it whenever you're ready."
+                    : fresh
+                      ? "Available right now — a fresh attempt unlocks the moment payment clears."
+                      : "Available any time — a fresh attempt unlocks the moment payment clears."}{" "}
                   Your best score is the one that counts.
                 </p>
               </div>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto">
               <Link
-                href="/candidate/english-test/retake"
+                href={
+                  retakeUnlocked
+                    ? "/candidate/english-test"
+                    : "/candidate/english-test/retake"
+                }
                 className="btn btn-primary group justify-center"
               >
-                <span>Retake for {ENGLISH_TEST.retakeFeeLabel}</span>
+                <span>
+                  {retakeUnlocked
+                    ? `Start attempt #${attemptNumber + 1}`
+                    : `Retake for ${ENGLISH_TEST.retakeFeeLabel}`}
+                </span>
                 <ArrowRight
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                   strokeWidth={1.6}

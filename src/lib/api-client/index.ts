@@ -5,3 +5,4 @@ export { candidateProfileApi } from "./candidate-profile";
 export type { UploadResponse } from "./candidate-profile";
 export { adminApi } from "./admin";
 export type { AdminLoginResponse } from "./admin";
+export { englishTestApi } from "./english-test";

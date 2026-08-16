@@ -1,3 +1,4 @@
+import { publicConfig } from "@/lib/config";
 import type { ErrorCode } from "@/lib/errors/domain-error";
 import type { ApiErrorBody } from "@/lib/errors/handle-api-error";
 
@@ -28,6 +29,18 @@ export class ApiClientError extends Error {
 }
 
 /**
+ * In the browser a relative path is fine. In a Server Component there is no
+ * origin to resolve against, so the app's own URL is prepended — the
+ * documented pattern for reading data in RSC (ARCHITECTURE §5.1) is to call
+ * this same client. Callers there also pass `serverInit()` (see ./server.ts)
+ * so the request carries the visitor's cookies.
+ */
+function resolveUrl(path: string): string {
+  if (/^https?:\/\//.test(path) || typeof window !== "undefined") return path;
+  return new URL(path, publicConfig.NEXT_PUBLIC_APP_URL).toString();
+}
+
+/**
  * `fetch` with the project's envelope unwrapped: resolves to `data`, throws an
  * `ApiClientError` for anything else — including a network failure, so callers
  * only ever need one `catch`.
@@ -40,7 +53,7 @@ export async function apiFetch<T>(
 
   let response: Response;
   try {
-    response = await fetch(path, {
+    response = await fetch(resolveUrl(path), {
       ...rest,
       headers: {
         ...(json !== undefined ? { "Content-Type": "application/json" } : {}),

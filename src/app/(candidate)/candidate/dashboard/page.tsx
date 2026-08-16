@@ -1,53 +1,26 @@
 /**
  * /candidate/dashboard
  *
- * Default story: failed first attempt, $10 retake bookable right now
- * (the locked policy demo — account active, result visible, no
- * waiting period).
- *
- * Design-review previews via ?state=
- *   fresh  — test not taken, first attempt free
- *   failed — result on record, $10 retake bookable (default)
- *   passed — C1+ cleared after a paid retake
- *
- * Legacy aliases from the cooldown era ("cooldown", "retake-ready")
- * resolve to "failed" so shared preview links keep working.
- *
- * The greeting is the real signed-in candidate; the English-test state is
- * still the mock story until `TestAttempt` lands (next slice).
+ * The signed-in candidate's home. Everything on it is real: the greeting is
+ * the session's candidate, the English-test card and history come from
+ * `GET /api/v1/candidates/me/english-test` (read through the API client with
+ * the visitor's cookies — ARCHITECTURE §5.1), and which card shows is a flag
+ * the service computed (`eligibility`), not a rule re-derived here.
  */
 import { redirect } from "next/navigation";
 
-import {
-  DashboardApp,
-  type DashboardState,
-} from "@/components/candidate/dashboard/dashboard-app";
+import { DashboardApp } from "@/components/candidate/dashboard/dashboard-app";
+import { englishTestApi } from "@/lib/api-client";
+import { serverInit } from "@/lib/api-client/server";
 import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
 
-const STATES: ReadonlyArray<DashboardState> = ["fresh", "failed", "passed"];
-
-const LEGACY_ALIASES: Record<string, DashboardState> = {
-  cooldown: "failed",
-  "retake-ready": "failed",
-};
-
-type PageProps = {
-  searchParams: Promise<{ state?: string }>;
-};
-
-export default async function CandidateDashboardPage({
-  searchParams,
-}: PageProps) {
+export default async function CandidateDashboardPage() {
   // The layout already guards; this re-check covers client-side navigation
-  // (layouts do not re-render then) and is free — the session lookup is
-  // memoised per request.
+  // (layouts do not re-render then) and is free — the lookup is memoised.
   const session = await getCandidateSession();
   if (!session) redirect(candidateSignInPath());
 
-  const { state } = await searchParams;
-  const resolved: DashboardState = STATES.includes(state as DashboardState)
-    ? (state as DashboardState)
-    : (LEGACY_ALIASES[state ?? ""] ?? "failed");
+  const overview = await englishTestApi.overview(await serverInit());
 
-  return <DashboardApp state={resolved} candidate={session.candidate} />;
+  return <DashboardApp candidate={session.candidate} overview={overview} />;
 }
