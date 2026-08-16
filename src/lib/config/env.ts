@@ -63,6 +63,15 @@ const serverSchema = z.object({
    * Stripe keys exist. Refused in production by `paymentService`.
    */
   PAYMENTS_DEV_BYPASS: z.enum(["1"]).optional(),
+
+  /**
+   * Upstash Redis — backs rate limits and account lockouts (ARCHITECTURE
+   * §7.6). Optional so local development runs without an account: the
+   * integration falls back to an in-process store outside production, and
+   * logs loudly (limits OFF) if production is started without it.
+   */
+  UPSTASH_REDIS_REST_URL: z.url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
 });
 
 type ClientEnv = z.infer<typeof clientSchema>;

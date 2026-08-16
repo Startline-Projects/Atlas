@@ -12,6 +12,8 @@ import {
   PATHNAME_HEADER,
 } from "@/lib/auth/redirects";
 import { accessTokenNeedsRefresh, refreshSession } from "@/lib/auth/refresh";
+import { IP_LIMITS, ROUTE_LIMITS } from "@/lib/config/rate-limits";
+import { limiter } from "@/lib/integrations/upstash";
 import {
   ADMIN_COOKIES,
   applySessionCookies,
@@ -43,8 +45,12 @@ import {
  * a sign-in page. Presence is not validity, and a stale cookie would loop.
  * The auth layouts do that after a real check.
  *
- * Only guards + refresh. No rewrites, no locale, no rate limiting yet (§7.6
- * lands with Upstash) — keep it that way so the file stays auditable.
+ * 3. Rate limit. The auth endpoints in `config/rate-limits.ts` get a per-IP
+ *    sliding window (§7.6) — a 429 with Retry-After before the route runs.
+ *    Per-account lockout is the services' job (`lib/auth/account-lockout`).
+ *
+ * Only guards + refresh + limits. No rewrites, no locale — keep it that way
+ * so the file stays auditable at a glance.
  */
 
 interface Surface {
@@ -80,9 +86,52 @@ function isUnder(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+/**
+ * Best-effort client address. Behind Vercel / a proxy the first hop of
+ * `x-forwarded-for` is the client; locally there is nothing, so every request
+ * shares one bucket ("local") — fine for development.
+ */
+function clientIp(request: NextRequest): string {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0]?.trim() || "unknown";
+  return request.headers.get("x-real-ip") ?? "local";
+}
+
+/**
+ * Per-IP rate limit for the abusable endpoints (config/rate-limits.ts).
+ * Returns a 429 response, or null when the request may proceed.
+ */
+async function enforceRateLimit(request: NextRequest): Promise<NextResponse | null> {
+  const rule = ROUTE_LIMITS.find(
+    (r) => r.method === request.method && r.path === request.nextUrl.pathname,
+  );
+  if (!rule) return null;
+
+  const result = await limiter(rule.limit, IP_LIMITS[rule.limit]).limit(
+    clientIp(request),
+  );
+  if (result.success) return null;
+
+  return NextResponse.json(
+    {
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many requests. Please wait a moment and try again.",
+      },
+    },
+    {
+      status: 429,
+      headers: { "Retry-After": String(result.retryAfterSeconds) },
+    },
+  );
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
   const here = `${pathname}${search}`;
+
+  const limited = await enforceRateLimit(request);
+  if (limited) return limited;
 
   const surface = SURFACES.find((s) => s.prefixes.some((p) => isUnder(pathname, p)));
 
@@ -149,7 +198,9 @@ export const config = {
   matcher: [
     "/candidate/:path*",
     "/admin/:path*",
-    "/api/v1/candidates/me/:path*",
-    "/api/v1/admin/me/:path*",
+    // Session refresh for the signed-in APIs + rate limits for the auth
+    // endpoints (config/rate-limits.ts ROUTE_LIMITS must stay within these).
+    "/api/v1/candidates/:path*",
+    "/api/v1/admin/:path*",
   ],
 };

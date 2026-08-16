@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 
 import { isProduction } from "@/lib/config";
 
-import { DomainError } from "./domain-error";
+import { DomainError, RateLimitedError } from "./domain-error";
 import type { ErrorCode } from "./domain-error";
 import { fieldsFromZod } from "./zod-fields";
 
@@ -35,7 +35,12 @@ export function handleApiError(error: unknown): NextResponse<ApiErrorBody> {
           ...(error.fields ? { fields: error.fields } : {}),
         },
       },
-      { status: error.status },
+      {
+        status: error.status,
+        ...(error instanceof RateLimitedError
+          ? { headers: { "Retry-After": String(error.retryAfterSeconds) } }
+          : {}),
+      },
     );
   }
 

@@ -17,6 +17,7 @@ import {
   UpstreamError,
   ValidationError,
 } from "@/lib/errors";
+import { accountLockout } from "@/lib/auth/account-lockout";
 import { serverConfig } from "@/lib/config";
 import {
   createAnonSupabaseClient,
@@ -203,6 +204,10 @@ export const candidateService = {
       );
     }
 
+    // Lockout after repeated wrong passwords (PROJECT_SCOPE §2.1). Checked
+    // before the provider is called so a locked address costs us nothing.
+    await accountLockout.assertNotLocked("candidate", normalized);
+
     const supabase = createAnonSupabaseClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email: normalized,
@@ -210,12 +215,15 @@ export const candidateService = {
     });
 
     if (error) {
+      await accountLockout.recordFailure("candidate", normalized);
       // Invalid credentials — deliberate ambiguity for security (no "email not found" oracle)
       throw new ValidationError(
         "Email or password is incorrect. Please try again.",
         { password: "Incorrect email or password." },
       );
     }
+
+    await accountLockout.clear("candidate", normalized);
 
     const session = data.session;
     if (!session?.access_token) {

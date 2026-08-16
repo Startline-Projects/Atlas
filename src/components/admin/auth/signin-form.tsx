@@ -79,6 +79,13 @@ export function SignInForm() {
         return;
       }
 
+      // Server-side lockout (per account, ACCOUNT_LOCKOUT.admin) or per-IP
+      // limit — either way the design's lockout screen is the right one.
+      if (error.code === 'RATE_LIMITED') {
+        setCurrentState('lockout');
+        return;
+      }
+
       // Anything else is "email or password is incorrect" — deliberately one
       // message for a wrong password and an unknown address. Escalate through
       // the attempt-aware states the design already has.

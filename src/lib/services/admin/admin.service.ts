@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 
+import { accountLockout } from "@/lib/auth/account-lockout";
 import type {
   AdminLoginInput,
   AdminLoginResult,
@@ -46,6 +47,12 @@ export const adminService = {
   async login(input: AdminLoginInput): Promise<AdminLoginResult> {
     const email = input.email.trim().toLowerCase();
 
+    // Lockout after repeated wrong passwords — stricter than candidates
+    // (ACCOUNT_LOCKOUT.admin). Checked first so a locked address costs nothing
+    // and, deliberately, before we know whether the address is staff at all:
+    // the lockout message must not become the enumeration oracle either.
+    await accountLockout.assertNotLocked("admin", email);
+
     const admin = await adminRepository.findByEmail(email);
 
     // Still call the provider when the row is missing so a timing difference
@@ -58,6 +65,7 @@ export const adminService = {
     });
 
     if (!admin || error) {
+      await accountLockout.recordFailure("admin", email);
       throw new ValidationError(
         "Email or password is incorrect.",
         { password: "Incorrect email or password." },
@@ -73,11 +81,14 @@ export const adminService = {
     // The provider signed in *someone* with that password — make sure it is
     // the admin row we looked up and not, say, a candidate sharing the address.
     if (data.user.id !== admin.authProviderId) {
+      await accountLockout.recordFailure("admin", email);
       throw new ValidationError(
         "Email or password is incorrect.",
         { password: "Incorrect email or password." },
       );
     }
+
+    await accountLockout.clear("admin", email);
 
     const session = data.session;
     if (!session?.access_token) {

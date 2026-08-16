@@ -7,6 +7,7 @@ export {
   ConflictError,
   BusinessRuleError,
   UpstreamError,
+  RateLimitedError,
 } from "./domain-error";
 export type { ErrorCode } from "./domain-error";
 export { fieldsFromZod } from "./zod-fields";

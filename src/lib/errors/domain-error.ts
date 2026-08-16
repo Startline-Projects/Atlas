@@ -14,6 +14,7 @@ export type ErrorCode =
   | "CONFLICT"
   | "BUSINESS_RULE"
   | "UPSTREAM"
+  | "RATE_LIMITED"
   | "INTERNAL";
 
 export abstract class DomainError extends Error {
@@ -69,4 +70,19 @@ export class BusinessRuleError extends DomainError {
 export class UpstreamError extends DomainError {
   readonly code = "UPSTREAM" as const;
   readonly status = 502;
+}
+
+/**
+ * Too many attempts — per IP (proxy) or per account (service lockout).
+ * `retryAfterSeconds` becomes the `Retry-After` header.
+ */
+export class RateLimitedError extends DomainError {
+  readonly code = "RATE_LIMITED" as const;
+  readonly status = 429;
+  readonly retryAfterSeconds: number;
+
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
 }
