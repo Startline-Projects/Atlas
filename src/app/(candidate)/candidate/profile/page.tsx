@@ -9,13 +9,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { ProfileBuilderApp } from "@/components/candidate/profile/profile-builder-app";
-import { getCandidateSession } from "@/lib/auth";
+import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Your profile · Atlas" };
 
 export default async function CandidateProfilePage() {
   const session = await getCandidateSession();
-  if (!session) redirect("/candidate/signin?next=/candidate/profile");
+  if (!session) redirect(candidateSignInPath("/candidate/profile"));
 
   return <ProfileBuilderApp />;
 }

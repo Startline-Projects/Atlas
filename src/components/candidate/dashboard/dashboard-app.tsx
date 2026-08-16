@@ -22,10 +22,11 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import type { Candidate } from "@/lib/domain/candidate";
+import { roleCategoryLabel } from "@/lib/domain/candidate";
 import { cn } from "@/lib/utils/cn";
 import {
   ENGLISH_TEST,
-  currentCandidate,
   journeySteps,
   latestAttempt,
   passedRetakeAttempt,
@@ -36,7 +37,28 @@ import { AttemptHistory } from "@/components/candidate/english-test/attempt-hist
 
 export type DashboardState = "fresh" | "failed" | "passed";
 
-export function DashboardApp({ state }: { state: DashboardState }) {
+/** "Jul 2026" — the account-created label under the greeting. */
+const MONTH_YEAR = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  year: "numeric",
+});
+
+export function DashboardApp({
+  state,
+  candidate,
+}: {
+  state: DashboardState;
+  candidate: Candidate;
+}) {
+  const firstName = candidate.fullName.split(/\s+/)[0] ?? candidate.fullName;
+  const meta = [
+    roleCategoryLabel(candidate.roleCategory),
+    candidate.country,
+    `applied ${MONTH_YEAR.format(candidate.createdAt)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const attempts: ReadonlyArray<TestAttempt> =
     state === "fresh"
       ? []
@@ -53,12 +75,9 @@ export function DashboardApp({ state }: { state: DashboardState }) {
         </div>
         <h1 className="display mb-2 text-[clamp(34px,4.4vw,50px)] leading-[1.05]">
           Welcome back,{" "}
-          <span className="serif-italic">{currentCandidate.firstName}</span>.
+          <span className="serif-italic">{firstName}</span>.
         </h1>
-        <p className="text-ink-soft text-[15px]">
-          {currentCandidate.appliedRole} · {currentCandidate.cityCountry} ·
-          applied {currentCandidate.memberSince}
-        </p>
+        <p className="text-ink-soft text-[15px]">{meta}</p>
       </header>
 
       {/* Journey strip */}

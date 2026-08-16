@@ -7,6 +7,8 @@ import { useSearchParams } from "next/navigation";
 
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ApiClientError, candidatesApi } from "@/lib/api-client";
+// Leaf module, not the `@/lib/auth` barrel — that one reaches `next/headers`.
+import { CANDIDATE_HOME_PATH, safeNextPath } from "@/lib/auth/redirects";
 // Imported from the module, not the barrel: the barrel reaches `next/server`,
 // which must not be pulled into a client bundle.
 import { fieldsFromZod } from "@/lib/errors/zod-fields";
@@ -18,12 +20,6 @@ const FIELD_INPUT_CLASS =
 
 const FIELD_INPUT_ERROR_CLASS =
   "border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(194,65,43,0.12)]";
-
-/** Only same-origin paths are honoured, so `?next=` cannot bounce off-site. */
-function safeNext(raw: string | null): string {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
-  return "/candidate/dashboard";
-}
 
 /**
  * Candidate sign-in. Validates with `loginSchema` first (same rules as the
@@ -64,7 +60,9 @@ export function SigninForm() {
 
     try {
       await candidatesApi.login(parsed.data);
-      window.location.assign(safeNext(searchParams.get("next")));
+      window.location.assign(
+        safeNextPath(searchParams.get("next"), CANDIDATE_HOME_PATH),
+      );
     } catch (error) {
       if (error instanceof ApiClientError) {
         setFieldErrors(error.fields);

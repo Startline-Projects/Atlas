@@ -5,45 +5,28 @@
  * focused, single-column experience, not the specialist console
  * chrome (no sidebar, no queue chips).
  *
- * Reads the real session when there is one. The mock candidate remains as
- * the fallback so the design-preview dashboard stories (`?state=`) still
- * render without signing in; that fallback goes when the layout is guarded.
+ * Receives the session from the guarded layout: there is no anonymous
+ * rendering of this bar any more, so there is no mock fallback either.
  */
 import { LifeBuoy, UserRound } from "lucide-react";
 import Link from "next/link";
 
 import { Logo } from "@/components/ui/logo";
-import { getCandidateSession } from "@/lib/auth";
+import type { CandidateSession } from "@/lib/auth";
 import { roleCategoryLabel } from "@/lib/domain/candidate";
-import { currentCandidate } from "@/lib/mock-data/candidate";
 
+import { avatarGradientFor, initialsOf } from "./avatar";
 import { SignOutButton } from "./sign-out-button";
 
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
+export function CandidateTopbar({ session }: { session: CandidateSession }) {
+  const { candidate } = session;
+  const gradient = avatarGradientFor(candidate.id);
+  const subtitle = [
+    roleCategoryLabel(candidate.roleCategory),
+    candidate.country,
+  ]
     .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-export async function CandidateTopbar() {
-  const session = await getCandidateSession();
-
-  const display = session
-    ? {
-        fullName: session.fullName,
-        initials: initialsOf(session.fullName),
-        subtitle: roleCategoryLabel(session.candidate.roleCategory),
-        gradient: currentCandidate.avatarGradient,
-      }
-    : {
-        fullName: currentCandidate.fullName,
-        initials: currentCandidate.initials,
-        subtitle: `${currentCandidate.appliedRole} · ${currentCandidate.category}`,
-        gradient: currentCandidate.avatarGradient,
-      };
+    .join(" · ");
 
   return (
     <header className="bg-cream/95 border-line-soft sticky top-0 z-[10] border-b backdrop-blur-md backdrop-saturate-150">
@@ -80,16 +63,16 @@ export async function CandidateTopbar() {
               aria-hidden="true"
               className="text-ink grid h-8 w-8 place-items-center rounded-full text-[12px] font-semibold"
               style={{
-                background: `linear-gradient(135deg, ${display.gradient.from}, ${display.gradient.to})`,
+                background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})`,
               }}
             >
-              {display.initials}
+              {initialsOf(candidate.fullName)}
             </span>
-            <span className="flex flex-col leading-tight pr-2">
-              <span className="text-ink text-[13px] font-medium">{display.fullName}</span>
-              <span className="text-ink-mute text-[11px]">{display.subtitle}</span>
+            <span className="flex flex-col pr-2 leading-tight">
+              <span className="text-ink text-[13px] font-medium">{candidate.fullName}</span>
+              <span className="text-ink-mute text-[11px]">{subtitle}</span>
             </span>
-            {session && <SignOutButton />}
+            <SignOutButton />
           </span>
         </div>
       </div>

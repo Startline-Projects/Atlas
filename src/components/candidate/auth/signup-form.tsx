@@ -39,26 +39,51 @@ const FIELD_INPUT_ERROR_CLASS =
  * the browser and the server apply the same rules and an obvious mistake costs
  * no round trip. The server re-validates regardless — this is a convenience,
  * never a gate.
+ *
+ * Once the address is verified the form signs the candidate in on the spot,
+ * so "Go to your dashboard" lands on the (guarded) dashboard instead of the
+ * sign-in page. The password never leaves component memory: it is kept only
+ * for the seconds between the account step and that sign-in call.
  */
 export function SignupForm() {
   const [state, setState] = useState<SignupState>("account");
-  const [email, setEmail] = useState("");
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [signedIn, setSignedIn] = useState(false);
+
+  // Takes the credentials explicitly rather than reading state: the
+  // no-verification path calls this in the same tick as `setCredentials`.
+  const signInThenFinish = async (creds: { email: string; password: string }) => {
+    try {
+      await candidatesApi.login(creds);
+      setSignedIn(true);
+    } catch {
+      // Not fatal: the account exists and is verified. The dashboard link
+      // will route through sign-in instead.
+      setSignedIn(false);
+    }
+    setState("done");
+  };
 
   return state === "account" ? (
     <AccountState
-      onSignedUp={(signedUpEmail, needsVerification) => {
-        setEmail(signedUpEmail);
-        setState(needsVerification ? "verify" : "done");
+      onSignedUp={(signedUpEmail, password, needsVerification) => {
+        const creds = { email: signedUpEmail, password };
+        setCredentials(creds);
+        if (needsVerification) {
+          setState("verify");
+        } else {
+          void signInThenFinish(creds);
+        }
       }}
     />
   ) : state === "verify" ? (
     <VerifyState
-      email={email}
+      email={credentials.email}
       onBack={() => setState("account")}
-      onVerified={() => setState("done")}
+      onVerified={() => signInThenFinish(credentials)}
     />
   ) : (
-    <DoneState />
+    <DoneState signedIn={signedIn} />
   );
 }
 
@@ -69,7 +94,11 @@ export function SignupForm() {
 function AccountState({
   onSignedUp,
 }: {
-  onSignedUp: (email: string, requiresEmailVerification: boolean) => void;
+  onSignedUp: (
+    email: string,
+    password: string,
+    requiresEmailVerification: boolean,
+  ) => void;
 }) {
   const nameId = useId();
   const emailId = useId();
@@ -107,7 +136,11 @@ function AccountState({
 
     try {
       const result = await candidatesApi.signup(parsed.data);
-      onSignedUp(parsed.data.email, result.requiresEmailVerification);
+      onSignedUp(
+        parsed.data.email,
+        parsed.data.password,
+        result.requiresEmailVerification,
+      );
     } catch (error) {
       if (error instanceof ApiClientError) {
         setFieldErrors(error.fields);
@@ -302,7 +335,7 @@ function VerifyState({
 }: {
   email: string;
   onBack: () => void;
-  onVerified: () => void;
+  onVerified: () => Promise<void>;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -318,7 +351,9 @@ function VerifyState({
 
     try {
       await candidatesApi.verifyEmail({ email, token });
-      onVerified();
+      // Stays "pending" through the sign-in that follows: the parent swaps
+      // this state out for the done screen when it resolves.
+      await onVerified();
       return true;
     } catch (err) {
       setError(
@@ -476,7 +511,14 @@ function OtpGroup({
    STATE: done — verified, hand off to the dashboard
    ============================================================ */
 
-function DoneState() {
+function DoneState({ signedIn }: { signedIn: boolean }) {
+  // Signed in: a hard navigation so the server-rendered surface reads the
+  // fresh cookie. Not signed in (the auto sign-in failed): go through the
+  // sign-in page, which returns here afterwards.
+  const href = signedIn
+    ? "/candidate/dashboard?state=fresh"
+    : "/candidate/signin?next=%2Fcandidate%2Fdashboard%3Fstate%3Dfresh";
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-2 py-1 text-center">
       <div className="bg-success-bg text-success mb-5 grid h-16 w-16 place-items-center rounded-full">
@@ -489,17 +531,17 @@ function DoneState() {
         Email verified and your account is live. Next step on your
         dashboard: the English test — your first attempt is free.
       </p>
-      <Link
-        href="/candidate/dashboard?state=fresh"
+      <a
+        href={href}
         className="btn btn-primary btn-lg group w-full justify-center"
       >
-        <span>Go to your dashboard</span>
+        <span>{signedIn ? "Go to your dashboard" : "Sign in to continue"}</span>
         <ArrowRight
           className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5"
           strokeWidth={1.6}
           aria-hidden="true"
         />
-      </Link>
+      </a>
     </div>
   );
 }

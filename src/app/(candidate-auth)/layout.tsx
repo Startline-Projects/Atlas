@@ -10,15 +10,24 @@
  *   - thin footer with candidate support mailto
  *
  * Intentionally NO topbar and NO console chrome — auth surfaces are
- * unauthenticated.
+ * unauthenticated. A visitor who already holds a *valid* session is sent
+ * on to the dashboard instead of being shown a sign-in form. (The proxy
+ * cannot do this: it only sees that a cookie exists, and a stale one would
+ * loop between here and the guarded layout.)
  */
-import { Logo } from "@/components/ui/logo";
+import { redirect } from "next/navigation";
 
-export default function CandidateAuthLayout({
+import { Logo } from "@/components/ui/logo";
+import { CANDIDATE_HOME_PATH, getCandidateSession } from "@/lib/auth";
+
+export default async function CandidateAuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getCandidateSession();
+  if (session) redirect(CANDIDATE_HOME_PATH);
+
   return (
     <div className="bg-cream relative min-h-screen overflow-x-hidden">
       <div

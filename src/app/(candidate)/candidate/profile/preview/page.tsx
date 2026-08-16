@@ -8,13 +8,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { ProfilePreviewApp } from "@/components/candidate/profile/profile-preview-app";
-import { getCandidateSession } from "@/lib/auth";
+import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Profile preview · Atlas" };
 
 export default async function CandidateProfilePreviewPage() {
   const session = await getCandidateSession();
-  if (!session) redirect("/candidate/signin?next=/candidate/profile/preview");
+  if (!session) redirect(candidateSignInPath("/candidate/profile/preview"));
 
   return <ProfilePreviewApp />;
 }

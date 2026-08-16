@@ -12,11 +12,17 @@
  *
  * Legacy aliases from the cooldown era ("cooldown", "retake-ready")
  * resolve to "failed" so shared preview links keep working.
+ *
+ * The greeting is the real signed-in candidate; the English-test state is
+ * still the mock story until `TestAttempt` lands (next slice).
  */
+import { redirect } from "next/navigation";
+
 import {
   DashboardApp,
   type DashboardState,
 } from "@/components/candidate/dashboard/dashboard-app";
+import { candidateSignInPath, getCandidateSession } from "@/lib/auth";
 
 const STATES: ReadonlyArray<DashboardState> = ["fresh", "failed", "passed"];
 
@@ -32,10 +38,16 @@ type PageProps = {
 export default async function CandidateDashboardPage({
   searchParams,
 }: PageProps) {
+  // The layout already guards; this re-check covers client-side navigation
+  // (layouts do not re-render then) and is free — the session lookup is
+  // memoised per request.
+  const session = await getCandidateSession();
+  if (!session) redirect(candidateSignInPath());
+
   const { state } = await searchParams;
   const resolved: DashboardState = STATES.includes(state as DashboardState)
     ? (state as DashboardState)
     : (LEGACY_ALIASES[state ?? ""] ?? "failed");
 
-  return <DashboardApp state={resolved} />;
+  return <DashboardApp state={resolved} candidate={session.candidate} />;
 }
