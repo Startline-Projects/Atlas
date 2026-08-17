@@ -1,0 +1,355 @@
+'use client';
+
+import type { ManagerProfile } from '@/lib/mock-data/admin/manager-profiles-data';
+import { ManagerBackRow } from './manager-back-row';
+import { ManagerSectionPerformance } from './sections/manager-section-performance';
+import { ManagerSectionWorkload } from './sections/manager-section-workload';
+import { ManagerSectionActivity } from './sections/manager-section-activity';
+import { ManagerSectionTeam } from './sections/manager-section-team';
+import { ManagerSectionNotes } from './sections/manager-section-notes';
+import { ManagerSectionReviews } from './sections/manager-section-reviews';
+import { ManagerSectionHr } from './sections/manager-section-hr';
+import { ManagerSectionAudit } from './sections/manager-section-audit';
+import { ManagerRail } from './manager-rail';
+import { cn } from '@/lib/utils/cn';
+
+interface ManagerProfileShellProps {
+  profile: ManagerProfile;
+}
+
+// admin.html action buttons — onClick handlers log to console (Phase 8 will wire real handlers)
+function logAction(action: string) {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log(`[manager-hero] ${action} clicked`);
+  }
+}
+
+export function ManagerProfileShell({ profile }: ManagerProfileShellProps) {
+  // Status pill variant (5 states)
+  const statusPillClass =
+    profile.status === 'on-track'
+      ? 'bg-[var(--success-bg)] text-[var(--success)]'
+      : profile.status === 'at-risk'
+        ? 'bg-[rgba(232,118,58,0.18)] text-[var(--amber)]'
+        : profile.status === 'off-track'
+          ? 'bg-[var(--danger-bg)] text-[var(--danger)]'
+          : profile.status === 'inactive'
+            ? 'bg-[var(--cream-deep)] text-[var(--ink-soft)]'
+            : /* pending */ 'bg-[var(--navy-bg)] text-[var(--navy)]';
+
+  // Status banner variant (admin.html lines 5342-5365)
+  const bannerIsDanger = profile.status === 'off-track';
+  const bannerBgClass = bannerIsDanger
+    ? 'bg-[var(--danger-bg)] border-[rgba(194,65,43,0.2)]'
+    : 'bg-[var(--amber-bg)] border-[rgba(232,118,58,0.2)]';
+  const bannerIconClass = bannerIsDanger ? 'text-[var(--danger)]' : 'text-[var(--amber)]';
+
+  return (
+    // admin.html line 19364: <div class="cd-wrap">
+    <div className="mx-auto max-w-[1400px] pt-[28px] px-[32px] pb-[100px] max-[720px]:px-[16px] max-[720px]:pt-[18px]">
+      {/* Back row (admin.html lines 19367-19379) */}
+      <ManagerBackRow profile={profile} />
+
+      {/* Hero card (admin.html lines 19381-19462) */}
+      <div
+        data-status={profile.status}
+        data-mgr-status={profile.status}
+        data-entity="manager"
+        className="bg-[var(--paper)] border border-[var(--line)] rounded-[var(--r-lg)] mb-[28px] shadow-[var(--shadow-card)] relative overflow-hidden"
+      >
+        {/* 3px top accent strip — status-driven (admin.html lines 5217-5226) */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{
+            background:
+              profile.status === 'at-risk'
+                ? 'linear-gradient(90deg, var(--amber) 0%, var(--danger) 100%)'
+                : profile.status === 'off-track'
+                  ? 'var(--danger)'
+                  : profile.status === 'inactive'
+                    ? 'linear-gradient(90deg, var(--ink-mute) 0%, var(--line-strong) 100%)'
+                    : profile.status === 'pending'
+                      ? 'linear-gradient(90deg, var(--amber) 0%, var(--lime) 100%)'
+                      : 'linear-gradient(90deg, var(--success) 0%, var(--lime) 50%, var(--amber) 100%)',
+          }}
+          aria-hidden="true"
+        />
+
+        {/* admin.html line 19383: <div class="cd-hero-top"> */}
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-[26px] items-center px-[32px] pt-[28px] pb-[22px] max-[720px]:grid-cols-1 max-[720px]:gap-[18px] max-[720px]:p-[22px]">
+          {/* admin.html line 19384: <div class="cd-hero-photo">MV</div>
+              CSS lines 5239-5260: 96x96 with cd-hero-photo styling.
+              admin.html line 5260 default gradient: data-status="live" → linear-gradient(135deg, #D9A77F, #8B5A3C) */}
+          <div
+            className="relative w-[96px] h-[96px] rounded-full grid place-items-center font-display text-[38px] font-medium text-[var(--paper)] flex-shrink-0 tracking-[-0.02em] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.18)]"
+            style={{ background: 'linear-gradient(135deg, #D9A77F, #8B5A3C)' }}
+            aria-hidden="true"
+          >
+            {profile.initials}
+            {/* admin.html line 5253: ::after — 2px paper outer ring at -3px inset */}
+            <div className="absolute inset-[-3px] rounded-full border-2 border-[var(--paper)]" aria-hidden="true" />
+          </div>
+
+          {/* admin.html line 19385: <div class="cd-hero-meta"> */}
+          <div className="min-w-0">
+            {/* admin.html line 19386: <h1 class="cd-hero-name"> */}
+            <h1 className="font-display [font-variation-settings:'opsz'_96] text-[clamp(28px,3vw,36px)] font-medium tracking-[-0.02em] leading-[1.05] mb-[8px] flex items-center gap-[12px] flex-wrap">
+              <span>{profile.name}</span>
+              {/* admin.html line 19388: <span class="manager-role-tag"> + CSS 8110-8129 — amber gradient + crown ::before */}
+              <span
+                className="inline-flex items-center gap-[5px] font-mono text-[9.5px] tracking-[0.14em] uppercase font-semibold pt-[3px] pb-[3px] pl-[8px] pr-[9px] rounded-full text-[var(--paper)] before:content-['♛'] before:text-[10px] before:align-[-1px]"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(232, 118, 58, 0.95) 0%, rgba(184, 91, 34, 0.95) 100%)',
+                  verticalAlign: '4px',
+                }}
+              >
+                {profile.roleTag}
+              </span>
+            </h1>
+
+            {/* admin.html line 19390: <div class="cd-hero-tags"> */}
+            <div className="flex flex-wrap gap-y-[5px] gap-x-[16px] font-mono text-[12px] text-[var(--ink-soft)] tracking-[0.01em] mb-[12px]">
+              {/* admin.html line 19391: flag region tag */}
+              <span className="inline-flex items-center gap-[6px]">
+                <span className="text-[14px] leading-none" aria-hidden="true">{profile.flag}</span>
+                {profile.region}
+              </span>
+              {/* admin.html lines 19392-19395: timezone */}
+              <span className="inline-flex items-center gap-[6px]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ink-mute)] flex-shrink-0" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {profile.timezone}
+              </span>
+              {/* admin.html lines 19396-19399: languages */}
+              <span className="inline-flex items-center gap-[6px]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ink-mute)] flex-shrink-0" aria-hidden="true">
+                  <path d="m5 8 6 6" />
+                  <path d="m4 14 6-6 2-3" />
+                  <path d="M2 5h12" />
+                  <path d="m22 22-5-10-5 10" />
+                  <path d="M14 18h6" />
+                </svg>
+                {profile.languages}
+              </span>
+              {/* admin.html lines 19400-19403: tenure */}
+              <span className="inline-flex items-center gap-[6px]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ink-mute)] flex-shrink-0" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                {profile.tenure}
+              </span>
+            </div>
+
+            {/* admin.html line 19405: <div class="cd-hero-status-row"> */}
+            <div className="flex items-center gap-[10px] flex-wrap">
+              {/* admin.html line 19406: status-pill */}
+              <span
+                className={`inline-flex items-center gap-[6px] font-mono text-[10px] tracking-[0.14em] uppercase font-semibold pt-[3px] pb-[3px] pl-[8px] pr-[9px] rounded-full before:content-[''] before:w-[5px] before:h-[5px] before:rounded-full before:bg-[currentColor] ${statusPillClass}`}
+              >
+                {profile.statusLabel}
+              </span>
+              {/* admin.html line 19407: id-mono atlas id */}
+              <span className="font-mono text-[10.5px] tracking-[0.04em] text-[var(--ink-mute)] bg-[var(--cream-deep)] px-[8px] py-[2px] rounded-[3px]">
+                {profile.atlasId}
+              </span>
+              {/* admin.html line 19408: navy chip "Manages N Specialists · M regions" */}
+              <span className="font-mono text-[10.5px] tracking-[0.04em] bg-[var(--navy-bg)] text-[var(--navy)] font-semibold px-[8px] py-[2px] rounded-[3px]">
+                {profile.managesLabel}
+              </span>
+              {/* admin.html line 19409: super (purple) chip "Reports to Admin team" */}
+              <span
+                className="font-mono text-[10.5px] tracking-[0.04em] text-[var(--super)] font-semibold px-[8px] py-[2px] rounded-[3px]"
+                style={{ background: 'rgba(110,63,224,0.12)' }}
+              >
+                {profile.reportsToLabel}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Status banner (admin.html lines 19414-19423) — hidden when no banner */}
+        {profile.statusBanner && (
+          <div className={`flex items-start gap-[14px] px-[32px] py-[13px] border-y ${bannerBgClass}`}>
+            <span className={`flex-shrink-0 mt-[2px] ${bannerIconClass}`} aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </span>
+            <div className="flex-1 min-w-0 text-[13px] leading-[1.5]">
+              <strong className="font-semibold text-[var(--ink)]">{profile.statusBanner.title}</strong>
+              <div className="font-mono text-[11px] text-[var(--ink-mute)] mt-[4px] tracking-[0.02em]">
+                {profile.statusBanner.detail}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons row (admin.html lines 19425-19461) */}
+        <div className="flex flex-wrap gap-[6px] px-[32px] pt-[16px] pb-[20px] border-t border-dashed border-[var(--line-soft)] bg-[var(--paper-deep)]">
+          {/* 1. Message (lime) — admin.html line 19427 */}
+          <button
+            type="button"
+            data-mgr-action="message"
+            onClick={() => logAction('message')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--lime)] border border-[var(--lime)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--lime-deep)] hover:border-[var(--lime-deep)] [&>svg]:flex-shrink-0"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            Message
+          </button>
+
+          {/* 2. Schedule 1:1 — admin.html line 19431 */}
+          <button
+            type="button"
+            data-mgr-action="schedule-1on1"
+            onClick={() => logAction('schedule-1on1')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink-soft)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--cream-deep)] hover:border-[var(--ink)] hover:text-[var(--ink)] [&>svg]:text-[var(--ink-mute)] [&>svg]:flex-shrink-0 hover:[&>svg]:text-[var(--ink)]"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Schedule 1:1
+          </button>
+
+          {/* 3. View their dashboard — admin.html line 19435 */}
+          <button
+            type="button"
+            data-mgr-action="view-dashboard"
+            onClick={() => logAction('view-dashboard')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink-soft)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--cream-deep)] hover:border-[var(--ink)] hover:text-[var(--ink)] [&>svg]:text-[var(--ink-mute)] [&>svg]:flex-shrink-0 hover:[&>svg]:text-[var(--ink)]"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 10v6m11-7h-6m-10 0H1m17.66-7.66-4.24 4.24M9.17 14.83l-4.24 4.24m13.07 0-4.24-4.24M9.17 9.17 4.93 4.93" />
+            </svg>
+            View their dashboard
+          </button>
+
+          {/* 4. Audit team activity — admin.html line 19439 */}
+          <button
+            type="button"
+            data-mgr-action="audit-team-activity"
+            onClick={() => logAction('audit-team-activity')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink-soft)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--cream-deep)] hover:border-[var(--ink)] hover:text-[var(--ink)] [&>svg]:text-[var(--ink-mute)] [&>svg]:flex-shrink-0 hover:[&>svg]:text-[var(--ink)]"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+            Audit team activity
+          </button>
+
+          {/* Divider — admin.html line 19443 */}
+          <div className="w-[1px] bg-[var(--line-soft)] my-[4px] mx-[6px] self-stretch" aria-hidden="true" />
+
+          {/* 5. Performance review (warn) — admin.html line 19444 */}
+          <button
+            type="button"
+            data-mgr-action="performance-review"
+            onClick={() => logAction('performance-review')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[rgba(232,118,58,0.3)] rounded-full font-body text-[12.5px] font-medium text-[var(--amber)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--amber-bg)] hover:border-[var(--amber)] [&>svg]:flex-shrink-0"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            Performance review
+          </button>
+
+          {/* 6. Admin note — admin.html line 19448 */}
+          <button
+            type="button"
+            data-mgr-action="admin-note"
+            onClick={() => logAction('admin-note')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink-soft)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--cream-deep)] hover:border-[var(--ink)] hover:text-[var(--ink)] [&>svg]:text-[var(--ink-mute)] [&>svg]:flex-shrink-0 hover:[&>svg]:text-[var(--ink)]"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Admin note
+          </button>
+
+          {/* Divider — admin.html line 19452 */}
+          <div className="w-[1px] bg-[var(--line-soft)] my-[4px] mx-[6px] self-stretch" aria-hidden="true" />
+
+          {/* 7. Suspend (danger) — admin.html line 19453 */}
+          <button
+            type="button"
+            data-mgr-action="suspend"
+            onClick={() => logAction('suspend')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[rgba(194,65,43,0.3)] rounded-full font-body text-[12.5px] font-medium text-[var(--danger)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--danger-bg)] hover:border-[var(--danger)] [&>svg]:flex-shrink-0"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <rect x="9" y="9" width="6" height="6" />
+            </svg>
+            Suspend
+          </button>
+
+          {/* 8. More — admin.html line 19457 */}
+          <button
+            type="button"
+            data-mgr-action="more"
+            onClick={() => logAction('more')}
+            className="inline-flex items-center gap-[6px] py-[8px] pl-[12px] pr-[14px] bg-[var(--paper)] border border-[var(--line)] rounded-full font-body text-[12.5px] font-medium text-[var(--ink-soft)] cursor-pointer transition-all duration-[150ms] ease whitespace-nowrap hover:bg-[var(--cream-deep)] hover:border-[var(--ink)] hover:text-[var(--ink)] [&>svg]:flex-shrink-0"
+          >
+            More
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* admin.html line 19465: 2-col cd-body grid (main 1fr / rail 280px / gap 32) — conditional template per Phase 7jk pattern */}
+      <div
+        className={cn(
+          'grid items-start',
+          profile.rail
+            ? 'grid-cols-[minmax(0,1fr)_280px] gap-[32px] max-[1100px]:grid-cols-1 max-[1100px]:gap-[24px]'
+            : 'grid-cols-1'
+        )}
+      >
+        {/* admin.html line 19468: <main class="cd-main"> */}
+        <main className="min-w-0">
+          {/* Section 01 — Performance summary (Phase 8b — built) */}
+          <ManagerSectionPerformance profile={profile} />
+
+          {/* Section 02 — Workload & team oversight (Phase 8c — built) */}
+          <ManagerSectionWorkload profile={profile} />
+
+          {/* Section 03 — Daily activity audit (Phase 8d — built) */}
+          <ManagerSectionActivity profile={profile} />
+
+          {/* Section 04 — Team & assignments (Phase 8e — built) */}
+          <ManagerSectionTeam profile={profile} />
+
+          {/* Section 05 — Notes (Phase 8f — built) */}
+          <ManagerSectionNotes profile={profile} />
+
+          {/* Section 06 — Performance review history (Phase 8g — built) */}
+          <ManagerSectionReviews profile={profile} />
+
+          {/* Section 07 — HR record (Phase 8h — built) */}
+          <ManagerSectionHr profile={profile} />
+
+          {/* Section 08 — Audit log (Phase 8i — built) */}
+          <ManagerSectionAudit profile={profile} />
+        </main>
+
+        {/* admin.html line 20562: <aside class="cd-rail"> — TOC + Quick Facts + scroll-spy (Phase 8j) */}
+        {profile.rail && <ManagerRail rail={profile.rail} />}
+      </div>
+    </div>
+  );
+}

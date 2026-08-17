@@ -311,7 +311,7 @@ const CANDIDATES_ROWS: CandidateUser[] = [
 // ============================================================
 const CLIENTS_ROWS: ClientUser[] = [
   {
-    id: 'client-001',
+    id: 'cl-001-acme',
     name: 'Acme Holdings, Inc.',
     email: 'finance@acme-holdings.test',
     country: 'USA',
@@ -326,7 +326,7 @@ const CLIENTS_ROWS: ClientUser[] = [
     spendStatus: 'completed',
   },
   {
-    id: 'client-002',
+    id: 'cl-002-7e1b3f',
     name: 'Studio Berlin GmbH',
     email: 'hires@studio-berlin.test',
     country: 'Germany',
@@ -341,7 +341,7 @@ const CLIENTS_ROWS: ClientUser[] = [
     spendStatus: 'completed',
   },
   {
-    id: 'client-003',
+    id: 'cl-003-quantum',
     name: 'Quantum Robotics Pte. Ltd.',
     email: 'talent@quantumrobotics.test',
     country: 'Singapore',
@@ -356,7 +356,7 @@ const CLIENTS_ROWS: ClientUser[] = [
     spendStatus: 'completed',
   },
   {
-    id: 'client-004',
+    id: 'cl-004-medco',
     name: 'Lighthouse Med Co.',
     email: 'people@lighthouse-med.test',
     country: 'Canada',
@@ -371,7 +371,7 @@ const CLIENTS_ROWS: ClientUser[] = [
     spendStatus: 'completed',
   },
   {
-    id: 'client-005',
+    id: 'cl-005-tundra',
     name: 'Open Tundra Ltd.',
     email: 'hiring@opentundra.test',
     country: 'Iceland',
@@ -386,7 +386,7 @@ const CLIENTS_ROWS: ClientUser[] = [
     spendStatus: 'empty',
   },
   {
-    id: 'client-006',
+    id: 'cl-006-lagos',
     name: 'The Lagos Loom',
     email: 'hr@lagosloom.test',
     country: 'Nigeria',

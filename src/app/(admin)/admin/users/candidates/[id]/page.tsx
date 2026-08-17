@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { CANDIDATE_PROFILES } from '@/lib/mock-data/admin/candidate-profiles-data';
-import { CandidateProfileShell } from '@/components/admin/users/candidate-profile-shell';
+import { CandidateProfileShell } from '@/components/admin/users/candidates/candidate-profile-shell';
 
 interface PageProps {
   params: Promise<{ id: string }>;

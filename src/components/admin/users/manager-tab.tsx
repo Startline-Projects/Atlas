@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { USERS_DATA } from '@/lib/mock-data/admin/users-data';
 
 const rolePillStyles = {
@@ -95,9 +96,9 @@ export function ManagerTab() {
 
         {/* Actions (from admin.html lines 15691-15700) */}
         <div className={managerActionsClasses}>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-[8px] py-[11px] px-[20px] border border-[var(--color-ink)] text-[var(--color-ink)] bg-transparent rounded-full text-[13.5px] font-medium cursor-pointer transition-colors duration-[150ms] ease hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]"
+          <Link
+            href={`/admin/users/managers/${manager.id}`}
+            className="inline-flex items-center justify-center gap-[8px] py-[11px] px-[20px] border border-[var(--color-ink)] text-[var(--color-ink)] bg-transparent rounded-full text-[13.5px] font-medium cursor-pointer transition-colors duration-[150ms] ease no-underline hover:bg-[var(--color-ink)] hover:text-[var(--color-paper)]"
             data-users-action="open-manager-detail"
           >
             <svg
@@ -115,7 +116,7 @@ export function ManagerTab() {
               <polyline points="12 5 19 12 12 19" />
             </svg>
             Open profile
-          </button>
+          </Link>
           <button
             type="button"
             className="inline-flex items-center justify-center gap-[8px] py-[11px] px-[20px] border border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-paper)] rounded-full text-[13.5px] font-medium cursor-pointer transition-colors duration-[150ms] ease hover:bg-black"
