@@ -19,9 +19,10 @@ Supabase Auth is the identity provider for every surface.
   linked by `User.authProviderId = auth.users.id`. Our database is the source
   of truth; Supabase is a credential store.
 - **Sessions** — the Supabase access token in an HttpOnly cookie
-  (`atlas_session` / `atlas_admin_session`) with a refresh token beside it
-  (`atlas_refresh` / `atlas_admin_refresh`). Read via
-  `getCandidateSession()` / `getAdminSession()` in `src/lib/auth/`; refreshed
+  (`atlas_session` / `atlas_admin_session` / `atlas_client_session`) with a
+  refresh token beside it (`atlas_refresh` / `atlas_admin_refresh` /
+  `atlas_client_refresh`). Read via `getCandidateSession()` /
+  `getAdminSession()` / `getClientSession()` in `src/lib/auth/`; refreshed
   in `src/proxy.ts`; revoked at logout via `auth.admin.signOut`.
 - **Admins** are provisioned by an operator (`pnpm admin:create`) — never
   self-registered.

@@ -8,14 +8,14 @@
  * Receives the session from the guarded layout: there is no anonymous
  * rendering of this bar any more, so there is no mock fallback either.
  */
-import { LifeBuoy, UserRound } from "lucide-react";
+import { Briefcase, LifeBuoy, UserRound } from "lucide-react";
 import Link from "next/link";
 
 import { Logo } from "@/components/ui/logo";
 import type { CandidateSession } from "@/lib/auth";
 import { roleCategoryLabel } from "@/lib/domain/candidate";
 
-import { avatarGradientFor, initialsOf } from "./avatar";
+import { avatarGradientFor, initialsOf } from "@/lib/utils/avatar";
 import { SignOutButton } from "./sign-out-button";
 
 export function CandidateTopbar({ session }: { session: CandidateSession }) {
@@ -39,6 +39,13 @@ export function CandidateTopbar({ session }: { session: CandidateSession }) {
               className="text-ink-soft hover:bg-cream-deep hover:text-ink rounded-full px-3 py-1.5 text-[13px] transition-colors"
             >
               Dashboard
+            </Link>
+            <Link
+              href="/candidate/jobs"
+              className="text-ink-soft hover:bg-cream-deep hover:text-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] transition-colors"
+            >
+              <Briefcase className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />
+              Jobs
             </Link>
             <Link
               href="/candidate/profile"

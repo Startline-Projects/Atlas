@@ -74,6 +74,7 @@ model User {
 
   candidateProfile CandidateProfile?
   adminProfile     AdminProfile?
+  clientProfile    ClientProfile?
   payments         Payment[]
 
   @@index([role, status])
@@ -145,6 +146,7 @@ model Skill {
   createdAt DateTime @default(now())
 
   candidates CandidateSkill[]
+  jobs       JobSkill[]
 
   @@index([name])
 }
@@ -345,4 +347,109 @@ model Payment {
   testAttempt TestAttempt?
 
   @@index([userId, purpose, status])
+}
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Clients + jobs
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+enum TeamSize {
+  SOLO
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+/// The business behind a `role = CLIENT` user (PROJECT_SCOPE §2.3 "Company
+/// profile"). Split from `User` for the same reason `CandidateProfile` is.
+model ClientProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// The person operating the account — the name we greet.
+  contactName String
+  companyName String
+
+  country     String?
+  countryCode String?
+  teamSize    TeamSize?
+
+  /// Categories the client said they hire in. Informational for now; the
+  /// jobs they actually post are the source of truth.
+  hiringCategories RoleCategory[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs Job[]
+
+  @@index([companyName])
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  FILLED
+}
+
+enum JobDuration {
+  SHORT_TERM
+  ONE_TO_THREE_MONTHS
+  THREE_TO_SIX_MONTHS
+  ONGOING
+}
+
+/// A role a client posted. Goes live (`OPEN`) the moment it is created — the
+/// Talent-Specialist review of a posting is Phase 2. Candidates browse `OPEN`
+/// jobs; `CLOSED` ones stay reachable by direct link.
+model Job {
+  id              String        @id @default(cuid())
+  clientProfileId String
+  client          ClientProfile @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String
+  category    RoleCategory
+
+  /// USD cents — the range the client is willing to pay per hour.
+  hourlyRateMinCents Int
+  hourlyRateMaxCents Int
+  hoursPerWeek       Int
+  duration           JobDuration
+  /// Free text: "4h overlap with CET", "Any timezone".
+  timezoneNote       String?
+
+  status      JobStatus @default(OPEN)
+  publishedAt DateTime  @default(now())
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills JobSkill[]
+
+  @@index([status, publishedAt])
+  @@index([status, category, publishedAt])
+  @@index([clientProfileId, createdAt])
+}
+
+/// Same shape as `CandidateSkill` — the shared `Skill` vocabulary is what
+/// will let a job and a candidate be matched on tags later.
+model JobSkill {
+  jobId     String
+  job       Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  sortOrder Int    @default(0)
+
+  @@id([jobId, skillId])
+  @@index([skillId])
 }

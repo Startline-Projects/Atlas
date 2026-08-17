@@ -6241,3 +6241,78 @@ revocation, per-IP 429 + per-account lockout. `pnpm typecheck` clean;
   `components/candidate/profile/client-profile-view.tsx`.
 
 ---
+
+## Client surface + jobs — client signup/signin, post a job, candidate browse
+
+**Date:** 2026-08-17 · **Branch:** talent-specialist
+
+The first hiring-side slice. Answers the product question "who posts jobs?"
+the way PROJECT_SCOPE §1/§6 and the marketing pages already do: **the
+client** posts (free), candidates browse open roles and — next slice —
+submit proposals; Talent-Specialist review of a posting is Phase 2, so in
+the MVP a job is live the moment it is posted. Built bottom-up per
+ARCHITECTURE §6 / AI_RULES §3.1.
+
+### What landed
+
+| Layer | Files |
+|---|---|
+| Domain | `lib/domain/client.ts` (Client, TEAM_SIZES), `lib/domain/job.ts` (Job, JOB_STATUSES/DURATIONS, HOURS_PER_WEEK_OPTIONS, JOB_LIMITS, `formatRateRange`), `lib/domain/skill.ts` (`skillSlug` moved here from the candidate-profile service, + `dedupeSkillNames`) |
+| Schema | `ClientProfile`, `Job`, `JobSkill` (shares the `Skill` vocabulary with `CandidateSkill`), enums `TeamSize`, `JobStatus`, `JobDuration` — migration `20260816225808_add_client_profile_jobs` |
+| Validators | `validators/auth.ts` (email/password/OTP/login rules, written once), `validators/client.ts`, `validators/job.ts` (`createJobSchema`, `listJobsQuerySchema`, `updateJobStatusSchema`); `validators/candidate.ts` now composes from `auth.ts` (same exports) |
+| Repositories | `repositories/client`, `repositories/job` (skill upsert-by-slug in a transaction, browse query with category / rate-range overlap / min hours / free text) |
+| Services | `services/auth-user` — **new shared module**: create auth user (real or `AUTH_DEV_FIXED_OTP` bypass), verify code, resend, sign-in with lockout, revoke, orphan cleanup. `services/candidate` rewritten on top of it (public API and messages unchanged); `services/client` is its twin; `services/job` owns posting rules (active client only, min ≤ max, ≤ 15 skills, owner-only read/close, closing twice is a rule error, candidates browse `OPEN` only, closed jobs stay readable by id) |
+| Auth | `lib/auth/client-session.ts`, `CLIENT_*` cookie names, `clientSignInPath()`, `CLIENT_COOKIES`; `src/proxy.ts` gained the `/client` + `/api/v1/clients/me` surface (and `/api/v1/jobs` under the candidate surface) and now keys cookie pairs per surface instead of a two-way ternary; `config/rate-limits.ts` — `client-*` per-IP limits, `client` lockout policy |
+| API | `POST /api/v1/clients/{signup,verify-email,resend-verification,login,logout}`, `GET /api/v1/clients/me`, `GET+POST /api/v1/clients/me/jobs`, `GET+PATCH /api/v1/clients/me/jobs/:id`, `GET /api/v1/jobs` (candidate, filters), `GET /api/v1/jobs/:id` |
+| API client / DTO | `api-client/clients.ts`, `api-client/jobs.ts`; `api/dto/client.dto.ts`, `api/dto/job.dto.ts` |
+| UI — client | `(client-auth)/client/{signup,signin}`, `(client)/client/dashboard`, `(client)/client/jobs/new`, `(client)/client/jobs/[id]`; `components/client/{auth,shell,dashboard,jobs}` |
+| UI — candidate | `(candidate)/candidate/jobs` (GET-form filters in the URL, dollars in the URL → cents on the API, paging), `(candidate)/candidate/jobs/[id]`; `components/candidate/jobs`; "Jobs" in the candidate topbar |
+| Shared UI | `components/ui/form/{field,otp-group,submit-button}.tsx` — the field label/error/banner/note, OTP row and submit button that used to be local to the candidate signup form; both candidate forms now import them |
+| Utils | `lib/utils/avatar.ts` (moved from `components/candidate/shell`), `lib/utils/format-date.ts` |
+
+### Decisions
+
+- **Auth mechanics shared, role services separate.** The candidate and
+  client flows are identical at the provider; only the `User`+profile pair
+  differs. Sharing `services/auth-user` means the deferred email step
+  (dropping `AUTH_DEV_FIXED_OTP`) is a one-place change for both surfaces.
+- **Skills on jobs reuse the `Skill` table** (`JobSkill` mirrors
+  `CandidateSkill`) so job ↔ candidate matching on tags is a join, not a
+  string compare, later.
+- **Rate filters are range overlaps:** "pays at least X" = job ceiling ≥ X;
+  "pays at most X" = job floor ≤ X.
+- **Closed jobs are hidden from browse but readable by id** on both sides,
+  so nothing bookmarked 404s; the UI shows a banner and no apply CTA.
+- The candidate detail page's "Submit a proposal" is rendered as an explicit
+  *coming next* state, not a dead button.
+
+### Verification
+
+Live against the real Supabase project with `curl` (dev server, cookies in a
+jar): client signup validation → signup → login-before-verify (422) → wrong
+code (400) → right code → login (both `atlas_client_*` cookies) → `me`;
+job create validation (rate max < min, short description) → two real jobs
+(skills deduped by slug) → list / get / anonymous 401 / bogus id 404;
+candidate signup → verify → login → wrong password (lockout path) —
+regression of the refactored candidate service; browse: all / category /
+minRate / maxRate / minHours / `q` on skill and on title / bad filter 400 /
+anonymous 401 / client cookie 401; close → close again 422 → `PATCH
+{status:OPEN}` 400 → hidden from browse, still readable by id. Every new page
+rendered with real cookies (200 with the expected copy), proxy redirects
+(anonymous, wrong-surface cookie, signed-in on the auth page), 404 pages,
+logout revocation. `pnpm typecheck` clean; `pnpm lint` clean.
+
+### Follow-ups
+
+- **Proposals** (candidate submits cover note + rate; client sees them on
+  the job page) — the placeholder blocks on both job pages mark the spot.
+- Client "company profile" editing (`hiringCategories`, team size, country)
+  — schema and domain carry the fields; no page yet.
+- Audit entries for `job.created` / `job.closed` once the audit-log module
+  exists (AI_RULES rule 8; the same gap as every earlier slice).
+- Service unit tests still need the test-runner ADR (B14) — verification
+  remains the live `curl` matrix.
+- `docs/LOGIN_ENDPOINT.md` documents the candidate login only; the client
+  login is byte-for-byte the same contract under `/api/v1/clients/login`.
+
+---

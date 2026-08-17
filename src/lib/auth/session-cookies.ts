@@ -5,6 +5,8 @@ import { isProduction } from "@/lib/config";
 import {
   ADMIN_REFRESH_COOKIE,
   ADMIN_SESSION_COOKIE,
+  CLIENT_REFRESH_COOKIE,
+  CLIENT_SESSION_COOKIE,
   REFRESH_COOKIE,
   REFRESH_COOKIE_MAX_AGE_SECONDS,
   SESSION_COOKIE,
@@ -25,7 +27,7 @@ export interface SessionTokens {
   expiresIn: number;
 }
 
-interface CookiePair {
+export interface CookiePair {
   access: string;
   refresh: string;
 }
@@ -38,6 +40,11 @@ export const CANDIDATE_COOKIES: CookiePair = {
 export const ADMIN_COOKIES: CookiePair = {
   access: ADMIN_SESSION_COOKIE,
   refresh: ADMIN_REFRESH_COOKIE,
+};
+
+export const CLIENT_COOKIES: CookiePair = {
+  access: CLIENT_SESSION_COOKIE,
+  refresh: CLIENT_REFRESH_COOKIE,
 };
 
 const BASE = {

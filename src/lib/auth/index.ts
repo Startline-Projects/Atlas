@@ -1,6 +1,8 @@
 export {
   ADMIN_REFRESH_COOKIE,
   ADMIN_SESSION_COOKIE,
+  CLIENT_REFRESH_COOKIE,
+  CLIENT_SESSION_COOKIE,
   REFRESH_COOKIE,
   SESSION_COOKIE,
 } from "./cookie-names";
@@ -11,6 +13,9 @@ export {
   CANDIDATE_HOME_PATH,
   CANDIDATE_SIGNIN_PATH,
   candidateSignInPath,
+  CLIENT_HOME_PATH,
+  CLIENT_SIGNIN_PATH,
+  clientSignInPath,
   PATHNAME_HEADER,
   safeNextPath,
 } from "./redirects";
@@ -32,3 +37,11 @@ export {
   requireAdminSession,
 } from "./admin-session";
 export type { AdminSession } from "./admin-session";
+export {
+  applyClientSessionCookie,
+  clearClientSessionCookie,
+  currentClientAccessToken,
+  getClientSession,
+  requireClientSession,
+} from "./client-session";
+export type { ClientSession } from "./client-session";

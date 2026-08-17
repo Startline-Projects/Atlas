@@ -8,6 +8,7 @@ import type {
 } from "@/lib/domain/candidate-profile";
 import { PROFILE_LIMITS } from "@/lib/domain/candidate-profile";
 import { countryName } from "@/lib/domain/countries";
+import { skillSlug } from "@/lib/domain/skill";
 import { BusinessRuleError, NotFoundError, ValidationError } from "@/lib/errors";
 import { STORAGE_BUCKETS, uploadPublicFile } from "@/lib/integrations/supabase";
 import { candidateProfileRepository } from "@/lib/repositories/candidate-profile";
@@ -38,14 +39,8 @@ function withStrength(profile: CandidateProfile): CandidateProfileView {
   return { profile, strength: computeProfileStrength(profile) };
 }
 
-/** "React.js" / "react js" / " REACT-JS " → "react-js". */
-export function skillSlug(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9+#]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+/** Re-exported for existing callers; the helper itself lives in `lib/domain/skill`. */
+export { skillSlug };
 
 export const candidateProfileService = {
   async getOwn(userId: string): Promise<CandidateProfileView> {

@@ -7,7 +7,7 @@
  * proxy. Anything that needs the *validated* session imports from
  * `@/lib/auth` instead.
  *
- * One pair of cookies per surface. Both surfaces hold Supabase tokens, but
+ * One pair of cookies per surface. All surfaces hold Supabase tokens, but
  * keeping them apart means a candidate token can never be *presented* as an
  * admin session (and the service layer would reject it anyway — defence in
  * depth), and a developer can be signed in to both consoles at once.
@@ -26,6 +26,11 @@ export const REFRESH_COOKIE = "atlas_refresh";
 export const ADMIN_SESSION_COOKIE = "atlas_admin_session";
 /** Admin refresh token. */
 export const ADMIN_REFRESH_COOKIE = "atlas_admin_refresh";
+
+/** Client access token (`role = CLIENT` user). */
+export const CLIENT_SESSION_COOKIE = "atlas_client_session";
+/** Client refresh token. */
+export const CLIENT_REFRESH_COOKIE = "atlas_client_refresh";
 
 /**
  * How long the refresh cookie lives. Supabase rotates the token on every

@@ -23,6 +23,12 @@ export const IP_LIMITS = {
   "candidate-upload": { requests: 30, windowSeconds: 60 * 60 },
   "candidate-retake-checkout": { requests: 5, windowSeconds: 60 * 60 },
   "admin-login": { requests: 5, windowSeconds: 15 * 60 },
+  "client-signup": { requests: 5, windowSeconds: 60 * 60 },
+  "client-login": { requests: 10, windowSeconds: 15 * 60 },
+  "client-verify-email": { requests: 10, windowSeconds: 15 * 60 },
+  "client-resend-verification": { requests: 3, windowSeconds: 15 * 60 },
+  // Posting is free; this only stops a script from flooding the browse page.
+  "client-job-create": { requests: 20, windowSeconds: 60 * 60 },
 } as const satisfies Record<string, RateLimit>;
 
 export type IpLimitName = keyof typeof IP_LIMITS;
@@ -48,6 +54,15 @@ export const ROUTE_LIMITS: ReadonlyArray<{
     limit: "candidate-retake-checkout",
   },
   { method: "POST", path: "/api/v1/admin/login", limit: "admin-login" },
+  { method: "POST", path: "/api/v1/clients/signup", limit: "client-signup" },
+  { method: "POST", path: "/api/v1/clients/login", limit: "client-login" },
+  { method: "POST", path: "/api/v1/clients/verify-email", limit: "client-verify-email" },
+  {
+    method: "POST",
+    path: "/api/v1/clients/resend-verification",
+    limit: "client-resend-verification",
+  },
+  { method: "POST", path: "/api/v1/clients/me/jobs", limit: "client-job-create" },
 ];
 
 /**
@@ -57,6 +72,7 @@ export const ROUTE_LIMITS: ReadonlyArray<{
  */
 export const ACCOUNT_LOCKOUT = {
   candidate: { failures: 5, windowSeconds: 15 * 60 },
+  client: { failures: 5, windowSeconds: 15 * 60 },
   // Stricter for the console — matches the sign-in screen's copy.
   admin: { failures: 3, windowSeconds: 30 * 60 },
 } as const;

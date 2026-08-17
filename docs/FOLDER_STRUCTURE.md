@@ -413,8 +413,8 @@ src/app/
 
 - **Specialist:** `(specialist)/specialist/dashboard`, `(specialist-auth)/specialist/signin`
 - **Admin:** `(admin)/admin/dashboard`, `(admin-auth)/admin/signin`
-- **Future candidate:** `(candidate)/candidate/profile`, `(candidate-auth)/candidate/signin`
-- **Future client:** `(client)/client/jobs`, `(client-auth)/client/signin`
+- **Candidate:** `(candidate)/candidate/dashboard`, `(candidate)/candidate/jobs`, `(candidate-auth)/candidate/signin`
+- **Client:** `(client)/client/dashboard`, `(client)/client/jobs/new`, `(client-auth)/client/signup`
 
 ### Components
 

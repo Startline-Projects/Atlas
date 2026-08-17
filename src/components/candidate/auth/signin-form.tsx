@@ -1,11 +1,18 @@
 "use client";
 
-import { ArrowRight, Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-import { useHydrated } from "@/hooks/use-hydrated";
+import {
+  FIELD_INPUT_CLASS,
+  FIELD_INPUT_ERROR_CLASS,
+  FieldError,
+  FieldLabel,
+  FormBanner,
+} from "@/components/ui/form/field";
+import { SubmitButton } from "@/components/ui/form/submit-button";
 import { ApiClientError, candidatesApi } from "@/lib/api-client";
 // Leaf module, not the `@/lib/auth` barrel — that one reaches `next/headers`.
 import { CANDIDATE_HOME_PATH, safeNextPath } from "@/lib/auth/redirects";
@@ -14,12 +21,6 @@ import { CANDIDATE_HOME_PATH, safeNextPath } from "@/lib/auth/redirects";
 import { fieldsFromZod } from "@/lib/errors/zod-fields";
 import { cn } from "@/lib/utils/cn";
 import { loginSchema } from "@/lib/validators/candidate";
-
-const FIELD_INPUT_CLASS =
-  "w-full rounded-md border border-line bg-[#FFFDF7] px-3.5 py-3 text-[15px] text-ink transition-[border-color,box-shadow,background] outline-none placeholder:text-ink-mute placeholder:opacity-70 hover:not-disabled:not-focus:border-[#C4BCA9] focus:border-ink focus:shadow-[0_0_0_3px_rgba(14,14,12,0.08)] disabled:bg-cream-deep disabled:text-ink-mute disabled:opacity-70";
-
-const FIELD_INPUT_ERROR_CLASS =
-  "border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(194,65,43,0.12)]";
 
 /**
  * Candidate sign-in. Validates with `loginSchema` first (same rules as the
@@ -33,8 +34,6 @@ export function SigninForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
-  // Inert until React is attached — see useHydrated.
-  const hydrated = useHydrated();
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -78,25 +77,10 @@ export function SigninForm() {
 
   return (
     <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col">
-      {formError && (
-        <div
-          role="alert"
-          className="bg-danger-bg text-danger mb-5 rounded-md px-3.5 py-3 text-[13px] leading-[1.5]"
-        >
-          {formError}
-        </div>
-      )}
+      {formError && <FormBanner message={formError} />}
 
       <div className="mb-5">
-        <label
-          htmlFor={emailId}
-          className="text-ink-soft mb-2 flex items-center justify-between text-[13px] font-medium"
-        >
-          <span>Email</span>
-          <span className="text-ink-mute font-mono text-[10px] tracking-[0.1em] uppercase">
-            Required
-          </span>
-        </label>
+        <FieldLabel htmlFor={emailId} label="Email" />
         <input
           id={emailId}
           name="email"
@@ -108,23 +92,11 @@ export function SigninForm() {
           aria-invalid={Boolean(fieldErrors.email)}
           className={cn(FIELD_INPUT_CLASS, fieldErrors.email && FIELD_INPUT_ERROR_CLASS)}
         />
-        {fieldErrors.email && (
-          <p role="alert" className="text-danger mt-1.5 text-[12.5px] leading-[1.4]">
-            {fieldErrors.email}
-          </p>
-        )}
+        <FieldError message={fieldErrors.email} />
       </div>
 
       <div className="mb-5">
-        <label
-          htmlFor={pwdId}
-          className="text-ink-soft mb-2 flex items-center justify-between text-[13px] font-medium"
-        >
-          <span>Password</span>
-          <span className="text-ink-mute font-mono text-[10px] tracking-[0.1em] uppercase">
-            Required
-          </span>
-        </label>
+        <FieldLabel htmlFor={pwdId} label="Password" />
         <div className="relative">
           <input
             id={pwdId}
@@ -155,11 +127,7 @@ export function SigninForm() {
             )}
           </button>
         </div>
-        {fieldErrors.password && (
-          <p role="alert" className="text-danger mt-1.5 text-[12.5px] leading-[1.4]">
-            {fieldErrors.password}
-          </p>
-        )}
+        <FieldError message={fieldErrors.password} />
       </div>
 
       <div className="bg-cream border-line-soft text-ink-soft mb-5 flex items-start gap-2.5 rounded-md border px-3.5 py-3 text-[12.5px] leading-[1.5]">
@@ -175,22 +143,7 @@ export function SigninForm() {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={pending || !hydrated}
-        className="btn btn-primary btn-lg group mt-auto w-full justify-center disabled:opacity-70"
-      >
-        <span>{pending ? "Signing in" : "Sign in"}</span>
-        {pending ? (
-          <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={1.6} aria-hidden="true" />
-        ) : (
-          <ArrowRight
-            className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5"
-            strokeWidth={1.6}
-            aria-hidden="true"
-          />
-        )}
-      </button>
+      <SubmitButton label="Sign in" pendingLabel="Signing in" pending={pending} />
 
       <p className="text-ink-mute mt-4 text-center text-[13px]">
         New to Atlas?{" "}

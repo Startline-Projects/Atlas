@@ -11,6 +11,9 @@ export const CANDIDATE_HOME_PATH = "/candidate/dashboard";
 export const ADMIN_SIGNIN_PATH = "/admin/signin";
 export const ADMIN_HOME_PATH = "/admin/dashboard";
 
+export const CLIENT_SIGNIN_PATH = "/client/signin";
+export const CLIENT_HOME_PATH = "/client/dashboard";
+
 /**
  * Request header the proxy stamps with the path (+ query) being served.
  * Layouts have no other way to learn the URL they render for.
@@ -45,4 +48,9 @@ export function candidateSignInPath(next?: string | null): string {
 /** `/admin/signin?next=<path>` — same rule as the candidate variant. */
 export function adminSignInPath(next?: string | null): string {
   return signInPath(ADMIN_SIGNIN_PATH, ADMIN_HOME_PATH, next);
+}
+
+/** `/client/signin?next=<path>` — same rule as the candidate variant. */
+export function clientSignInPath(next?: string | null): string {
+  return signInPath(CLIENT_SIGNIN_PATH, CLIENT_HOME_PATH, next);
 }

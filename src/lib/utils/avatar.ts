@@ -1,6 +1,6 @@
 /**
- * Avatar helpers for candidates without a photo. Pure functions — safe in
- * Server and Client Components alike.
+ * Avatar helpers for users without a photo (candidates, clients). Pure
+ * functions — safe in Server and Client Components alike.
  */
 
 /** Two-letter initials: "Lina Haddad" → "LH", "Cher" → "C". */

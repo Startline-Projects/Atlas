@@ -6,3 +6,6 @@ export type { UploadResponse } from "./candidate-profile";
 export { adminApi } from "./admin";
 export type { AdminLoginResponse } from "./admin";
 export { englishTestApi } from "./english-test";
+export { clientsApi } from "./clients";
+export type { ClientLoginResponse, ClientSignupResponse } from "./clients";
+export { jobsApi } from "./jobs";

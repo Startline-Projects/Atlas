@@ -1,14 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  ADMIN_REFRESH_COOKIE,
-  ADMIN_SESSION_COOKIE,
-  REFRESH_COOKIE,
-  SESSION_COOKIE,
-} from "@/lib/auth/cookie-names";
-import {
   adminSignInPath,
   candidateSignInPath,
+  clientSignInPath,
   PATHNAME_HEADER,
 } from "@/lib/auth/redirects";
 import { accessTokenNeedsRefresh, refreshSession } from "@/lib/auth/refresh";
@@ -18,7 +13,9 @@ import {
   ADMIN_COOKIES,
   applySessionCookies,
   CANDIDATE_COOKIES,
+  CLIENT_COOKIES,
   clearSessionCookies,
+  type CookiePair,
 } from "@/lib/auth/session-cookies";
 
 /**
@@ -60,25 +57,33 @@ interface Surface {
   apiPrefixes: ReadonlyArray<string>;
   /** Page paths under the prefixes an anonymous visitor may open. */
   publicPaths: ReadonlyArray<string>;
-  cookies: { access: string; refresh: string };
+  cookies: CookiePair;
   /** Where to send anonymous visitors, carrying `?next=`. */
   signInPath: (next: string) => string;
 }
 
 const SURFACES: ReadonlyArray<Surface> = [
   {
-    prefixes: ["/candidate", "/api/v1/candidates/me"],
-    apiPrefixes: ["/api/v1/candidates/me"],
+    // `/api/v1/jobs` is the candidate browse API — refreshed like the rest.
+    prefixes: ["/candidate", "/api/v1/candidates/me", "/api/v1/jobs"],
+    apiPrefixes: ["/api/v1/candidates/me", "/api/v1/jobs"],
     publicPaths: ["/candidate/signin", "/candidate/signup"],
-    cookies: { access: SESSION_COOKIE, refresh: REFRESH_COOKIE },
+    cookies: CANDIDATE_COOKIES,
     signInPath: candidateSignInPath,
   },
   {
     prefixes: ["/admin", "/api/v1/admin/me"],
     apiPrefixes: ["/api/v1/admin/me"],
     publicPaths: ["/admin/signin"],
-    cookies: { access: ADMIN_SESSION_COOKIE, refresh: ADMIN_REFRESH_COOKIE },
+    cookies: ADMIN_COOKIES,
     signInPath: adminSignInPath,
+  },
+  {
+    prefixes: ["/client", "/api/v1/clients/me"],
+    apiPrefixes: ["/api/v1/clients/me"],
+    publicPaths: ["/client/signin", "/client/signup"],
+    cookies: CLIENT_COOKIES,
+    signInPath: clientSignInPath,
   },
 ];
 
@@ -166,11 +171,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       forwarded.set(PATHNAME_HEADER, here);
 
       const response = NextResponse.next({ request: { headers: forwarded } });
-      applySessionCookies(
-        response,
-        surface.cookies.access === SESSION_COOKIE ? CANDIDATE_COOKIES : ADMIN_COOKIES,
-        fresh,
-      );
+      applySessionCookies(response, surface.cookies, fresh);
       return response;
     }
 
@@ -179,10 +180,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     const response = isApi
       ? NextResponse.next({ request: { headers: requestHeaders } })
       : NextResponse.redirect(new URL(surface.signInPath(here), request.url));
-    clearSessionCookies(
-      response,
-      surface.cookies.access === SESSION_COOKIE ? CANDIDATE_COOKIES : ADMIN_COOKIES,
-    );
+    clearSessionCookies(response, surface.cookies);
     return response;
   }
 
@@ -198,9 +196,12 @@ export const config = {
   matcher: [
     "/candidate/:path*",
     "/admin/:path*",
+    "/client/:path*",
     // Session refresh for the signed-in APIs + rate limits for the auth
     // endpoints (config/rate-limits.ts ROUTE_LIMITS must stay within these).
     "/api/v1/candidates/:path*",
     "/api/v1/admin/:path*",
+    "/api/v1/clients/:path*",
+    "/api/v1/jobs/:path*",
   ],
 };
